@@ -24,6 +24,10 @@ package-dir = {"" = "src"}
 where = ["src"]
 namespaces = false
 
+[tool.setuptools.package-data]
+snap_workflow = ["core/templates/*"]
+
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=snap_workflow --cov-report=term-missing"

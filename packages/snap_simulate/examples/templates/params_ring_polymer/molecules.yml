@@ -1,0 +1,36 @@
+ring_6_A:
+  molecule_type: "ring_polymer"
+  beads: 6
+  bead_type: 1
+  bond_type: 0
+  num_molecules: 1
+ring_12_A:
+  molecule_type: "ring_polymer"
+  beads: 12
+  bead_type: 1
+  bond_type: 0
+  num_molecules: 1
+ring_24_A:
+  molecule_type: "ring_polymer"
+  beads: 24
+  bead_type: 1
+  bond_type: 0
+  num_molecules: 1
+ring_8_B:
+  molecule_type: "ring_polymer"
+  beads: 8
+  bead_type: 2
+  bond_type: 0
+  num_molecules: 1
+ring_16_B:
+  molecule_type: "ring_polymer"
+  beads: 16
+  bead_type: 2
+  bond_type: 0
+  num_molecules: 1
+ring_32_B:
+  molecule_type: "ring_polymer"
+  beads: 32
+  bead_type: 2
+  bond_type: 0
+  num_molecules: 1

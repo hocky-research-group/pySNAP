@@ -1,0 +1,4 @@
+dimensions: 3
+box_length: [50.0, 10.0, 10.0]
+placement_style: "simple_cubic"
+placement_spacing: [10.0, 10.0, 10.0]

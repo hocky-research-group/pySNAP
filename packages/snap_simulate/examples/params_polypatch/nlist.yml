@@ -1,0 +1,4 @@
+cell:
+  class: "Cell"
+  options:
+    buffer: 0.4

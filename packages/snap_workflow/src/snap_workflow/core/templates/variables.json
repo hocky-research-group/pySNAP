@@ -1,0 +1,11 @@
+{
+    "pi":"All values defined here can be inserted anywhere in the params by inserting the ",
+    "pi":"string '!v_pi' where you would like the value of pi to be substituted.",
+    "pi":"Job variables from workflow will be included here and should therefore be",
+    "pi":"either accessed here directly or referenced elsewhere in the params by the",
+    "pi":"same method. Decoding (ie. conversion) can be done by including extra",
+    "pi":"flags in the substitution directives. eg. '!vni_pi'. Current decoding",
+    "pi":"options include: n(make negative), i(convert to integer), and",
+    "pi":"f(convert to float)",
+    "pi":3.1415
+}

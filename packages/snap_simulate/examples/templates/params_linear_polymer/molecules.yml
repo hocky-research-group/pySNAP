@@ -1,0 +1,36 @@
+lin_short_A:
+  molecule_type: "linear_polymer"
+  beads: 4
+  bead_types: 1
+  bond_type: 0
+  num_molecules: 1
+lin_medium_A:
+  molecule_type: "linear_polymer"
+  beads: 8
+  bead_types: 1
+  bond_type: 0
+  num_molecules: 1
+lin_long_A:
+  molecule_type: "linear_polymer"
+  beads: 16
+  bead_types: 1
+  bond_type: 0
+  num_molecules: 1
+lin_short_B:
+  molecule_type: "linear_polymer"
+  beads: 5
+  bead_types: 2
+  bond_type: 0
+  num_molecules: 1
+lin_block_copolymer:
+  molecule_type: "linear_polymer"
+  beads: 10
+  bead_types: [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+  bond_type: 0
+  num_molecules: 1
+lin_alternating:
+  molecule_type: "linear_polymer"
+  beads: 12
+  bead_types: [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+  bond_type: 0
+  num_molecules: 1

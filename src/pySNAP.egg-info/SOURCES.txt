@@ -1,0 +1,8 @@
+README.md
+pyproject.toml
+src/pySNAP/__init__.py
+src/pySNAP.egg-info/PKG-INFO
+src/pySNAP.egg-info/SOURCES.txt
+src/pySNAP.egg-info/dependency_links.txt
+src/pySNAP.egg-info/requires.txt
+src/pySNAP.egg-info/top_level.txt

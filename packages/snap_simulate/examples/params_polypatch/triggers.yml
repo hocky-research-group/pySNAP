@@ -1,0 +1,5 @@
+write_trigger:
+  class: "Periodic"
+  composite: false
+  options:
+    period: 1000

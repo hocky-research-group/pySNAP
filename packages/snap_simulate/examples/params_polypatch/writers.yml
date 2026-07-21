@@ -1,0 +1,7 @@
+gsd:
+  class: "GSD"
+  trigger: "write_trigger"
+  options:
+    filename: "example_polypatch_trajectory.gsd"
+    mode: "wb"
+    dynamic: ["property", "momentum", "topology"]

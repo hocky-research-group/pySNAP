@@ -1,0 +1,72 @@
+import os
+import pytest
+from unittest.mock import patch
+
+from snap_workflow.cli import (
+    main_init, main_add, main_print, main_set, main_remove, main_reset
+)
+from snap_workflow.core import load_stages
+from snap_workflow.core.sweeps import load_sweeps
+
+@patch('builtins.input')
+def test_cli_lifecycle(mock_input, sandbox, env_dir):
+    # 1. Test CLI initialization
+    # Prompts: 
+    # - Confirm initialization: 'y'
+    # - Env path: env_dir
+    mock_input.side_effect = ["y", "json", env_dir]
+    try:
+        main_init("workflow init", [])
+    except SystemExit:
+        pass # Expect SystemExit on successful CLI termination
+        
+    assert os.path.isdir(".workflow")
+    
+    # 2. Test CLI add stage
+    # Subcommand: workflow add stage -n stageA
+    # Prompts:
+    # - Sbatch submission (y/n)? -> 'n'
+    # - Stage dependencies -> '' (none)
+    mock_input.side_effect = ["n", ""]
+    main_add("workflow add", ["stage", "-n", "stageA"])
+    
+    stages = load_stages()
+    assert "stageA" in stages
+    
+    # 3. Test CLI add variable
+    # Subcommand: workflow add variable -n x -t int
+    # Prompts:
+    # - Include in stageA (y/n)? -> 'y'
+    mock_input.side_effect = ["y"]
+    main_add("workflow add", ["variable", "-n", "x", "-t", "int"])
+    
+    # 4. Test CLI add sweep
+    # Subcommand: workflow add sweep -n sweepA
+    # Prompts:
+    # - Include stageA in sweep (y/n)? -> 'y'
+    # - Values for variable x -> '10 20'
+    mock_input.side_effect = ["y", "10 20"]
+    main_add("workflow add", ["sweep", "-n", "sweepA"])
+    
+    sweeps = load_sweeps()
+    assert "sweepA" in sweeps
+    assert sweeps["sweepA"]["values"]["x"] == ["10", "20"]
+    
+    # 5. Test CLI print sweeps
+    # Subcommand: workflow print sweeps
+    with patch('sys.stdout') as mock_stdout:
+        main_print("workflow print", ["sweeps"])
+        
+    # 6. Test CLI set status
+    # Subcommand: workflow set status submitted -w sweepA -s stageA
+    main_set("workflow set", ["status", "submitted", "-w", "sweepA", "-s", "stageA"])
+    
+    # 7. Test CLI remove sweep
+    # Subcommand: workflow remove sweep -w sweepA
+    # Prompts:
+    # - Confirm removal (y/n)? -> 'y'
+    mock_input.side_effect = ["y"]
+    main_remove("workflow remove", ["sweep", "-w", "sweepA"])
+    
+    sweeps = load_sweeps()
+    assert "sweepA" not in sweeps

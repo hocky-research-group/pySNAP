@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2430 1680" width="100%" height="100%">
+  <!-- Definitions for arrows and shadows -->
+  <defs>
+    <!-- Arrow Markers -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94a3b8" />
+    </marker>
+    
+    <marker id="arrow-highlight" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#34d399" />
+    </marker>
+
+    <marker id="arrow-cyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#22d3ee" />
+    </marker>
+
+    <!-- Subtle Shadow -->
+    <filter id="subtle-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="12" stdDeviation="9" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+
+    <!-- Clipping Paths -->
+    <clipPath id="clip-card-180">
+      <rect width="540" height="420" rx="24" />
+    </clipPath>
+    <clipPath id="clip-card-210-140">
+      <rect width="630" height="420" rx="24" />
+    </clipPath>
+    <clipPath id="clip-card-210-475">
+      <rect width="630" height="1425" rx="24" />
+    </clipPath>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="100%" height="100%" fill="#0b0f19" rx="36" stroke="#1e293b" stroke-width="6" />
+
+  <!-- Connecting Lines / Relationships -->
+  
+  <!-- Variables -> Sweeps -->
+  <path d="M 690 840 H 735 V 360 H 792" fill="none" stroke="#94a3b8" stroke-width="6" marker-end="url(#arrow)" />
+  <text x="720" y="408" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="33" text-anchor="end" font-weight="bold">defines axes</text>
+
+  <!-- Variables -> Stages -->
+  <path d="M 690 840 H 735 V 1320 H 792" fill="none" stroke="#94a3b8" stroke-width="6" marker-end="url(#arrow)" />
+  <text x="720" y="1278" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="33" text-anchor="end" font-weight="bold">associated with</text>
+
+  <!-- Combined Sweeps & Stages -> SPoints -->
+  <path d="M 1440 360 H 1575 V 840" fill="none" stroke="#34d399" stroke-width="6" />
+  <path d="M 1440 1320 H 1575 V 840" fill="none" stroke="#34d399" stroke-width="6" />
+  <path d="M 1575 840 H 1632" fill="none" stroke="#34d399" stroke-width="6" marker-end="url(#arrow-highlight)" />
+  
+  <text x="1545" y="822" fill="#34d399" font-family="system-ui, sans-serif" font-size="33" font-weight="bold" text-anchor="end">generates SPoints,</text>
+  <text x="1545" y="864" fill="#34d399" font-family="system-ui, sans-serif" font-size="33" font-weight="bold" text-anchor="end">links dependencies</text>
+
+
+  <!-- CARD 1: VARIABLES -->
+  <g transform="translate(150, 630)" filter="url(#subtle-shadow)">
+    <rect width="540" height="420" rx="24" fill="#1e152f" stroke="#a78bfa" stroke-width="4.5" />
+    <rect width="540" height="12" fill="#a78bfa" clip-path="url(#clip-card-180)" />
+    <!-- Header -->
+    <text x="45" y="84" fill="#ddd6fe" font-family="system-ui, sans-serif" font-size="45" font-weight="bold">Variables</text>
+    <text x="45" y="132" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="31.5">Parameter names and types</text>
+    <!-- Content -->
+    <rect x="36" y="180" width="468" height="78" rx="12" fill="#2e1d44" stroke="#4c1d95" stroke-width="3" />
+    <text x="66" y="231" fill="#ddd6fe" font-family="monospace" font-size="36" font-weight="bold">x : int</text>
+    
+    <rect x="36" y="288" width="468" height="78" rx="12" fill="#2e1d44" stroke="#4c1d95" stroke-width="3" />
+    <text x="66" y="339" fill="#ddd6fe" font-family="monospace" font-size="36" font-weight="bold">y : float</text>
+  </g>
+
+  <!-- CARD 2: SWEEPS -->
+  <g transform="translate(810, 150)" filter="url(#subtle-shadow)">
+    <rect width="630" height="420" rx="24" fill="#0c1c2e" stroke="#38bdf8" stroke-width="4.5" />
+    <rect width="630" height="12" fill="#38bdf8" clip-path="url(#clip-card-210-140)" />
+    <!-- Header -->
+    <text x="45" y="84" fill="#7dd3fc" font-family="system-ui, sans-serif" font-size="45" font-weight="bold">Sweeps</text>
+    <text x="45" y="132" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="31.5">Parameter sweep values</text>
+    <!-- Content -->
+    <rect x="36" y="180" width="558" height="78" rx="12" fill="#07263b" stroke="#0369a1" stroke-width="3" />
+    <text x="66" y="231" fill="#7dd3fc" font-family="monospace" font-size="36" font-weight="bold">x: [10, 20, 30]</text>
+    
+    <rect x="36" y="288" width="558" height="78" rx="12" fill="#07263b" stroke="#0369a1" stroke-width="3" />
+    <text x="66" y="339" fill="#7dd3fc" font-family="monospace" font-size="36" font-weight="bold">y: [1.5, 3.0]</text>
+  </g>
+
+  <!-- CARD 3: STAGES -->
+  <g transform="translate(810, 1110)" filter="url(#subtle-shadow)">
+    <rect width="630" height="420" rx="24" fill="#2d1c07" stroke="#fbbf24" stroke-width="4.5" />
+    <rect width="630" height="12" fill="#fbbf24" clip-path="url(#clip-card-210-140)" />
+    <!-- Header -->
+    <text x="45" y="84" fill="#fdba74" font-family="system-ui, sans-serif" font-size="45" font-weight="bold">Stages</text>
+    <text x="45" y="132" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="31.5">User defined stage1.py script</text>
+    <!-- Content -->
+    
+    <!-- Stage 1 Box -->
+    <rect x="36" y="165" width="558" height="78" rx="12" fill="#3f2203" stroke="#78350f" stroke-width="3" />
+    <text x="66" y="216" fill="#fdba74" font-family="monospace" font-size="33" font-weight="bold">stage1 (uses: x)</text>
+    
+    <!-- Stage 2 Box -->
+    <rect x="36" y="270" width="558" height="114" rx="12" fill="#3f2203" stroke="#78350f" stroke-width="3" />
+    <text x="66" y="315" fill="#fdba74" font-family="monospace" font-size="33" font-weight="bold" xml:space="preserve">stage2 (dep: stage1,</text>
+    <text x="66" y="366" fill="#fdba74" font-family="monospace" font-size="33" font-weight="bold" xml:space="preserve">        uses: x, y)</text>
+  </g>
+
+  <!-- CARD 4: SPOINTS (SWEEP POINTS) -->
+  <g transform="translate(1650, 120)" filter="url(#subtle-shadow)">
+    <rect width="630" height="1425" rx="24" fill="#062f21" stroke="#34d399" stroke-width="4.5" />
+    <rect width="630" height="12" fill="#34d399" clip-path="url(#clip-card-210-475)" />
+    <!-- Header -->
+    <text x="45" y="84" fill="#a7f3d0" font-family="system-ui, sans-serif" font-size="45" font-weight="bold">SPoints</text>
+    <text x="45" y="132" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="31.5">Folder structure</text>
+    
+    <!-- Outer container for stacked lists -->
+    <g transform="translate(36, 165)">
+      <!-- Top Stack: stage 1 (H=435) -->
+      <g transform="translate(0, 0)">
+        <rect width="540" height="435" rx="18" fill="#0f172a" stroke="#334155" stroke-width="3" />
+        <rect width="540" height="72" rx="18" fill="#1e293b" />
+        <text x="30" y="48" fill="#f8fafc" font-family="monospace" font-size="33" font-weight="bold">stage1/</text>
+        
+        <!-- File structure paths -->
+        <text x="45" y="135" fill="#fbbf24" font-family="monospace" font-size="33" xml:space="preserve">├── stage1.py</text>
+        <text x="45" y="195" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">└── spoints/</text>
+        <text x="45" y="255" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">    ├── x_10/</text>
+        <text x="45" y="315" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">    ├── x_20/</text>
+        <text x="45" y="375" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">    └── x_30/</text>
+      </g>
+      
+      <!-- Bottom Stack: stage 2 (H=675) -->
+      <g transform="translate(0, 495)">
+        <rect width="540" height="675" rx="18" fill="#0f172a" stroke="#334155" stroke-width="3" />
+        <rect width="540" height="72" rx="18" fill="#1e293b" />
+        <text x="30" y="48" fill="#f8fafc" font-family="monospace" font-size="33" font-weight="bold">stage2/</text>
+        
+        <!-- File structure paths -->
+        <text x="45" y="135" fill="#fbbf24" font-family="monospace" font-size="33" xml:space="preserve">├── stage2.py</text>
+        <text x="45" y="195" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">└── spoints/</text>
+        <text x="45" y="255" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">    ├── x_10_y_1.5/</text>
+        <text x="45" y="315" font-family="monospace" font-size="33" xml:space="preserve"><tspan fill="#f8fafc">    │</tspan><tspan fill="#22d3ee" font-weight="bold">   └── stage1</tspan></text>
+        <text x="45" y="375" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">    ├── x_10_y_3.0/</text>
+        <text x="45" y="435" font-family="monospace" font-size="33" xml:space="preserve"><tspan fill="#f8fafc">    │</tspan><tspan fill="#22d3ee" font-weight="bold">   └── stage1</tspan></text>
+        <text x="45" y="495" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">    ├── x_20_y_1.5/</text>
+        <text x="45" y="555" font-family="monospace" font-size="33" xml:space="preserve"><tspan fill="#f8fafc">    │</tspan><tspan fill="#22d3ee" font-weight="bold">   └── stage1</tspan></text>
+        <text x="45" y="615" fill="#f8fafc" font-family="monospace" font-size="33" xml:space="preserve">    └── ...</text>
+      </g>
+    </g>
+
+    <!-- Dashed Soft Link Arrows -->
+    
+    <!-- Link from x_10_y_1.5/stage1 (y=963) up to x_10/ (y=408) -->
+    <path d="M 420 963 H 456 V 408 H 336" fill="none" stroke="#22d3ee" stroke-width="4.5" stroke-dasharray="9 9" marker-end="url(#arrow-cyan)" />
+    
+    <!-- Link from x_10_y_3.0/stage1 (y=1083) stepping up to join the x_10 trunk at (456, 963) -->
+    <path d="M 420 1083 H 456 V 963" fill="none" stroke="#22d3ee" stroke-width="4.5" stroke-dasharray="9 9" />
+
+    <!-- Link from x_20_y_1.5/stage1 (y=1203) up to x_20/ (y=468) using parallel trunk at x=504 -->
+    <path d="M 420 1203 H 504 V 468 H 336" fill="none" stroke="#22d3ee" stroke-width="4.5" stroke-dasharray="9 9" marker-end="url(#arrow-cyan)" />
+  </g>
+</svg>

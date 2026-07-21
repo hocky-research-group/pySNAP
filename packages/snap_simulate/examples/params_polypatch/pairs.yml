@@ -1,0 +1,23 @@
+LJ:
+  class: "LJ"
+  nlist: "cell"
+  options: {}
+  default_params:
+    epsilon: 1.0
+    sigma: 1.0
+  params:
+    colloid_colloid: ["colloid", "colloid", {"epsilon": 1.0, "sigma": 5.0}]
+    colloid_patch: ["colloid", "patch", {"epsilon": 1.0, "sigma": 3.0}]
+    colloid_linker_end: ["colloid", "linker_end", {"epsilon": 1.0, "sigma": 3.0}]
+    colloid_linker_mid: ["colloid", "linker_mid", {"epsilon": 1.0, "sigma": 3.0}]
+  rcuts:
+    colloid_colloid: ["colloid", "colloid", 5.6123]
+    colloid_patch: ["colloid", "patch", 3.3674]
+    colloid_linker_end: ["colloid", "linker_end", 3.3674]
+    colloid_linker_mid: ["colloid", "linker_mid", 3.3674]
+    patch_patch: ["patch", "patch", 1.1225]
+    patch_linker_end: ["patch", "linker_end", 1.1225]
+    patch_linker_mid: ["patch", "linker_mid", 1.1225]
+    linker_end_linker_end: ["linker_end", "linker_end", 1.1225]
+    linker_end_linker_mid: ["linker_end", "linker_mid", 1.1225]
+    linker_mid_linker_mid: ["linker_mid", "linker_mid", 1.1225]

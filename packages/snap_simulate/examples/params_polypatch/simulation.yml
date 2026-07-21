@@ -1,0 +1,8 @@
+device: "CPU"
+seed: 42
+init_file: "example_polypatch.gsd"
+has_rigid_bodies: false
+thermalize_initial:
+  filter: "all"
+  options:
+    kT: 1.0

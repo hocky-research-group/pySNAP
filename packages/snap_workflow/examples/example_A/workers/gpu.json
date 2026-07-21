@@ -1,0 +1,9 @@
+{
+    "partition": "FIXME",
+    "nodes": 1,
+    "ntasks-per-node": 1,
+    "cpus-per-task": 4,
+    "mem": "32G",
+    "gres": "gpu:1",
+    "time": "08:00:00"
+}

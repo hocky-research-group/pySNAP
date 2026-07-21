@@ -1,0 +1,3 @@
+types: ["colloid", "patch", "linker_end", "linker_mid"]
+diameters: [5.0, 1.0, 1.0, 1.0]
+mass: [125.0, 1.0, 1.0, 1.0]

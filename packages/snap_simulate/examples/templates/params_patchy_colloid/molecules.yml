@@ -1,0 +1,40 @@
+patchy_tetrahedral:
+  molecule_type: "patchy_colloid"
+  colloid_type: 0
+  patch_type: 1
+  num_patches: 4
+  patch_geometry: "tetrahedral"
+  bond_type: 0
+  num_molecules: 1
+patchy_octahedral:
+  molecule_type: "patchy_colloid"
+  colloid_type: 0
+  patch_type: 1
+  num_patches: 6
+  patch_geometry: "octahedral"
+  bond_type: 0
+  num_molecules: 1
+patchy_icosahedral:
+  molecule_type: "patchy_colloid"
+  colloid_type: 0
+  patch_type: 1
+  num_patches: 12
+  patch_geometry: "icosahedral"
+  bond_type: 0
+  num_molecules: 1
+patchy_fibonacci_5:
+  molecule_type: "patchy_colloid"
+  colloid_type: 0
+  patch_type: 2
+  num_patches: 5
+  patch_geometry: "fibonacci"
+  bond_type: 0
+  num_molecules: 1
+patchy_fibonacci_8:
+  molecule_type: "patchy_colloid"
+  colloid_type: 0
+  patch_type: 2
+  num_patches: 8
+  patch_geometry: "fibonacci"
+  bond_type: 0
+  num_molecules: 1

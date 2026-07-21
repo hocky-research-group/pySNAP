@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snap_workflow"
+version = "0.4.0"
+dependencies = ["numpy >= 1.15",]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+    "pytest-testmon",
+]
+
+[project.scripts]
+workflow = "snap_workflow.cli:command_line_tool"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=snap_workflow --cov-report=term-missing"
+
+

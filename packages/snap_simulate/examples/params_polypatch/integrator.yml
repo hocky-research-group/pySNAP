@@ -1,0 +1,11 @@
+dt: 0.0005
+method:
+  class: "Langevin"
+  filter: "all"
+  options:
+    kT: 1.0
+  gamma:
+    colloid: 10.0
+    patch: 1.0
+    linker_end: 1.0
+    linker_mid: 1.0

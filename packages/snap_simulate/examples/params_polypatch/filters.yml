@@ -1,0 +1,13 @@
+all:
+  class: "All"
+  composite: false
+colloids:
+  class: "Type"
+  composite: false
+  options:
+    types: ["colloid"]
+linkers:
+  class: "Type"
+  composite: false
+  options:
+    types: ["linker_end", "linker_mid"]

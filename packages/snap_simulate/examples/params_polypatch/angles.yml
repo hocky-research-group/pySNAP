@@ -1,0 +1,10 @@
+types: ["harmonic"]
+specs:
+  Harmonic:
+    default_params:
+      k: 50.0
+      t0: 1.570796
+    params:
+      harmonic:
+        k: 50.0
+        t0: 1.570796

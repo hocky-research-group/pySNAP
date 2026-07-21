@@ -1,0 +1,15 @@
+colloids:
+  molecule_type: "patchy_colloid"
+  colloid_type: 0
+  patch_type: 1
+  num_patches: 6
+  patch_geometry: "octahedral"
+  bond_type: 0
+  angle_type: 0
+  num_molecules: 100
+linkers:
+  molecule_type: "linear_polymer"
+  beads: 8
+  bead_types: [2, 3, 3, 3, 3, 3, 3, 2]
+  bond_type: 1
+  num_molecules: 150

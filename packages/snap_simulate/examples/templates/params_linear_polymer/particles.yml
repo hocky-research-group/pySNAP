@@ -1,0 +1,3 @@
+types: ["colloid", "A", "B"]
+diameters: [2.0, 1.0, 1.2]
+mass: [8.0, 1.0, 1.5]

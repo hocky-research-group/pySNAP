@@ -1,0 +1,45 @@
+star_1:
+  molecule_type: "star_polymer"
+  beads_per_arm: 5
+  num_arms: 6
+  center_type: 0
+  arm_type: 1
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1
+star_2:
+  molecule_type: "star_polymer"
+  beads_per_arm: 5
+  num_arms: 12
+  center_type: 0
+  arm_type: 1
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1
+star_3:
+  molecule_type: "star_polymer"
+  beads_per_arm: 2
+  num_arms: 32
+  center_type: 0
+  arm_type: 1
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1
+star_4:
+  molecule_type: "star_polymer"
+  beads_per_arm: 8
+  num_arms: 5
+  center_type: 0
+  arm_type: 1
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1
+star_5:
+  molecule_type: "star_polymer"
+  beads_per_arm: 4
+  num_arms: 3
+  center_type: 0
+  arm_type: 1
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1

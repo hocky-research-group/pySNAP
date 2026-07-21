@@ -1,0 +1,54 @@
+comb_dense_short:
+  molecule_type: "comb_polymer"
+  backbone_beads: 10
+  backbone_type: 1
+  arm_beads: 2
+  arm_type: 2
+  graft_spacing: 2
+  bond_type: 0
+  num_molecules: 1
+comb_dense_long:
+  molecule_type: "comb_polymer"
+  backbone_beads: 20
+  backbone_type: 1
+  arm_beads: 3
+  arm_type: 2
+  graft_spacing: 2
+  bond_type: 0
+  num_molecules: 1
+comb_sparse_short:
+  molecule_type: "comb_polymer"
+  backbone_beads: 15
+  backbone_type: 1
+  arm_beads: 4
+  arm_type: 1
+  graft_spacing: 5
+  bond_type: 0
+  num_molecules: 1
+comb_sparse_long:
+  molecule_type: "comb_polymer"
+  backbone_beads: 30
+  backbone_type: 1
+  arm_beads: 5
+  arm_type: 2
+  graft_spacing: 6
+  bond_type: 0
+  num_molecules: 1
+comb_type_reversed:
+  molecule_type: "comb_polymer"
+  backbone_beads: 12
+  backbone_type: 2
+  arm_beads: 2
+  arm_type: 1
+  graft_spacing: 3
+  bond_type: 0
+  num_molecules: 1
+comb_hybrid_bottlebrush:
+  molecule_type: "comb_polymer"
+  backbone_beads: 25
+  backbone_type: 1
+  arm_beads: 8
+  arm_type: 2
+  graft_spacing: 3
+  bond_type: 0
+  num_molecules: 1

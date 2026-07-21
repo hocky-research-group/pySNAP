@@ -1,0 +1,16 @@
+types: ["patch_bond", "linker_bond", "patch-linker_end"]
+specs:
+  Harmonic:
+    default_params:
+      k: 330.0
+      r0: 1.0
+    params:
+      patch_bond:
+        k: 330.0
+        r0: 3.0
+      linker_bond:
+        k: 330.0
+        r0: 1.0
+      patch-linker_end:
+        k: 330.0
+        r0: 1.0

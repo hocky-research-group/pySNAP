@@ -1,0 +1,42 @@
+#!/bin/bash
+
+#SBATCH -p FIXME
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=1
+#SBATCH -t 02:00:00
+
+#---- Establish Local Forwarding Tunnel back to Login Node ----
+# Compute nodes connect back to the login node loopback port where the workstation's
+# reverse tunnel is listening. $SLURM_SUBMIT_HOST is set by Slurm automatically.
+
+echo "Establishing local port forward back to $SLURM_SUBMIT_HOST on port $SERVER_PORT..."
+ssh -o StrictHostKeyChecking=no -L $SERVER_PORT:127.0.0.1:$SERVER_PORT $SLURM_SUBMIT_HOST -N -f
+
+#---- Start Worker Client ----
+# Parse python interpreter path from .workflow/config.json
+python_path=$(grep -o '"default_python_env"[[:space:]]*:[[:space:]]*"[^"]*' ".workflow/config.json" | cut -d'"' -f4 2>/dev/null)
+if [ -z "$python_path" ]; then
+    if command -v python3 &>/dev/null; then
+        python_path="python3"
+    else
+        python_path="python"
+    fi
+fi
+
+# Evaluate default activation commands and env_vars
+eval $($python_path -c "
+import json
+try:
+    with open('.workflow/config.json') as f:
+        cfg = json.load(f)
+    for cmd in cfg.get('default_activate_cmd', []):
+        print(cmd)
+    for k, v in cfg.get('default_env_vars', {}).items():
+        print(f'export {k}=\"{v}\"')
+except Exception:
+    pass
+if [ ! -z "$SLURM_JOB_ID" ]; then
+    export WORKER_ID="remote_slurm_${SLURM_JOB_ID}"
+fi
+
+$python_path .workflow/workers/run_worker.py

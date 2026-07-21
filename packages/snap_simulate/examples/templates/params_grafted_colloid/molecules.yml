@@ -1,0 +1,45 @@
+grafted_sparse_short:
+  molecule_type: "grafted_colloid"
+  colloid_type: 0
+  arm_beads: 3
+  num_arms: 4
+  arm_type: 1
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1
+grafted_sparse_long:
+  molecule_type: "grafted_colloid"
+  colloid_type: 0
+  arm_beads: 8
+  num_arms: 6
+  arm_type: 1
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1
+grafted_dense_short:
+  molecule_type: "grafted_colloid"
+  colloid_type: 0
+  arm_beads: 2
+  num_arms: 16
+  arm_type: [1, 2]
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1
+grafted_dense_long:
+  molecule_type: "grafted_colloid"
+  colloid_type: 0
+  arm_beads: 6
+  num_arms: 12
+  arm_type: 1
+  end_type: 2
+  bond_type: 0
+  num_molecules: 1
+grafted_reversed_types:
+  molecule_type: "grafted_colloid"
+  colloid_type: 0
+  arm_beads: 4
+  num_arms: 8
+  arm_type: 2
+  end_type: 1
+  bond_type: 0
+  num_molecules: 1

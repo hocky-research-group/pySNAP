@@ -1,0 +1,15 @@
+# Testing and Coverage
+.coverage
+.testmondata
+.pytest_cache/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+*.egg-info/
+.egg-info/
+/build/
+/dist/

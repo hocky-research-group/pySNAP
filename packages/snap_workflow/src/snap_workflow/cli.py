@@ -2,16 +2,16 @@ import argparse
 import sys
 import os
 import json
-from .core import io
-from .core.strings import *
-from .core.workflow import initialize, zip_workflow
-from .core.stages import add_stage, print_stages, load_stages
-from .core.sweeps import add_sweep, remove_sweep, reset_sweep, print_sweeps, load_sweeps
-from .core.variables import add_variable, cast_values
-from .core.spoints import submit_spoints
-from .core.data import collect_data
-from .core.status import set_status, print_status
-from .core.logging_config import setup_logging
+from snap_workflow.utils import io
+from snap_workflow.utils.constants import *
+from snap_workflow.core.workflow import initialize, zip_workflow
+from snap_workflow.core.domain.stages import add_stage, print_stages, load_stages
+from snap_workflow.core.domain.sweeps import add_sweep, remove_sweep, reset_sweep, print_sweeps, load_sweeps
+from snap_workflow.core.domain.variables import add_variable, cast_values
+from snap_workflow.core.domain.spoints import submit_spoints
+from snap_workflow.core.data import collect_data
+from snap_workflow.core.domain.status import set_status, print_status
+from snap_workflow.utils.logging import setup_logging
 
 
 def get_csv_arg(kwargs, keys):
@@ -34,7 +34,7 @@ def prompt_each_stage(prompt):
     for stage in stages.keys():
         stage_prompt = f"    {stage}: "
         collector = io.make_yes_no_collector(stage_prompt, help_str)
-        if io.isYes(collector.collect()):
+        if io.is_yes(collector.collect()):
             yes_stages.append(stage)
     return yes_stages
 
@@ -42,7 +42,7 @@ def get_new_stage_name(kwargs):
     stages = list(load_stages().keys())
     prompt = "Enter new stage name: "
     help_string = "The name of the stage to be added"
-    input_collector = io.Input_Collector(prompt, help_string,
+    input_collector = io.InputCollector(prompt, help_string,
                                          used_exclusions=stages,
                                          exclusions=['all', 'custom'],
                                          keys=["name", "n", "Name", "N"],
@@ -67,7 +67,7 @@ def get_existing_stage_name(kwargs, include_all=False, is_list=False, get_input=
     valid_options = list(stages.keys())
     if include_all:
         valid_options += ["all"]
-    input_collector = io.Input_Collector(prompt, help_string,
+    input_collector = io.InputCollector(prompt, help_string,
                                          valid_options=valid_options,
                                          keys=["s", "S", "stage", "Stage"],
                                          default=default, 
@@ -85,7 +85,7 @@ def get_sbatch_details(stage_name):
     prompt = f"Should the {stage_name} stage be submitted by sbatch? "
     submit_collector = io.make_yes_no_collector(prompt)
     submit = submit_collector.collect()
-    submit = io.isYes(submit)
+    submit = io.is_yes(submit)
     if submit:
         sbatch_details = dict()
         sbatch_details["--signal"] = "B:INT@60"
@@ -98,7 +98,7 @@ def get_sbatch_details(stage_name):
 def get_parallel_submit(stage_name):
     prompt = f"Enter the number of {stage_name} combos to be run in parallel on one submission: "
     help_string = "This is the number of combos that workflow will try to submit on a single sbatch submission"
-    input_collector = io.Input_Collector(prompt, help_string,
+    input_collector = io.InputCollector(prompt, help_string,
                                          add_checks=str.isdigit,
                                          add_errors="Number must be a positive integer")
     return input_collector.collect()
@@ -107,9 +107,9 @@ def get_multi_submit(stage_name):
     prompt = f"Is {stage_name} expected to take multiple sbatch submissions to finish? (y/n) "
     collector = io.make_yes_no_collector(prompt)
     expect_multi = collector.collect()
-    if io.isYes(expect_multi):
+    if io.is_yes(expect_multi):
         expect_multi = True
-    elif io.isNo(expect_multi):
+    elif io.is_no(expect_multi):
         expect_multi = False
     else:
         print(f"Interpreting {expect_multi} as no")
@@ -122,7 +122,7 @@ def get_stage_dependencies(stages, kwargs):
     help_string = f"Stages that must be run immediately before this stage. Entering multiple stages converges stages. Leaving blank indicates stage has no dependencies. Stages: {list(stages.keys())}"
     prompt = f"Enter immediate stage dependencies: "
     default = []
-    collector = io.Input_Collector(prompt, help_string, is_list=True,
+    collector = io.InputCollector(prompt, help_string, is_list=True,
                                    keys=dep_keys,
                                    valid_options=stages,
                                    default=default)
@@ -134,16 +134,16 @@ def get_stage_dependencies(stages, kwargs):
 def get_new_var_val(new_var_name):
     prompt = f"What value has been used for {new_var_name} so far? "
     help_str = "The value that all combos used before now."
-    input_collector = io.Input_Collector(prompt, help_str)
+    input_collector = io.InputCollector(prompt, help_str)
     return input_collector.collect()
 
 def get_new_variable_name(kwargs):
-    from .core.variables import get_variable_names
+    from snap_workflow.core.domain.variables import get_variable_names
     variables = get_variable_names()
     prompt = f"Please enter variable name to add: "
     help_str = f"Name of variable you'd like to vary in this workflow"
     keys = ['n', 'N', 'name']
-    collector = io.Input_Collector(prompt, help_str,
+    collector = io.InputCollector(prompt, help_str,
                                    used_exclusions=variables,
                                    char_exclusions=["_"],
                                    keys=keys)
@@ -161,7 +161,7 @@ def get_new_variable_type(var_name, kwargs):
     negative_options = ["negative", "neg", "-", "n"]
     valid_options = int_options + float_options + string_options + negative_options
     keys = ['t', 'T', 'type']
-    collector = io.Input_Collector(prompt, help_str,
+    collector = io.InputCollector(prompt, help_str,
                                    keys=keys,
                                    valid_options=valid_options,
                                    is_list=True)
@@ -193,10 +193,10 @@ def get_new_variable_type(var_name, kwargs):
     return types
 
 def get_variable_values(variable, types):
-    from .core.variables import generate_values
+    from snap_workflow.core.domain.variables import generate_values
     prompt = f"    {variable}: "
     help_str = f"    Enter values to iterate {variable} through or 'generate'"
-    collector = io.Input_Collector(prompt, help_str, 
+    collector = io.InputCollector(prompt, help_str, 
                                    default=list(), is_list=True, 
                                    list_conversion=generate_values)
     cannot_cast = True 
@@ -211,7 +211,7 @@ def get_variable_values(variable, types):
     return values
 
 def get_stage_variables(kwargs):
-    from .core.variables import get_variable_names
+    from snap_workflow.core.domain.variables import get_variable_names
     variables = get_variable_names()
     stage_variables = []
     print("Is this stage dependent on the variable: (y/n)")
@@ -219,19 +219,19 @@ def get_stage_variables(kwargs):
         prompt = f"    {var}? "
         help_str = f"    Indicate whether this stage is dependent on this variable"
         collector = io.make_yes_no_collector(prompt, help_str)
-        if io.isYes(collector.collect()):
+        if io.is_yes(collector.collect()):
             stage_variables.append(var)
     return stage_variables
 
 def get_new_sweep_name(kwargs):
-    from .core.sweeps import load_sweeps
+    from snap_workflow.core.domain.sweeps import load_sweeps
     sweeps = load_sweeps()
     sweeps = list(sweeps.keys())
     name_keys = ["name", "n"]
     prompt = f"Enter sweep name: "
     help_str = "The name of the sweep to be added"
     exclusions = ["all", "custom"]
-    collector = io.Input_Collector(prompt, help_str,
+    collector = io.InputCollector(prompt, help_str,
                                    exclusions=exclusions,
                                    keys=name_keys,
                                    used_exclusions=sweeps)
@@ -241,7 +241,7 @@ def get_new_sweep_name(kwargs):
     return collector.collect()
 
 def get_existing_sweep_name(kwargs, include_all=False, include_custom=False, is_list=False, get_input=True, default=None):
-    from .core.sweeps import load_sweeps
+    from snap_workflow.core.domain.sweeps import load_sweeps
     sweeps = load_sweeps()
     name_keys = ["sweep", "w", "matrix", "m"]
 
@@ -258,7 +258,7 @@ def get_existing_sweep_name(kwargs, include_all=False, include_custom=False, is_
         valid_options += ["all"]
     if include_custom:
         valid_options += ["custom"]
-    collector = io.Input_Collector(prompt, help_str,
+    collector = io.InputCollector(prompt, help_str,
                                    keys=name_keys,
                                    valid_options=valid_options,
                                    is_list=is_list,
@@ -275,7 +275,7 @@ def confirm_sweep_removal(type_str, name):
     prompt = f"Are you sure you want to remove {type_str} {name} (y/n)? "
     collector = io.make_yes_no_collector(prompt)
     confirmation = collector.collect()
-    if io.isNo(confirmation):
+    if io.is_no(confirmation):
         print(f"{type_str} {name} not removed")
         raise SystemExit
     return
@@ -285,7 +285,7 @@ def confirm_hard_sweep_removal(type_str, name):
     prompt = prompt + f"Are you sure you want to remove hard {type_str} {name} (y/n)? "
     collector = io.make_yes_no_collector(prompt)
     confirmation = collector.collect()
-    if io.isNo(confirmation):
+    if io.is_no(confirmation):
         print(f"{type_str} {name} not removed")
         raise SystemExit
     return
@@ -321,7 +321,7 @@ def get_completions(args_before, current_token):
     def get_remotes():
         remotes = ["local"]
         try:
-            from .core.strings import GLOBAL_REMOTES_FILE
+            from snap_workflow.utils.constants import GLOBAL_REMOTES_FILE
             import json
             if os.path.isfile(GLOBAL_REMOTES_FILE):
                 with open(GLOBAL_REMOTES_FILE, "r") as f:
@@ -496,7 +496,7 @@ def workflow_command():
     if execute_option("main_option", main_precheck_options, required=False, parsed_command="workflow"):
         raise SystemExit
 
-    from .core.version import check_version
+    from snap_workflow.utils.version import check_version
     check_version()
     
     main_options = ["submit", "add", "print", "set", "reset", "convert", "plot", "collect", "zip", "remove", "server", "remote"]
@@ -507,7 +507,7 @@ def workflow_command():
 
 def main_init(parsed_command, args):
     args, kwargs = parse_remaining(args)
-    from .core.workflow import check_existing_root
+    from snap_workflow.core.workflow import check_existing_root
     try:
         check_existing_root()
     except ValueError as e:
@@ -517,7 +517,7 @@ def main_init(parsed_command, args):
     prompt = "Initialize system in current directory (y/n)? "
     collector = io.make_yes_no_collector(prompt)
     confirmation = collector.collect()
-    if io.isNo(confirmation):
+    if io.is_no(confirmation):
         print("System not initialized")
         raise SystemExit
 
@@ -534,7 +534,7 @@ def main_init(parsed_command, args):
 
     if not default_format:
         format_prompt = "Select default template configuration format (json/yaml) [json]: "
-        format_collector = io.Input_Collector(format_prompt, valid_options=["json", "yaml"], default="json")
+        format_collector = io.InputCollector(format_prompt, valid_options=["json", "yaml"], default="json")
         default_format = format_collector.collect()
         
         if default_format == "yaml":
@@ -561,7 +561,7 @@ def main_init(parsed_command, args):
     raise SystemExit
 
 def main_update(parsed_command, args):
-    from .core.version import update 
+    from snap_workflow.utils.version import update
     args, kwargs = parse_remaining(args)
     update(*args, **kwargs)
     raise SystemExit
@@ -606,7 +606,7 @@ def add_sweep_cmd(parsed_command, args):
     stage_inclusion_prompt = "For each stage, indicate whether to include in the sweep: (y/n)"
     include_stages = prompt_each_stage(stage_inclusion_prompt)
 
-    from .core.variables import load_variables
+    from snap_workflow.core.domain.variables import load_variables
     variables = load_variables()
     print("Enter a list of values for each variable below.")
     variable_values = dict()
@@ -625,7 +625,7 @@ def add_variable_cmd(parsed_command, args):
     add_to_stage_prompt = f"For each stage, indicate if {new_var_name} should be added:"
     add_to_stages = prompt_each_stage(add_to_stage_prompt)
 
-    from .core.sweeps import load_sweeps
+    from snap_workflow.core.domain.sweeps import load_sweeps
     sweeps = load_sweeps()
     default_val = None
     if len(sweeps) > 0:
@@ -649,7 +649,7 @@ def print_status_cmd(parsed_command, args):
 
     if sweep_names is None:
         sweep_names = get_existing_sweep_name(kwargs, include_all=True, is_list=True, get_input=False, default="all")
-    from .core.sweeps import load_sweeps
+    from snap_workflow.core.domain.sweeps import load_sweeps
     if sweep_names == "all":
         sweep_names = list(load_sweeps().keys())
 
@@ -694,7 +694,7 @@ def set_status_cmd(parsed_command, args):
     set_status(new_status, old_status, sweep_names, stage_names)
 
 def set_python_cmd(parsed_command, args):
-    from .core.stages import set_python_config
+    from snap_workflow.core.domain.stages import set_python_config
     args, kwargs = parse_remaining(args)
     python_path = args[0] if len(args) > 0 else None
     is_global = kwargs.pop("global", False) or kwargs.pop("g", False)
@@ -747,7 +747,7 @@ def reset_errors_cmd(parsed_command, args):
     set_status("initialized", "error", sweep_names, stage_names)
 
 def reset_params_cmd(parsed_command, args):
-    from .core.params import set_params
+    from snap_workflow.core.params import set_params
     args, kwargs = parse_remaining(args)
     if len(args) > 0 and "sweep" not in kwargs and "w" not in kwargs and "matrix" not in kwargs and "m" not in kwargs:
         kwargs["sweep"] = args[0]
@@ -758,7 +758,7 @@ def reset_params_cmd(parsed_command, args):
     set_params(sweep_name=sweep_names, stage_name=stage_names)
 
 def reset_spoint_cmd(parsed_command, args):
-    from .core import spoints
+    from snap_workflow.core.domain import spoints
     args, kwargs = parse_remaining(args)
     hard = kwargs.pop("hard", False)
     force = kwargs.pop("force", False) or kwargs.pop("f", False)
@@ -776,7 +776,7 @@ def reset_spoint_cmd(parsed_command, args):
         prompt += f"Are you sure you want to reset this SPoint (y/n)? "
         collector = io.make_yes_no_collector(prompt)
         confirmation = collector.collect()
-        if io.isNo(confirmation):
+        if io.is_no(confirmation):
             print("SPoint reset cancelled.")
             raise SystemExit(0)
 
@@ -802,7 +802,7 @@ def reset_sweep_cmd(parsed_command, args):
         prompt += f"Are you sure you want to reset sweep {sweep_name} (y/n)? "
         collector = io.make_yes_no_collector(prompt)
         confirmation = collector.collect()
-        if io.isNo(confirmation):
+        if io.is_no(confirmation):
             print(f"Sweep {sweep_name} not reset")
             raise SystemExit
 
@@ -815,8 +815,8 @@ def main_convert(parsed_command, args):
     execute_option("convert_option", convert_options, parsed_command=parsed_command, args=args)
 
 def convert_params_cmd(parsed_command, args):
-    from .core.params import convert_params
-    from .core import spoints
+    from snap_workflow.core.params import convert_params
+    from snap_workflow.core.domain import spoints
     args, kwargs = parse_remaining(args)
     fmt = kwargs.pop("format", "json")
     
@@ -873,7 +873,7 @@ def main_zip(parsed_command, args):
     else:
         raise ValueError(usage_string)
 
-    from .core.sweeps import load_sweeps
+    from snap_workflow.core.domain.sweeps import load_sweeps
     sweeps = load_sweeps()
     sweep_names = get_existing_sweep_name(kwargs, include_all=True, is_list=True, get_input=False, default="all")
     if sweep_names == "all":
@@ -947,7 +947,7 @@ def parse_remaining(all_args):
     return kwargs.pop("args"), kwargs
 
 def load_global_remotes():
-    from .core.strings import GLOBAL_REMOTES_FILE, GLOBAL_CONFIG_DIR
+    from snap_workflow.utils.constants import GLOBAL_REMOTES_FILE, GLOBAL_CONFIG_DIR
     if not os.path.exists(GLOBAL_CONFIG_DIR):
         os.makedirs(GLOBAL_CONFIG_DIR, exist_ok=True)
     if os.path.isfile(GLOBAL_REMOTES_FILE):
@@ -958,13 +958,13 @@ def load_global_remotes():
     return {}
 
 def save_global_remotes(remotes):
-    from .core.strings import GLOBAL_REMOTES_FILE, GLOBAL_CONFIG_DIR
+    from snap_workflow.utils.constants import GLOBAL_REMOTES_FILE, GLOBAL_CONFIG_DIR
     if not os.path.exists(GLOBAL_CONFIG_DIR):
         os.makedirs(GLOBAL_CONFIG_DIR, exist_ok=True)
     io.save_json(GLOBAL_REMOTES_FILE, remotes, full_path=True)
 
 def load_local_remotes():
-    from .core.strings import LOCAL_REMOTES_FILE
+    from snap_workflow.utils.constants import LOCAL_REMOTES_FILE
     if os.path.isfile(f".workflow/{LOCAL_REMOTES_FILE}"):
         try:
             return io.load_json(LOCAL_REMOTES_FILE)
@@ -973,7 +973,7 @@ def load_local_remotes():
     return {}
 
 def save_local_remotes(remotes):
-    from .core.strings import LOCAL_REMOTES_FILE
+    from snap_workflow.utils.constants import LOCAL_REMOTES_FILE
     io.save_json(LOCAL_REMOTES_FILE, remotes)
 
 def main_server(parsed_command, args):
@@ -983,7 +983,7 @@ def main_server(parsed_command, args):
     execute_option("server_option", server_options, parsed_command=parsed_command, args=args)
 
 def server_start_cmd(parsed_command, args):
-    from .core.server import run_server_foreground
+    from snap_workflow.server import run_server_foreground
     args, kwargs = parse_remaining(args)
     host = kwargs.pop("host", "127.0.0.1")
     port = int(kwargs.pop("port", "0"))
@@ -998,10 +998,10 @@ def server_submit_cmd(parsed_command, args):
 
 def server_submit_auto_cmd(parsed_command, args):
     import json
-    from .core import io
-    from .core import path
-    from .core.strings import SERVER_INFO
-    from .core.worker import send_request
+    from snap_workflow.utils import io
+    from snap_workflow.utils import path
+    from snap_workflow.utils.constants import SERVER_INFO
+    from snap_workflow.worker import send_request
     args, kwargs = parse_remaining(args)
     
     def get_csv_arg(kwargs, keys):
@@ -1052,10 +1052,9 @@ def server_submit_auto_cmd(parsed_command, args):
         print(f"Error: Failed to register auto-scheduler: {err}")
 
 def server_submit_worker_cmd(parsed_command, args):
-    from .core import io
-    from .core import path
-    from .core.worker import launch_remote_workers, launch_local_workers
-    from .core.strings import SERVER_INFO
+    from snap_workflow.utils.constants import SERVER_INFO
+    from snap_workflow.worker import send_request
+    from snap_workflow.worker import launch_remote_workers, launch_local_workers
     args, kwargs = parse_remaining(args)
     
     def get_csv_arg(kwargs, keys):
@@ -1082,10 +1081,10 @@ def server_submit_worker_cmd(parsed_command, args):
         raise ValueError("Manager server is not running. Please start it using 'workflow server start'.")
         
     # 2. Check the server queue for pending compatible tasks
-    from .core.sweeps import load_sweeps
-    from .core.stages import load_stages
-    from .core import status
-    from .core import spoints
+    from snap_workflow.core.domain.sweeps import load_sweeps
+    from snap_workflow.core.domain.stages import load_stages
+    from snap_workflow.core.domain import status
+    from snap_workflow.core.domain import spoints
     
     try:
         sweeps_dict = load_sweeps()
@@ -1122,49 +1121,37 @@ def server_submit_worker_cmd(parsed_command, args):
         print(f"Warning: Pre-flight task queue check failed: {e}")
 
     num_workers = int(kwargs.pop("num-workers", kwargs.pop("num_workers", "1")))
+    sbatch_args = kwargs.pop("sbatch-args", kwargs.pop("sbatch_args", ""))
     kwargs.pop("concurrency", None)
     kwargs.pop("profile", None)
     
-    # 3. Local or Remote Worker dispatch
-    if name == "local":
-        io.warn_unused_kwargs(kwargs)
-        launch_local_workers(
-            num_workers=num_workers,
-            stages=stages,
-            sweeps=sweeps,
-            exclude_stages=exclude_stages,
-            exclude_sweeps=exclude_sweeps,
-            profile=profile
-        )
+    io.warn_unused_kwargs(kwargs)
+    
+    # 3. Make REST request to server POST /submit_worker
+    from snap_workflow.worker import send_request
+    with open(SERVER_INFO, "r") as f:
+        server_info = json.load(f)
+    port = server_info["port"]
+    token = server_info["token"]
+    
+    url = f"http://127.0.0.1:{port}/submit_worker"
+    payload = {
+        "name": name,
+        "profile": profile,
+        "num_workers": num_workers,
+        "sbatch_args": sbatch_args,
+        "stages": stages,
+        "sweeps": sweeps,
+        "exclude_stages": exclude_stages,
+        "exclude_sweeps": exclude_sweeps
+    }
+    
+    resp = send_request(url, token, data=payload)
+    if resp and resp.get("status") == "success":
+        print(resp.get("message", f"Worker allocation for '{name}' submitted successfully."))
     else:
-        # Load connection globally
-        global_remotes = load_global_remotes()
-        if name not in global_remotes:
-            raise ValueError(f"Remote '{name}' is not registered globally. Register it first using 'workflow remote add'.")
-        host = global_remotes[name]["host"]
-        
-        # Load path locally
-        local_remotes = load_local_remotes()
-        if name not in local_remotes:
-            raise ValueError(f"Remote '{name}' has not been set up locally. Set it up using 'workflow remote setup'.")
-        remote_path = local_remotes[name]["path"]
-        
-        sbatch_args = kwargs.pop("sbatch-args", kwargs.pop("sbatch_args", ""))
-        
-        io.warn_unused_kwargs(kwargs)
-        
-        launch_remote_workers(
-            remote_host=host,
-            remote_path=remote_path,
-            num_workers=num_workers,
-            sbatch_args=sbatch_args,
-            profile=profile,
-            stages=stages,
-            sweeps=sweeps,
-            exclude_stages=exclude_stages,
-            exclude_sweeps=exclude_sweeps,
-            remote_name=name
-        )
+        err = resp.get("message") if resp else "Connection error"
+        print(f"Error: Failed to submit worker: {err}")
 
 def main_remote(parsed_command, args):
     remote_options = ["add", "setup"]
@@ -1173,7 +1160,7 @@ def main_remote(parsed_command, args):
     execute_option("remote_option", remote_options, parsed_command=parsed_command, args=args)
 
 def remote_add_cmd(parsed_command, args):
-    from .core import io
+    from snap_workflow.utils import io
     import subprocess
     args, kwargs = parse_remaining(args)
     if len(args) != 1:
@@ -1200,9 +1187,9 @@ def remote_add_cmd(parsed_command, args):
     print(f"Registered remote '{name}' globally with host {host}.")
 
 def remote_setup_cmd(parsed_command, args):
-    from .core import io
-    from .core import path
-    from .core.worker import setup_remote_cluster
+    from snap_workflow.utils import io
+    from snap_workflow.worker import send_request
+    from snap_workflow.remote.setup import setup_remote_cluster
     args, kwargs = parse_remaining(args)
     if len(args) != 1:
         raise ValueError("Usage: 'workflow remote setup name [--path remote_path]'")

@@ -2,7 +2,7 @@ import os
 import json
 import pytest
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core import version
+from snap_workflow.utils import version
 
 def test_version_helpers(sandbox, env_dir):
     initialize(env_dir)

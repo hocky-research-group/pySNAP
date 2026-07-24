@@ -5,7 +5,35 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "snap_workflow"
 version = "0.4.0"
-dependencies = ["numpy >= 1.15",]
+description = "Parametric workflow manager and compute scheduler for pySNAP"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = [
+    "workflow",
+    "simulation",
+    "orchestration",
+    "slurm",
+    "hpc",
+    "parametric-sweeps",
+    "pySNAP",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+
+dependencies = [
+    "numpy>=1.15",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -25,8 +53,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-snap_workflow = ["core/templates/*"]
-
+snap_workflow = ["remote/templates/*", "core/templates/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

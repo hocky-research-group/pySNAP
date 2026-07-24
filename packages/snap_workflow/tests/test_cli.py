@@ -6,7 +6,7 @@ from snap_workflow.cli import (
     main_init, main_add, main_print, main_set, main_remove, main_reset
 )
 from snap_workflow.core import load_stages
-from snap_workflow.core.sweeps import load_sweeps
+from snap_workflow.core.domain.sweeps import load_sweeps
 
 @patch('builtins.input')
 def test_cli_lifecycle(mock_input, sandbox, env_dir):

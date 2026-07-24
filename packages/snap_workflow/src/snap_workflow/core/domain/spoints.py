@@ -7,14 +7,13 @@ import json
 import subprocess
 import time
 
-from .strings import *
-from . import path
-from . import status
-from . import io
-from . import stages as stage_tools
-from . import sweeps as sweep_tools
-from . import params
-from .time import load_time, write_time
+from snap_workflow.utils.constants import *
+from snap_workflow.utils import path, io
+from snap_workflow.core.domain import status
+from snap_workflow.core.domain import stages as stage_tools
+from snap_workflow.core.domain import sweeps as sweep_tools
+from snap_workflow.core.params import params
+from snap_workflow.utils.time import load_time, write_time
 
 def get_spoint_string(spoint_dict):
     if len(spoint_dict) == 0:
@@ -347,7 +346,7 @@ def submit_queue(stage_name, submit_details, test_submit, num_submits=None):
             if "--array" in sbatch_flags:
                 sbatch_flags.pop("--array")
 
-    with path.From_Root():
+    with path.FromRoot():
         sbatch_command = ["sbatch"] +\
                         convert_sbatch_flags(sbatch_flags) +\
                         [submit_script] + queue 
@@ -370,7 +369,7 @@ def submit_queue(stage_name, submit_details, test_submit, num_submits=None):
     return True
 
 def execute_spoint(stage_name, spoint_dict, test_submit):
-    with path.From_Root():
+    with path.FromRoot():
         spoint_string = get_spoint_string(spoint_dict)
         spoint_path = get_spoint_path(stage_name, spoint_dict)
         spoint_path = os.path.realpath(spoint_path)
@@ -450,7 +449,7 @@ def link_dependent_combo(stage_name, spoint_dict, dep_info):
                 dep_target = f"{rel_root}/../{dep_stage}/{SPOINTS}/{get_spoint_string(conv_dict)}"
                 path.make_sym(dep_target, conv_link, overwrite=True)
 
-class SPoint_Manager():
+class SPointManager():
     def __init__(self, save_func=None, stop_func=None):
         self.main_dir = os.getcwd()
         self.save_func = save_func or stop_func
@@ -545,5 +544,7 @@ class SPoint_Manager():
     def _track_nvidia(self):
         raise NotImplementedError
 
-Combo_Manager = SPoint_Manager
+# Backward compatibility aliases
+SPoint_Manager = SPointManager
+Combo_Manager = SPointManager
 load_combo = load_spoint

@@ -3,12 +3,12 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="prev" title="Data_Manager" href="Data_Manager.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="prev" title="DataManager" href="Data_Manager.html">
         <link rel="prefetch" href="../_static/logo_light.png" as="image">
         <link rel="prefetch" href="../_static/logo.png" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>System_Params - snap_workflow documentation</title>
+        <title>SystemParams - snap_workflow documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -234,6 +234,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/errors.html">workflow reset errors</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/sweep.html">workflow reset sweep</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/params.html">workflow reset params</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/reset/spoint.html">workflow reset spoint</a></li>
 </ul>
 </li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../cli/set/set.html">workflow set</a><input aria-label="Toggle navigation of workflow set" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -262,9 +263,9 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python Tools</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="SPoint_Manager.html">SPoint_Manager</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Data_Manager.html">Data_Manager</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">System_Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="SPoint_Manager.html">SPointManager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Data_Manager.html">DataManager</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">SystemParams</a></li>
 </ul>
 
 </div>
@@ -303,42 +304,90 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="system-params">
-<h1>System_Params<a class="headerlink" href="#system-params" title="Link to this heading">¶</a></h1>
-<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">System_Params</span></code> class acts as the core data structure managing workflow and stage parameter configuration files. It supports key-value retrieval using nested tuple lookups, variable substitutions, type casting, and mathematical evaluations of sweep variables.</p>
+          <section id="systemparams">
+<h1>SystemParams<a class="headerlink" href="#systemparams" title="Link to this heading">¶</a></h1>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">SystemParams</span></code> (legacy alias: <code class="docutils literal notranslate"><span class="pre">System_Params</span></code>) class acts as the core data structure managing workflow and stage parameter configuration files. It supports key-value retrieval using nested tuple lookups, variable substitutions, type casting, and mathematical evaluations of sweep variables.</p>
+<section id="math-expression-directives-m">
+<h2>Math Expression Directives (<code class="docutils literal notranslate"><span class="pre">!m_</span></code>)<a class="headerlink" href="#math-expression-directives-m" title="Link to this heading">¶</a></h2>
+<p>Parameter strings prefixed with <code class="docutils literal notranslate"><span class="pre">!m_</span></code> evaluate mathematical expressions containing numbers, sweep variables, built-in constants, and NumPy mathematical functions.</p>
+<section id="supported-constants">
+<h3>Supported Constants<a class="headerlink" href="#supported-constants" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pi</span></code> (<span class="math notranslate nohighlight">\(\pi \approx 3.14159\)</span>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">e</span></code> (<span class="math notranslate nohighlight">\(e \approx 2.71828\)</span>)</p></li>
+</ul>
+<p><em>(Note: User-defined variables in ``variables`` take precedence over default constants if explicitly provided.)</em></p>
+</section>
+<section id="supported-functions">
+<h3>Supported Functions<a class="headerlink" href="#supported-functions" title="Link to this heading">¶</a></h3>
+<div class="table-wrapper colwidths-given docutils container">
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Category</p></th>
+<th class="head"><p>Supported Functions</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Trigonometric</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sin(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">cos(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">tan(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">asin(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">arcsin(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">acos(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">arccos(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">atan(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">arctan(x)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Hyperbolic</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sinh(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">cosh(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">tanh(x)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Logarithmic &amp; Exponential</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ln(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">log(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">log10(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">log2(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">exp(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">exp2(x)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Roots, Power &amp; Absolute</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sqrt(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">cbrt(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">abs(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">fabs(x)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Rounding &amp; Sign</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">floor(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">ceil(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">round(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">sign(x)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Angle Conversion</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">radians(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">degrees(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">rad2deg(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">deg2rad(x)</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
 <section id="api-reference">
 <h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h2>
 <dl class="py class">
-<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.System_Params">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">snap_workflow.core.params.system_params.</span></span><span class="sig-name descname"><span class="pre">System_Params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variables</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.System_Params" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.SystemParams">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">snap_workflow.core.params.system_params.</span></span><span class="sig-name descname"><span class="pre">SystemParams</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variables</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.SystemParams" title="Link to this definition">¶</a></dt>
 <dd><dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.System_Params.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variables</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.System_Params.__init__" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.SystemParams.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variables</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.SystemParams.__init__" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.System_Params.__getitem__">
-<span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.System_Params.__getitem__" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.SystemParams.__getitem__">
+<span class="sig-name descname"><span class="pre">__getitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.SystemParams.__getitem__" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.System_Params.__setitem__">
-<span class="sig-name descname"><span class="pre">__setitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.System_Params.__setitem__" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.SystemParams.__setitem__">
+<span class="sig-name descname"><span class="pre">__setitem__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.SystemParams.__setitem__" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.System_Params.parse_variables">
-<span class="sig-name descname"><span class="pre">parse_variables</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.System_Params.parse_variables" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.SystemParams.parse_variables">
+<span class="sig-name descname"><span class="pre">parse_variables</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.SystemParams.parse_variables" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.System_Params.update_variables">
-<span class="sig-name descname"><span class="pre">update_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_variables</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.System_Params.update_variables" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.SystemParams.update_variables">
+<span class="sig-name descname"><span class="pre">update_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_variables</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.SystemParams.update_variables" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.System_Params.pickle">
-<span class="sig-name descname"><span class="pre">pickle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.System_Params.pickle" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.params.system_params.SystemParams.pickle">
+<span class="sig-name descname"><span class="pre">pickle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.params.system_params.SystemParams.pickle" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -359,7 +408,7 @@
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Data_Manager</div>
+                <div class="title">DataManager</div>
                 
               </div>
             </a>
@@ -393,15 +442,20 @@
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">System_Params</a><ul>
+<li><a class="reference internal" href="#">SystemParams</a><ul>
+<li><a class="reference internal" href="#math-expression-directives-m">Math Expression Directives (<code class="docutils literal notranslate"><span class="pre">!m_</span></code>)</a><ul>
+<li><a class="reference internal" href="#supported-constants">Supported Constants</a></li>
+<li><a class="reference internal" href="#supported-functions">Supported Functions</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#api-reference">API Reference</a><ul>
-<li><a class="reference internal" href="#snap_workflow.core.params.system_params.System_Params"><code class="docutils literal notranslate"><span class="pre">System_Params</span></code></a><ul>
-<li><a class="reference internal" href="#snap_workflow.core.params.system_params.System_Params.__init__"><code class="docutils literal notranslate"><span class="pre">System_Params.__init__()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.core.params.system_params.System_Params.__getitem__"><code class="docutils literal notranslate"><span class="pre">System_Params.__getitem__()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.core.params.system_params.System_Params.__setitem__"><code class="docutils literal notranslate"><span class="pre">System_Params.__setitem__()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.core.params.system_params.System_Params.parse_variables"><code class="docutils literal notranslate"><span class="pre">System_Params.parse_variables()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.core.params.system_params.System_Params.update_variables"><code class="docutils literal notranslate"><span class="pre">System_Params.update_variables()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.core.params.system_params.System_Params.pickle"><code class="docutils literal notranslate"><span class="pre">System_Params.pickle()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.params.system_params.SystemParams"><code class="docutils literal notranslate"><span class="pre">SystemParams</span></code></a><ul>
+<li><a class="reference internal" href="#snap_workflow.core.params.system_params.SystemParams.__init__"><code class="docutils literal notranslate"><span class="pre">SystemParams.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.params.system_params.SystemParams.__getitem__"><code class="docutils literal notranslate"><span class="pre">SystemParams.__getitem__()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.params.system_params.SystemParams.__setitem__"><code class="docutils literal notranslate"><span class="pre">SystemParams.__setitem__()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.params.system_params.SystemParams.parse_variables"><code class="docutils literal notranslate"><span class="pre">SystemParams.parse_variables()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.params.system_params.SystemParams.update_variables"><code class="docutils literal notranslate"><span class="pre">SystemParams.update_variables()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.params.system_params.SystemParams.pickle"><code class="docutils literal notranslate"><span class="pre">SystemParams.pickle()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -421,5 +475,6 @@
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     </body>
 </html>

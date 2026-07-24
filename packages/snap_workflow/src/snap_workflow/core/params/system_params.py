@@ -1,12 +1,12 @@
 import os, sys, warnings
 import numpy as np
 import json
-from .tools import decode
+from snap_workflow.core.params.tools import decode
 
 
-class System_Params:  # {{{
+class SystemParams:  # {{{
     def __init__(self, param_path, stages=None, variables=None):  # {{{
-        if isinstance(param_path, System_Params):
+        if isinstance(param_path, SystemParams):
             self.param_path = param_path.param_path
             self.params = param_path.params
             self.variables = getattr(param_path, "variables", {})
@@ -45,12 +45,12 @@ class System_Params:  # {{{
         stored_hash = getattr(self, "source_hash", None)
         if stored_hash is not None:
             try:
-                from .. import path
+                from snap_workflow.utils import path
                 spoint_dir = os.path.dirname(os.path.abspath(param_path))
                 root_rel = path.get_root(spoint_dir)
                 root_params_dir = os.path.abspath(os.path.join(spoint_dir, root_rel, "params"))
                 if os.path.isdir(root_params_dir):
-                    from .params import compute_params_hash
+                    from snap_workflow.core.params import compute_params_hash
                     current_hash = compute_params_hash(root_params_dir)
                     if current_hash is not None and current_hash != stored_hash:
                         warnings.warn(
@@ -268,7 +268,7 @@ class System_Params:  # {{{
         if "m" in dirs and len(dirs) != 2:
             raise Exception("Conflicting directives: math must be the only directive")
         if "m" in dirs:
-            from .parse_math import parse_math
+            from snap_workflow.core.params.parse_math import parse_math
 
             value = parse_math(value, self.variables)
             dirs.remove("m")
@@ -368,4 +368,7 @@ class System_Params:  # {{{
         with open(path, "wb") as file:
             pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)  # }}}
 # }}}
+
+# Backward compatibility alias
+System_Params = SystemParams
 

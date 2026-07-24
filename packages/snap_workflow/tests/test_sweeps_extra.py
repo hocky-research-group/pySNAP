@@ -3,13 +3,13 @@ import shutil
 import pytest
 from unittest.mock import patch
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core.stages import add_stage
-from snap_workflow.core.variables import add_variable
-from snap_workflow.core.sweeps import (
+from snap_workflow.core.domain.stages import add_stage
+from snap_workflow.core.domain.variables import add_variable
+from snap_workflow.core.domain.sweeps import (
     add_sweep, remove_sweep, reset_sweep, print_sweeps, rename_and_unlink_spoints
 )
-from snap_workflow.core import spoints
-from snap_workflow.core.exceptions import SweepAlreadyExistsError, SweepNotFoundError
+from snap_workflow.core.domain import spoints
+from snap_workflow.utils.exceptions import SweepAlreadyExistsError, SweepNotFoundError
 
 def test_sweep_errors(sandbox, env_dir):
     initialize(env_dir)

@@ -1,8 +1,7 @@
-from .core.data import Data_Manager 
-from .core.spoints import SPoint_Manager
-from .core.params import load_params
-from .core.spoints import load_spoint
-from .core.exceptions import (
+from snap_workflow.core.data import DataManager, Data_Manager 
+from snap_workflow.core.domain.spoints import SPointManager, SPoint_Manager, load_spoint
+from snap_workflow.core.params import load_params
+from snap_workflow.utils.exceptions import (
     WorkflowError,
     StageNotFoundError,
     StageAlreadyExistsError,
@@ -14,10 +13,15 @@ from .core.exceptions import (
     ServerNotRunningError
 )
 
-SPoint_Manager = SPoint_Manager
+SPointManager = SPointManager
+SPoint_Manager = SPointManager
+DataManager = DataManager
+Data_Manager = DataManager
 load_spoint = load_spoint
 
-Combo_Manager = SPoint_Manager
+ComboManager = SPointManager
+Combo_Manager = SPointManager
 load_combo = load_spoint
-Job_Manager = SPoint_Manager
+JobManager = SPointManager
+Job_Manager = SPointManager
 load_job = load_spoint

@@ -2,7 +2,7 @@ import os
 import pytest
 from unittest.mock import patch
 from snap_workflow.core import initialize, add_stage, add_variable, add_sweep
-from snap_workflow.core.sweeps import load_sweeps
+from snap_workflow.core.domain.sweeps import load_sweeps
 from snap_workflow.cli import (
     main_init, main_update, main_zip, main_reset, main_plot, main_autocomplete
 )

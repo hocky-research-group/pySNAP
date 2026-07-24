@@ -1,10 +1,7 @@
 import os
-from ..strings import *
-from .system_params import System_Params
-from .. import spoints
-from .. import path
-from .. import stages
-from .. import variables
+from snap_workflow.utils.constants import *
+from snap_workflow.utils import path
+from snap_workflow.core.params.system_params import System_Params
 
 def compute_params_hash(params_dir):
     import hashlib

@@ -5,14 +5,14 @@ import pytest
 import subprocess
 from unittest.mock import patch, MagicMock
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core.stages import add_stage
-from snap_workflow.core.variables import add_variable
-from snap_workflow.core.sweeps import add_sweep
-from snap_workflow.core import spoints
-from snap_workflow.core import status
-from snap_workflow.core import path
-from snap_workflow.core import sync
-from snap_workflow.core import server
+from snap_workflow.core.domain.stages import add_stage
+from snap_workflow.core.domain.variables import add_variable
+from snap_workflow.core.domain.sweeps import add_sweep
+from snap_workflow.core.domain import spoints
+from snap_workflow.core.domain import status
+from snap_workflow.utils import path
+from snap_workflow.server import sync
+from snap_workflow import server
 
 def test_get_auto_sync_patterns(sandbox, env_dir):
     initialize(env_dir)

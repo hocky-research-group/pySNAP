@@ -4,8 +4,7 @@ import shutil
 import subprocess
 import importlib.util
 import logging
-from . import path
-from . import io
+from snap_workflow.utils import path, io
 
 logger = logging.getLogger("snap_workflow.core.sync")
 

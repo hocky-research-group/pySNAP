@@ -3,14 +3,14 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core.stages import (
+from snap_workflow.core.domain.stages import (
     load_stages,
     add_stage,
     print_stages,
     get_dependent_stages,
     validate_stage_resources
 )
-from snap_workflow.core.exceptions import StageAlreadyExistsError
+from snap_workflow.utils.exceptions import StageAlreadyExistsError
 
 def test_load_stages_filtering(sandbox, env_dir):
     initialize(env_dir)
@@ -53,7 +53,7 @@ def test_make_new_stage_files_local_config_exception(sandbox, env_dir):
     initialize(env_dir)
     
     # Mock load_json to fail for local_config to cover exception branch
-    from snap_workflow.core import io as core_io
+    from snap_workflow.utils import io as core_io
     original_load_json = core_io.load_json
     def mock_load_json(path, *args, **kwargs):
         if "config.json" in str(path):
@@ -61,7 +61,7 @@ def test_make_new_stage_files_local_config_exception(sandbox, env_dir):
         # otherwise run normally
         return original_load_json(path, *args, **kwargs)
         
-    with patch("snap_workflow.core.io.load_json", side_effect=mock_load_json):
+    with patch("snap_workflow.utils.io.load_json", side_effect=mock_load_json):
         add_stage("stage_error", sbatch_details=None, stage_variables=[], stage_dependencies=[])
         assert os.path.isfile("stage_error/env.json")
 

@@ -2,11 +2,11 @@ import os
 import json
 import pytest
 from unittest.mock import patch
-import snap_workflow.core.io as io
+import snap_workflow.utils.io as io
 import snap_workflow.core.workflow as workflow
-import snap_workflow.core.stages as stages
-import snap_workflow.core.spoints as spoints
-import snap_workflow.core.server as server
+import snap_workflow.core.domain.stages as stages
+import snap_workflow.core.domain.spoints as spoints
+import snap_workflow.server as server
 import snap_workflow.cli as cli
 from snap_workflow.core.workflow import initialize
 
@@ -28,7 +28,7 @@ def test_load_save_config_fallbacks(sandbox, env_dir):
 
 def test_workflow_init_yaml(sandbox, env_dir):
     # Patch preference to return yaml
-    with patch("snap_workflow.core.io.get_default_format", return_value="yaml"):
+    with patch("snap_workflow.utils.io.get_default_format", return_value="yaml"):
         workflow.initialize(env_dir)
         
         # Verify variables.yaml was created instead of variables.json
@@ -36,7 +36,7 @@ def test_workflow_init_yaml(sandbox, env_dir):
         assert not os.path.isfile("params/variables.json")
 
 def test_stage_add_yaml(sandbox, env_dir):
-    with patch("snap_workflow.core.io.get_default_format", return_value="yaml"):
+    with patch("snap_workflow.utils.io.get_default_format", return_value="yaml"):
         workflow.initialize(env_dir)
         
         sbatch_details = {"partition": "default_part", "num_jobs": 1, "multi_submission": False}
@@ -69,10 +69,10 @@ def test_stage_add_yaml(sandbox, env_dir):
 
 def test_cli_init_prompt_json(sandbox, env_dir):
     # Test main_init interactive prompt defaulting to json
-    with patch("snap_workflow.core.io.Input_Collector.collect", side_effect=["y", "json", env_dir]):
+    with patch("snap_workflow.utils.io.InputCollector.collect", side_effect=["y", "json", env_dir]):
         temp_config = os.path.join(env_dir, "config.json")
         with patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", env_dir), \
-             patch("snap_workflow.core.io.GLOBAL_CONFIG_DIR", env_dir):
+             patch("snap_workflow.utils.io.GLOBAL_CONFIG_DIR", env_dir):
             with pytest.raises(SystemExit):
                 cli.main_init("init", [])
             
@@ -83,10 +83,10 @@ def test_cli_init_prompt_json(sandbox, env_dir):
 
 def test_cli_init_prompt_yaml(sandbox, env_dir):
     # Test main_init interactive prompt choosing yaml
-    with patch("snap_workflow.core.io.Input_Collector.collect", side_effect=["y", "yaml", env_dir]):
+    with patch("snap_workflow.utils.io.InputCollector.collect", side_effect=["y", "yaml", env_dir]):
         temp_config = os.path.join(env_dir, "config.json")
         with patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", env_dir), \
-             patch("snap_workflow.core.io.GLOBAL_CONFIG_DIR", env_dir):
+             patch("snap_workflow.utils.io.GLOBAL_CONFIG_DIR", env_dir):
             with pytest.raises(SystemExit):
                 cli.main_init("init", [])
             

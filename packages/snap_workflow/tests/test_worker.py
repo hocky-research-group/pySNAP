@@ -4,11 +4,11 @@ import pytest
 import subprocess
 from unittest.mock import patch, MagicMock
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core.stages import add_stage
-from snap_workflow.core.variables import add_variable
-from snap_workflow.core.sweeps import add_sweep
-from snap_workflow.core import status
-from snap_workflow.core import worker
+from snap_workflow.core.domain.stages import add_stage
+from snap_workflow.core.domain.variables import add_variable
+from snap_workflow.core.domain.sweeps import add_sweep
+from snap_workflow.core.domain import status
+from snap_workflow import worker
 
 def is_ssh_reachable():
     try:
@@ -67,7 +67,7 @@ def test_worker_loop(sandbox, env_dir):
     mock_proc = MagicMock()
     mock_proc.poll.return_value = 0 # immediately complete
     
-    with patch("snap_workflow.core.worker.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.worker.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc):
         worker.worker_loop(
             server_url="http://localhost:8000",
@@ -82,7 +82,7 @@ def test_worker_loop(sandbox, env_dir):
 def test_launch_local_workers(sandbox, env_dir):
     initialize(env_dir)
     # Create a mock SERVER_INFO to bypass the server running check
-    from snap_workflow.core.strings import SERVER_INFO
+    from snap_workflow.utils.constants import SERVER_INFO
     server_info = {"port": 1234, "token": "dummy_token"}
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
@@ -91,7 +91,7 @@ def test_launch_local_workers(sandbox, env_dir):
         worker.launch_local_workers(num_workers=2, stages="stage1", sweeps="sweep1")
         assert mock_popen.call_count == 2
         args = mock_popen.call_args_list[0][0][0]
-        assert "snap_workflow.core.worker" in args
+        assert "snap_workflow.worker" in args
 
 # --- Additional Worker Coverage Tests ---
 
@@ -159,9 +159,9 @@ def test_worker_loop_auto_detect_resources_and_env_json(sandbox, env_dir):
     # task runs: first checks return running (None) so they are kept in queue, then finished (0)
     mock_proc.poll.side_effect = [None, None, None, 0, 0, 0]
     
-    with patch("snap_workflow.core.worker.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.worker.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc), \
-         patch("snap_workflow.core.worker.detect_system_resources", return_value=(3, 0, 8.0)):
+         patch("snap_workflow.worker.detect_system_resources", return_value=(3, 0, 8.0)):
         # Pass None to auto-detect resources (will return 3 cpus from mocked detect_system_resources, covering line 42)
         worker.worker_loop(
             server_url="http://localhost:8000",
@@ -212,7 +212,7 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
     mock_proc.terminate.side_effect = RuntimeError("mock terminate error")
     
     # We raise KeyboardInterrupt inside loop via time.sleep mock
-    with patch("snap_workflow.core.worker.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.worker.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc), \
          patch("time.sleep", side_effect=KeyboardInterrupt):
         worker.worker_loop(
@@ -227,7 +227,7 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
     assert mock_proc.terminate.called
 
 def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
-    from snap_workflow.core.exceptions import ServerNotRunningError
+    from snap_workflow.utils.exceptions import ServerNotRunningError
     initialize(env_dir)
     
     # 1. ServerNotRunningError when SERVER_INFO is missing
@@ -235,7 +235,7 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
         worker.launch_remote_workers("Lab_Main", "~/test_snap_setup", "template")
         
     # Create SERVER_INFO
-    from snap_workflow.core.strings import SERVER_INFO
+    from snap_workflow.utils.constants import SERVER_INFO
     server_info = {"port": 1234, "token": "dummy_token"}
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
@@ -387,7 +387,7 @@ def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
         assert gpus == 5
 
 def test_launch_local_workers_parameters_and_errors(sandbox, env_dir):
-    from snap_workflow.core.exceptions import ServerNotRunningError
+    from snap_workflow.utils.exceptions import ServerNotRunningError
     initialize(env_dir)
     
     # 1. ServerNotRunningError when SERVER_INFO is missing
@@ -395,7 +395,7 @@ def test_launch_local_workers_parameters_and_errors(sandbox, env_dir):
         worker.launch_local_workers(num_workers=1)
         
     # Create SERVER_INFO
-    from snap_workflow.core.strings import SERVER_INFO
+    from snap_workflow.utils.constants import SERVER_INFO
     server_info = {"port": 1234, "token": "dummy_token"}
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
@@ -411,7 +411,7 @@ def test_launch_local_workers_parameters_and_errors(sandbox, env_dir):
         )
         assert mock_popen.call_count == 1
         args = mock_popen.call_args_list[0][0][0]
-        assert "snap_workflow.core.worker" in args
+        assert "snap_workflow.worker" in args
         assert "--exclude_stages" in args
         assert "stage2" in args
         assert "--exclude_sweeps" in args
@@ -423,14 +423,14 @@ def test_worker_cli_argparse_and_shutdown():
     import runpy
     
     # 1. Verify help works correctly (SystemExit will be raised by argparse)
-    test_args_help = ["snap_workflow.core.worker", "--help"]
+    test_args_help = ["snap_workflow.worker", "--help"]
     with patch("sys.argv", test_args_help):
         with pytest.raises(SystemExit):
-            runpy.run_module("snap_workflow.core.worker", run_name="__main__")
+            runpy.run_module("snap_workflow.worker", run_name="__main__")
             
     # 2. Execute main block using mock sys.argv and runpy, mocking urlopen to return shutdown instantly
     test_args = [
-        "snap_workflow.core.worker",
+        "snap_workflow.worker",
         "http://localhost:29999",
         "token_val",
         "--stages", "stage1",
@@ -446,7 +446,7 @@ def test_worker_cli_argparse_and_shutdown():
     with patch("urllib.request.urlopen", return_value=mock_response), \
          patch("sys.argv", test_args):
          
-        runpy.run_module("snap_workflow.core.worker", run_name="__main__")
+        runpy.run_module("snap_workflow.worker", run_name="__main__")
 
 # --- Live SSH Connection Tests ---
 def test_setup_remote_cluster_ssh(sandbox, env_dir):
@@ -477,7 +477,7 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
     remote_path = "~/test_snap_setup"
     
     # Create a mock SERVER_INFO
-    from snap_workflow.core.strings import SERVER_INFO
+    from snap_workflow.utils.constants import SERVER_INFO
     server_info = {"port": 1234, "token": "dummy_token"}
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
@@ -510,6 +510,41 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
         assert any("ssh" in c[0][0][0] and "-R" in c[0][0] for c in mock_popen.call_args_list)
         # Verify sbatch submission command was sent via ssh
         assert any("ssh" in c[0][0][0] and "sbatch" in str(c[0][0][2]) for c in mock_run.call_args_list)
+
+def test_launch_remote_workers_failure_cleans_up_tunnel(sandbox, env_dir):
+    initialize(env_dir)
+    from snap_workflow.utils.constants import SERVER_INFO
+    server_info = {"port": 1234, "token": "dummy_token"}
+    with open(SERVER_INFO, "w") as f:
+        json.dump(server_info, f)
+
+    mock_tunnel_proc = MagicMock()
+    mock_tunnel_proc.poll.return_value = None
+
+    def mock_ssh_run_failing(cmd, **kwargs):
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        if len(cmd) > 2 and "python3 -c" in str(cmd[2]):
+            mock_res.stdout = '{"partition": "test"}'
+        elif "sbatch" in str(cmd):
+            mock_res.returncode = 1
+            mock_res.stderr = "sbatch: error: Batch job submission failed: Disk quota exceeded"
+        else:
+            mock_res.stdout = "workflow_root\n"
+        return mock_res
+
+    with patch("subprocess.Popen", return_value=mock_tunnel_proc), \
+         patch("subprocess.run", side_effect=mock_ssh_run_failing):
+         
+        with pytest.raises(RuntimeError, match="Disk quota exceeded"):
+            worker.launch_remote_workers(
+                remote_host="Lab_Main",
+                remote_path="~/test_snap_setup",
+                profile="template",
+                num_workers=1
+            )
+            
+        mock_tunnel_proc.terminate.assert_called_once()
 
 def test_resolve_remote_path(sandbox, env_dir):
     initialize(env_dir)
@@ -549,13 +584,13 @@ def test_resolve_remote_path(sandbox, env_dir):
         
         # Should append the local project directory name
         path_res = worker.resolve_remote_path("remote_host", "~/my_path")
-        from snap_workflow.core import path as core_path
+        from snap_workflow.utils import path as core_path
         expected = f"~/my_path/{os.path.basename(os.path.abspath(core_path.get_root()))}"
         assert path_res == expected
 
 def test_set_python_config(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.core.stages import add_stage, set_python_config
+    from snap_workflow.core.domain.stages import add_stage, set_python_config
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
     # 1. Test set_python_config global
@@ -573,7 +608,7 @@ def test_set_python_config(sandbox, env_dir):
 def test_cli_set_python(sandbox, env_dir):
     initialize(env_dir)
     from snap_workflow.cli import main_set
-    from snap_workflow.core.stages import add_stage
+    from snap_workflow.core.domain.stages import add_stage
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
     main_set("workflow set", ["python", "/bin/my_py", "--global"])
@@ -589,7 +624,7 @@ def test_cli_set_python(sandbox, env_dir):
 def test_remote_preflight_checks(sandbox, env_dir):
     initialize(env_dir)
     from snap_workflow.cli import remote_add_cmd
-    from snap_workflow.core.worker import setup_remote_cluster
+    from snap_workflow.worker import setup_remote_cluster
     
     # 1. Test remote_add_cmd connection failure raises ValueError
     with patch("subprocess.run", side_effect=subprocess.CalledProcessError(255, "ssh")):

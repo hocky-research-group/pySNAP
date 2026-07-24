@@ -234,6 +234,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/errors.html">workflow reset errors</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/sweep.html">workflow reset sweep</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/params.html">workflow reset params</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/reset/spoint.html">workflow reset spoint</a></li>
 </ul>
 </li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../cli/set/set.html">workflow set</a><input aria-label="Toggle navigation of workflow set" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -262,9 +263,9 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python Tools</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../py_tools/SPoint_Manager.html">SPoint_Manager</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../py_tools/Data_Manager.html">Data_Manager</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../py_tools/System_Params.html">System_Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../py_tools/SPoint_Manager.html">SPointManager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../py_tools/Data_Manager.html">DataManager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../py_tools/System_Params.html">SystemParams</a></li>
 </ul>
 
 </div>
@@ -360,11 +361,18 @@
 </section>
 <section id="math-expression-parsing-m">
 <h3>2. Math Expression Parsing (<code class="docutils literal notranslate"><span class="pre">!m_</span></code>)<a class="headerlink" href="#math-expression-parsing-m" title="Link to this heading">¶</a></h3>
-<p>Evaluates a mathematical formula containing sweep variables:</p>
+<p>Evaluates a mathematical formula containing sweep variables, arithmetic operators, built-in constants (<code class="docutils literal notranslate"><span class="pre">pi</span></code>, <code class="docutils literal notranslate"><span class="pre">e</span></code>), and mathematical functions (<code class="docutils literal notranslate"><span class="pre">sin</span></code>, <code class="docutils literal notranslate"><span class="pre">ln</span></code>, <code class="docutils literal notranslate"><span class="pre">sqrt</span></code>, etc.):</p>
 <ul class="simple">
-<li><p><strong>Directive</strong>: <code class="docutils literal notranslate"><span class="pre">&quot;!m_mesh_size</span> <span class="pre">*</span> <span class="pre">2&quot;</span></code></p></li>
+<li><p><strong>Directives</strong>:
+- <code class="docutils literal notranslate"><span class="pre">&quot;!m_mesh_size</span> <span class="pre">*</span> <span class="pre">2&quot;</span></code>
+- <code class="docutils literal notranslate"><span class="pre">&quot;!m_2</span> <span class="pre">*</span> <span class="pre">sin(pi</span> <span class="pre">/</span> <span class="pre">4)&quot;</span></code>
+- <code class="docutils literal notranslate"><span class="pre">&quot;!m_sqrt(x**2</span> <span class="pre">+</span> <span class="pre">y**2)&quot;</span></code></p></li>
 <li><p><strong>Resolution</strong>: Evaluates the math expression against active variables and returns the computed number.</p></li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For the complete list of supported mathematical functions (trigonometric, logarithmic, exponential, rounding, angle conversions, etc.) and default constants, see the <a class="reference internal" href="../py_tools/System_Params.html"><span class="doc">SystemParams</span></a> API documentation.</p>
+</div>
 </section>
 <section id="type-casting-i-and-f">
 <h3>3. Type Casting (<code class="docutils literal notranslate"><span class="pre">!i_</span></code> and <code class="docutils literal notranslate"><span class="pre">!f_</span></code>)<a class="headerlink" href="#type-casting-i-and-f" title="Link to this heading">¶</a></h3>

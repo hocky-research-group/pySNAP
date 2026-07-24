@@ -6,13 +6,13 @@ import pytest
 from unittest.mock import patch
 
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core.stages import add_stage
-from snap_workflow.core.variables import add_variable
-from snap_workflow.core.sweeps import add_sweep
-from snap_workflow.core import status
-from snap_workflow.core import spoints
-from snap_workflow.core import worker
-from snap_workflow.core.server import register_auto_scheduler, OrchestratorScheduler
+from snap_workflow.core.domain.stages import add_stage
+from snap_workflow.core.domain.variables import add_variable
+from snap_workflow.core.domain.sweeps import add_sweep
+from snap_workflow.core.domain import status
+from snap_workflow.core.domain import spoints
+from snap_workflow import worker
+from snap_workflow.server import register_auto_scheduler, OrchestratorScheduler
 
 def is_ssh_reachable():
     try:

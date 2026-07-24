@@ -1,13 +1,11 @@
-from .strings import *
 import os
 import sys
 import shutil
-
-from . import io
-from . import path
-from . import spoints
-from . import params
-from .exceptions import SweepAlreadyExistsError, SweepNotFoundError
+from snap_workflow.utils.constants import *
+from snap_workflow.utils import io, path
+from snap_workflow.utils.exceptions import SweepAlreadyExistsError, SweepNotFoundError
+from snap_workflow.core.domain import spoints
+from snap_workflow.core.params import params
 
 # ---- Main ----
 def add_sweep(sweep_name, include_stages, variable_values, overwrite=False):
@@ -28,7 +26,7 @@ def remove_sweep(sweep_name, hard=False):
         raise SweepNotFoundError(f"{sweep_name} is not a sweep")
 
     if hard:
-        with path.From_Root():
+        with path.FromRoot():
             for sname, stage_name, spoint_dict in spoints.iter_spoints(sweep_names=sweep_name):
                 if spoints.spoint_still_defined(sweep_name, stage_name, spoint_dict):
                     continue

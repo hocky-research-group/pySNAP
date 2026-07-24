@@ -1,19 +1,19 @@
 import os, sys
-from .strings import *
+from snap_workflow.utils.constants import *
 
 __version__ = "1.0.0"
 
 def load_version():
-    from . import io
+    from snap_workflow.utils import io
     return io.load_json(VERSION)["version"]
 
 def save_version(version):
-    from . import io
+    from snap_workflow.utils import io
     v = {"version": version}
     return io.save_json(VERSION, v)
 
 def make_version():
-    from . import io
+    from snap_workflow.utils import io
     return io.make_json(VERSION)
 
 def is_older_version(A, B):
@@ -33,7 +33,7 @@ def is_older_version(A, B):
     raise Exception("Version comparison failed")
 
 def check_version():
-    from . import path
+    from snap_workflow.utils import path
     path.get_root()
     version = __version__
     try:
@@ -50,8 +50,8 @@ def check_version():
                         f"Please update to at least version {last_version} to operate in this workflow.")
 
 def update(**kwargs):
-    from . import io
-    from . import path
+    from snap_workflow.utils import io
+    from snap_workflow.utils import path
     io.warn_unused_kwargs(kwargs)
 
     path.get_root()

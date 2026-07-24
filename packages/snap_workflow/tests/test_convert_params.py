@@ -3,7 +3,7 @@ import json
 import pytest
 import warnings
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core import stages, sweeps, variables, spoints, params, status
+from snap_workflow.core.domain import stages, sweeps, variables, spoints, params, status
 from snap_workflow.cli import main_reset, main_convert
 
 

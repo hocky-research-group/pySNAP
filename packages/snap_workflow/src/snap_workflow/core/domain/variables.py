@@ -1,11 +1,10 @@
-from .strings import *
 import sys
 import numpy as np
-
-from . import io
-from . import stages as stage_tools
-from . import sweeps as sweep_tools
-from .exceptions import VariableAlreadyExistsError, ConversionError
+from snap_workflow.utils.constants import *
+from snap_workflow.utils import io
+from snap_workflow.utils.exceptions import VariableAlreadyExistsError, ConversionError
+from snap_workflow.core.domain import stages as stage_tools
+from snap_workflow.core.domain import sweeps as sweep_tools
 
 # ---- Main ----
 def add_variable(name, types, add_to_stages=None, default_val=None):

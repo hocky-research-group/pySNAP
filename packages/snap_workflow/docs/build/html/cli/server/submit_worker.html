@@ -234,6 +234,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../reset/errors.html">workflow reset errors</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../reset/sweep.html">workflow reset sweep</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../reset/params.html">workflow reset params</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../reset/spoint.html">workflow reset spoint</a></li>
 </ul>
 </li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../set/set.html">workflow set</a><input aria-label="Toggle navigation of workflow set" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -262,9 +263,9 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python Tools</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../py_tools/SPoint_Manager.html">SPoint_Manager</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../py_tools/Data_Manager.html">Data_Manager</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../py_tools/System_Params.html">System_Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../py_tools/SPoint_Manager.html">SPointManager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../py_tools/Data_Manager.html">DataManager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../py_tools/System_Params.html">SystemParams</a></li>
 </ul>
 
 </div>
@@ -307,7 +308,7 @@
 <h1>workflow server submit worker<a class="headerlink" href="#workflow-server-submit-worker" title="Link to this heading">¶</a></h1>
 <section id="synopsis">
 <h2>Synopsis<a class="headerlink" href="#synopsis" title="Link to this heading">¶</a></h2>
-<p><strong>workflow server submit worker</strong> &lt;<em>remote_name</em>&gt; [--num-workers &lt;<em>count</em>&gt;] [--profile &lt;<em>profile_name</em>&gt;] [--stage &lt;<em>stages</em>&gt;] [--sweep &lt;<em>sweeps</em>&gt;]</p>
+<p><strong>workflow server submit worker</strong> &lt;<em>remote_name</em>&gt; &lt;<em>profile_name</em>&gt; [–num-workers &lt;<em>count</em>&gt;] [–stage &lt;<em>stages</em>&gt;] [–sweep &lt;<em>sweeps</em>&gt;]</p>
 </section>
 <section id="description">
 <h2>Description<a class="headerlink" href="#description" title="Link to this heading">¶</a></h2>
@@ -319,16 +320,15 @@ Can dispatch workers locally (using the special remote name <code class="docutil
 <dl class="simple">
 <dt>&lt;<em>remote_name</em>&gt;</dt><dd><p>The unique identifier name of a registered remote system, or <code class="docutils literal notranslate"><span class="pre">local</span></code> for workstation background executions.</p>
 </dd>
+<dt>&lt;<em>profile_name</em>&gt;</dt><dd><p>The name of the Slurm worker profile JSON/YAML config (e.g. <code class="docutils literal notranslate"><span class="pre">template</span></code> or <code class="docutils literal notranslate"><span class="pre">gpu</span></code>) sourced from the remote host.</p>
+</dd>
 </dl>
 </section>
 <section id="options">
 <h2>Options<a class="headerlink" href="#options" title="Link to this heading">¶</a></h2>
 <dl class="simple">
-<dt><strong>--num-workers</strong> <em>count</em></dt><dd><p>The number of worker allocation processes to submit.
+<dt><strong>–num-workers</strong> <em>count</em></dt><dd><p>The number of worker allocation processes to submit.
 Defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
-</dd>
-<dt><strong>--profile</strong> <em>profile_name</em></dt><dd><p>Loads a specific Slurm worker profile JSON/YAML config.
-Defaults to <code class="docutils literal notranslate"><span class="pre">cpu</span></code>.</p>
 </dd>
 <dt><strong>-s</strong> <em>stages</em>, <strong>--stage</strong> <em>stages</em></dt><dd><p>Comma-separated stage names that this worker is allowed to run.</p>
 </dd>

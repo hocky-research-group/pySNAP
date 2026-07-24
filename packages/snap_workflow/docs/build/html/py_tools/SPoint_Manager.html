@@ -3,12 +3,12 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Data_Manager" href="Data_Manager.html"><link rel="prev" title="workflow zip" href="../cli/zip.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="DataManager" href="Data_Manager.html"><link rel="prev" title="workflow zip" href="../cli/zip.html">
         <link rel="prefetch" href="../_static/logo_light.png" as="image">
         <link rel="prefetch" href="../_static/logo.png" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>SPoint_Manager - snap_workflow documentation</title>
+        <title>SPointManager - snap_workflow documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -234,6 +234,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/errors.html">workflow reset errors</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/sweep.html">workflow reset sweep</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cli/reset/params.html">workflow reset params</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/reset/spoint.html">workflow reset spoint</a></li>
 </ul>
 </li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../cli/set/set.html">workflow set</a><input aria-label="Toggle navigation of workflow set" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -262,9 +263,9 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Python Tools</span></p>
 <ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">SPoint_Manager</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Data_Manager.html">Data_Manager</a></li>
-<li class="toctree-l1"><a class="reference internal" href="System_Params.html">System_Params</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">SPointManager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Data_Manager.html">DataManager</a></li>
+<li class="toctree-l1"><a class="reference internal" href="System_Params.html">SystemParams</a></li>
 </ul>
 
 </div>
@@ -303,9 +304,9 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="spoint-manager">
-<h1>SPoint_Manager<a class="headerlink" href="#spoint-manager" title="Link to this heading">¶</a></h1>
-<p>The primary purpose of <code class="xref py py-class docutils literal notranslate"><span class="pre">SPoint_Manager</span></code> is to help manage the status of SPoints while they are running.
+          <section id="spointmanager">
+<h1>SPointManager<a class="headerlink" href="#spointmanager" title="Link to this heading">¶</a></h1>
+<p>The primary purpose of <code class="xref py py-class docutils literal notranslate"><span class="pre">SPointManager</span></code> is to help manage the status of SPoints while they are running.
 Properly running an SPoint within this implementation of a context manager means that its status gets set to:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">running</span></code> when it starts</p></li>
@@ -313,7 +314,7 @@ Properly running an SPoint within this implementation of a context manager means
 <li><p><code class="docutils literal notranslate"><span class="pre">incomplete</span></code> if the task receives a KeyboardInterrupt or SIGINT signal</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">error</span></code> if the script throws an exception</p></li>
 </ul>
-<p>In addition to managing status, an <code class="xref py py-class docutils literal notranslate"><span class="pre">SPoint_Manager</span></code> instance also provides several useful utilities:</p>
+<p>In addition to managing status, an <code class="xref py py-class docutils literal notranslate"><span class="pre">SPointManager</span></code> instance also provides several useful utilities:</p>
 <ul class="simple">
 <li><p>Loading parameters and variables from the current SPoint context</p></li>
 <li><p>Timing run duration automatically</p></li>
@@ -321,9 +322,9 @@ Properly running an SPoint within this implementation of a context manager means
 <li><p>Registering custom save functions for cleanup or state saving on timeout/SIGINT</p></li>
 </ul>
 <p>To utilize these features, the simulation code in your stage script (e.g. <code class="docutils literal notranslate"><span class="pre">my_stage/my_stage.py</span></code>) should be run within the context of the SPoint Manager:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">snap_workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">SPoint_Manager</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">snap_workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">SPointManager</span>
 
-<span class="k">with</span> <span class="n">SPoint_Manager</span><span class="p">()</span> <span class="k">as</span> <span class="n">sm</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">SPointManager</span><span class="p">()</span> <span class="k">as</span> <span class="n">sm</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
     <span class="c1"># Define a function to automatically save progress state on timeout or signal interrupt</span>
@@ -331,7 +332,7 @@ Properly running an SPoint within this implementation of a context manager means
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Saving checkpoint progress before timeout...&quot;</span><span class="p">)</span>
         <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;state.npy&quot;</span><span class="p">,</span> <span class="n">current_state</span><span class="p">)</span>  <span class="c1"># Note: current_state must be defined in your computation loop below</span>
 
-    <span class="c1"># Register the save function with the SPoint_Manager instance</span>
+    <span class="c1"># Register the save function with the SPointManager instance</span>
     <span class="n">sm</span><span class="o">.</span><span class="n">set_save_func</span><span class="p">(</span><span class="n">save_progress</span><span class="p">)</span>
 
     <span class="n">params</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">load_params</span><span class="p">()</span>
@@ -344,34 +345,34 @@ Properly running an SPoint within this implementation of a context manager means
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>For backwards compatibility, <cite>Combo_Manager</cite> and <cite>Job_Manager</cite> can be used as direct aliases for <cite>SPoint_Manager</cite>.</p>
+<p>For backwards compatibility, <code class="docutils literal notranslate"><span class="pre">SPoint_Manager</span></code>, <code class="docutils literal notranslate"><span class="pre">Combo_Manager</span></code>, and <code class="docutils literal notranslate"><span class="pre">Job_Manager</span></code> can be used as direct aliases for <code class="docutils literal notranslate"><span class="pre">SPointManager</span></code>.</p>
 </div>
 <dl class="py class">
-<dt class="sig sig-object py" id="snap_workflow.SPoint_Manager">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">snap_workflow.</span></span><span class="sig-name descname"><span class="pre">SPoint_Manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.SPoint_Manager" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.domain.spoints.SPointManager">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">snap_workflow.core.domain.spoints.</span></span><span class="sig-name descname"><span class="pre">SPointManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.domain.spoints.SPointManager" title="Link to this definition">¶</a></dt>
 <dd><dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.SPoint_Manager.set_save_func">
-<span class="sig-name descname"><span class="pre">set_save_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.SPoint_Manager.set_save_func" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.domain.spoints.SPointManager.set_save_func">
+<span class="sig-name descname"><span class="pre">set_save_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.domain.spoints.SPointManager.set_save_func" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.SPoint_Manager.set_stop_func">
-<span class="sig-name descname"><span class="pre">set_stop_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stop_func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.SPoint_Manager.set_stop_func" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.domain.spoints.SPointManager.set_stop_func">
+<span class="sig-name descname"><span class="pre">set_stop_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stop_func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.domain.spoints.SPointManager.set_stop_func" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.SPoint_Manager.set_progress">
-<span class="sig-name descname"><span class="pre">set_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.SPoint_Manager.set_progress" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.domain.spoints.SPointManager.set_progress">
+<span class="sig-name descname"><span class="pre">set_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.domain.spoints.SPointManager.set_progress" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.SPoint_Manager.check_progress">
-<span class="sig-name descname"><span class="pre">check_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.SPoint_Manager.check_progress" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.domain.spoints.SPointManager.check_progress">
+<span class="sig-name descname"><span class="pre">check_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.domain.spoints.SPointManager.check_progress" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="snap_workflow.SPoint_Manager.load_params">
-<span class="sig-name descname"><span class="pre">load_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.SPoint_Manager.load_params" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="snap_workflow.core.domain.spoints.SPointManager.load_params">
+<span class="sig-name descname"><span class="pre">load_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#snap_workflow.core.domain.spoints.SPointManager.load_params" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -388,7 +389,7 @@ Properly running an SPoint within this implementation of a context manager means
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Data_Manager</div>
+                <div class="title">DataManager</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -433,13 +434,13 @@ Properly running an SPoint within this implementation of a context manager means
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">SPoint_Manager</a><ul>
-<li><a class="reference internal" href="#snap_workflow.SPoint_Manager"><code class="docutils literal notranslate"><span class="pre">SPoint_Manager</span></code></a><ul>
-<li><a class="reference internal" href="#snap_workflow.SPoint_Manager.set_save_func"><code class="docutils literal notranslate"><span class="pre">SPoint_Manager.set_save_func()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.SPoint_Manager.set_stop_func"><code class="docutils literal notranslate"><span class="pre">SPoint_Manager.set_stop_func()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.SPoint_Manager.set_progress"><code class="docutils literal notranslate"><span class="pre">SPoint_Manager.set_progress()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.SPoint_Manager.check_progress"><code class="docutils literal notranslate"><span class="pre">SPoint_Manager.check_progress()</span></code></a></li>
-<li><a class="reference internal" href="#snap_workflow.SPoint_Manager.load_params"><code class="docutils literal notranslate"><span class="pre">SPoint_Manager.load_params()</span></code></a></li>
+<li><a class="reference internal" href="#">SPointManager</a><ul>
+<li><a class="reference internal" href="#snap_workflow.core.domain.spoints.SPointManager"><code class="docutils literal notranslate"><span class="pre">SPointManager</span></code></a><ul>
+<li><a class="reference internal" href="#snap_workflow.core.domain.spoints.SPointManager.set_save_func"><code class="docutils literal notranslate"><span class="pre">SPointManager.set_save_func()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.domain.spoints.SPointManager.set_stop_func"><code class="docutils literal notranslate"><span class="pre">SPointManager.set_stop_func()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.domain.spoints.SPointManager.set_progress"><code class="docutils literal notranslate"><span class="pre">SPointManager.set_progress()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.domain.spoints.SPointManager.check_progress"><code class="docutils literal notranslate"><span class="pre">SPointManager.check_progress()</span></code></a></li>
+<li><a class="reference internal" href="#snap_workflow.core.domain.spoints.SPointManager.load_params"><code class="docutils literal notranslate"><span class="pre">SPointManager.load_params()</span></code></a></li>
 </ul>
 </li>
 </ul>

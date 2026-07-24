@@ -1,7 +1,7 @@
 import sys
 import os
 import numpy as np
-from .strings import *
+from snap_workflow.utils.constants import *
 
 def write_time(times, spoint_dir="."):
     with open(os.path.join(spoint_dir, SPOINT_INFO, TIME), 'w') as file:

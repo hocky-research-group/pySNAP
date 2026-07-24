@@ -2,8 +2,8 @@ import os
 import json
 import pytest
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core.stages import add_stage
-from snap_workflow.core.variables import (
+from snap_workflow.core.domain.stages import add_stage
+from snap_workflow.core.domain.variables import (
     add_variable,
     deprecated_make_variables,
     cast_values,
@@ -11,8 +11,8 @@ from snap_workflow.core.variables import (
     generate_values,
     cast_combo_dict
 )
-from snap_workflow.core.exceptions import VariableAlreadyExistsError, ConversionError
-from snap_workflow.core.sweeps import add_sweep
+from snap_workflow.utils.exceptions import VariableAlreadyExistsError, ConversionError
+from snap_workflow.core.domain.sweeps import add_sweep
 
 def test_add_variable_duplicates_and_stages(sandbox, env_dir):
     initialize(env_dir)
@@ -64,7 +64,7 @@ def test_casting_rules(sandbox, env_dir):
     add_variable("x", ["int"], default_val=10)
     
     # Test get_variable_names
-    from snap_workflow.core.variables import get_variable_names
+    from snap_workflow.core.domain.variables import get_variable_names
     assert get_variable_names() == ["x"]
 
     # Test cast_combo_dict

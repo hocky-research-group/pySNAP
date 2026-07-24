@@ -1,7 +1,7 @@
-System_Params
-=============
+SystemParams
+============
 
-The :py:class:`System_Params` class acts as the core data structure managing workflow and stage parameter configuration files. It supports key-value retrieval using nested tuple lookups, variable substitutions, type casting, and mathematical evaluations of sweep variables.
+The :py:class:`SystemParams` (legacy alias: ``System_Params``) class acts as the core data structure managing workflow and stage parameter configuration files. It supports key-value retrieval using nested tuple lookups, variable substitutions, type casting, and mathematical evaluations of sweep variables.
 
 Math Expression Directives (``!m_``)
 ------------------------------------
@@ -39,7 +39,7 @@ Supported Functions
 API Reference
 -------------
 
-.. autoclass:: snap_workflow.core.params.system_params.System_Params
+.. autoclass:: snap_workflow.core.params.system_params.SystemParams
 
    .. automethod:: __init__
    .. automethod:: __getitem__

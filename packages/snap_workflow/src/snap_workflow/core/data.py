@@ -4,12 +4,11 @@ import os
 import pickle
 import importlib.util
 
-from . import spoints
-from . import path
-from . import io
-from . import stages as stage_tools
-from . import variables
-from .time import load_time
+from snap_workflow.core.domain import spoints
+from snap_workflow.utils import path, io
+from snap_workflow.core.domain import stages as stage_tools
+from snap_workflow.core.domain import variables
+from snap_workflow.utils.time import load_time
 
 def collect_data(stage_names=None, verbose=False):
     sys.dont_write_bytecode = True
@@ -20,7 +19,7 @@ def collect_data(stage_names=None, verbose=False):
     elif not isinstance(stage_names, list):
         stage_names = [stage_names]
 
-    with path.From_Root():
+    with path.FromRoot():
         for stage_name in stage_names:
             if stage_name not in stages:
                 continue
@@ -52,7 +51,7 @@ def collect_data(stage_names=None, verbose=False):
 def _collect_data(stage_name, collect_module, verbose):
     data = Data_Manager()
     for sweep_name, sname, spoint_dict in spoints.iter_spoints(stage_names=stage_name):
-        with path.From_Root():
+        with path.FromRoot():
             spoint_string = spoints.get_spoint_string(spoint_dict)
             spoint_path = spoints.get_spoint_path(stage_name, spoint_dict)
 
@@ -62,7 +61,7 @@ def _collect_data(stage_name, collect_module, verbose):
             spoint_dict = variables.cast_combo_dict(spoint_dict)
             spoint_dict["sweep"] = sweep_name
 
-            with path.From_Dir(spoint_path):
+            with path.FromDir(spoint_path):
                 data_dict = None
                 try:
                     data_dict = collect_module.collect()
@@ -80,11 +79,11 @@ def _collect_data(stage_name, collect_module, verbose):
 
     if len(data) == 0:
         return False
-    with path.From_Root():
+    with path.FromRoot():
         data.pickle(os.path.join("data", stage_name))
     return True
 
-class Data_Manager:
+class DataManager:
     def __init__(self, data_path=None):
         self.iter_count = None
         if data_path is not None:
@@ -338,3 +337,6 @@ class Data_Manager:
     __gte__ = __ge__
     __lte__ = __le__
     __neq__ = __ne__
+
+# Backward compatibility alias
+Data_Manager = DataManager

@@ -1,7 +1,7 @@
-SPoint_Manager
-==============
+SPointManager
+=============
 
-The primary purpose of :py:class:`SPoint_Manager` is to help manage the status of SPoints while they are running.
+The primary purpose of :py:class:`SPointManager` is to help manage the status of SPoints while they are running.
 Properly running an SPoint within this implementation of a context manager means that its status gets set to: 
 
 * ``running`` when it starts
@@ -9,7 +9,7 @@ Properly running an SPoint within this implementation of a context manager means
 * ``incomplete`` if the task receives a KeyboardInterrupt or SIGINT signal
 * ``error`` if the script throws an exception
 
-In addition to managing status, an :py:class:`SPoint_Manager` instance also provides several useful utilities:
+In addition to managing status, an :py:class:`SPointManager` instance also provides several useful utilities:
 
 * Loading parameters and variables from the current SPoint context
 * Timing run duration automatically
@@ -20,9 +20,9 @@ To utilize these features, the simulation code in your stage script (e.g. ``my_s
 
 .. code:: python
     
-    from snap_workflow import SPoint_Manager
+    from snap_workflow import SPointManager
 
-    with SPoint_Manager() as sm:
+    with SPointManager() as sm:
         import numpy as np
         
         # Define a function to automatically save progress state on timeout or signal interrupt
@@ -30,7 +30,7 @@ To utilize these features, the simulation code in your stage script (e.g. ``my_s
             print("Saving checkpoint progress before timeout...")
             np.save("state.npy", current_state)  # Note: current_state must be defined in your computation loop below
             
-        # Register the save function with the SPoint_Manager instance
+        # Register the save function with the SPointManager instance
         sm.set_save_func(save_progress)
         
         params = sm.load_params()
@@ -41,9 +41,9 @@ To utilize these features, the simulation code in your stage script (e.g. ``my_s
         # ... run computation ...
 
 .. note::
-   For backwards compatibility, `Combo_Manager` and `Job_Manager` can be used as direct aliases for `SPoint_Manager`.
+   For backwards compatibility, ``SPoint_Manager``, ``Combo_Manager``, and ``Job_Manager`` can be used as direct aliases for ``SPointManager``.
 
-.. autoclass:: snap_workflow::SPoint_Manager
+.. autoclass:: snap_workflow.core.domain.spoints.SPointManager
 
     .. automethod:: set_save_func
     .. automethod:: set_stop_func

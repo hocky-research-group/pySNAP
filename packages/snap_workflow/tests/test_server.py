@@ -6,9 +6,13 @@ import subprocess
 from unittest.mock import patch, MagicMock
 import pytest
 
-from snap_workflow.core import initialize, add_stage, add_variable, add_sweep, status
-from snap_workflow.core.server import start_server
-from snap_workflow.core.worker import send_request
+from snap_workflow.core.workflow import initialize
+from snap_workflow.core.domain.stages import add_stage
+from snap_workflow.core.domain.variables import add_variable
+from snap_workflow.core.domain.sweeps import add_sweep
+from snap_workflow.core.domain import status
+from snap_workflow.server import start_server
+from snap_workflow.worker import send_request
 
 def configure_stage_resources(stage_name, cpus=1, gpus=0, mem="2G"):
     import yaml
@@ -113,7 +117,7 @@ def test_orchestrator_scheduler_live_ssh(sandbox, env_dir):
     if not is_ssh_reachable():
         pytest.skip("Lab_Main SSH connection not reachable")
 
-    from snap_workflow.core.strings import GLOBAL_REMOTES_FILE, LOCAL_REMOTES_FILE, GLOBAL_CONFIG_DIR
+    from snap_workflow.utils.constants import GLOBAL_REMOTES_FILE, LOCAL_REMOTES_FILE, GLOBAL_CONFIG_DIR
     if not os.path.exists(GLOBAL_CONFIG_DIR):
         os.makedirs(GLOBAL_CONFIG_DIR, exist_ok=True)
         
@@ -138,7 +142,7 @@ def test_orchestrator_scheduler_live_ssh(sandbox, env_dir):
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
     # Instantiate OrchestratorScheduler for Lab_Main remote
-    from snap_workflow.core.server import OrchestratorScheduler
+    from snap_workflow.server import OrchestratorScheduler
     scheduler = OrchestratorScheduler(
         remote="Lab_Main",
         stages="stage1",
@@ -259,13 +263,13 @@ def test_request_work_stage_resources_exception_handling(sandbox, env_dir, workf
     token = server_info["token"]
 
     # Mock load_config to raise exception ONLY during the request
-    with patch("snap_workflow.core.io.load_config", side_effect=RuntimeError("load error")):
+    with patch("snap_workflow.utils.io.load_config", side_effect=RuntimeError("load error")):
         resp = send_request(f"{url}/request_work", token)
         assert resp["status"] == "combo"
 
 def test_spoint_metadata_exceptions(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.core.server import load_spoint_metadata, save_spoint_metadata, update_spoint_metadata
+    from snap_workflow.server import load_spoint_metadata, save_spoint_metadata, update_spoint_metadata
     
     # Write invalid json to spoint_metadata.json to trigger lines 30-31 exception block
     metadata_file = os.path.join(".workflow", "spoint_metadata.json")
@@ -275,7 +279,7 @@ def test_spoint_metadata_exceptions(sandbox, env_dir):
 
     # save_spoint_metadata logs error on open exception (lines 40-41)
     with patch("builtins.open", side_effect=RuntimeError("write error")), \
-         patch("snap_workflow.core.server.logger.error") as mock_log:
+         patch("snap_workflow.server.logger.error") as mock_log:
         save_spoint_metadata({"test": "data"})
         mock_log.assert_called_once()
 
@@ -286,7 +290,7 @@ def test_spoint_metadata_exceptions(sandbox, env_dir):
 
 def test_get_remote_conn_exception(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.core.server import get_remote_conn
+    from snap_workflow.server import get_remote_conn
     
     # 1. Success remote connectivity check hitting line 57
     with patch("snap_workflow.cli.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
@@ -305,7 +309,7 @@ def test_get_remote_conn_exception(sandbox, env_dir):
 
 def test_get_dependency_rel_paths_with_convergence(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.core.server import get_dependency_rel_paths
+    from snap_workflow.server import get_dependency_rel_paths
     
     # Mock get_dependent_spoint_info to return stages with convergence combos to cover lines 73-77
     mock_dep_info = {
@@ -320,7 +324,7 @@ def test_get_dependency_rel_paths_with_convergence(sandbox, env_dir):
             "conv_combos": [[1], [2]]
         }
     }
-    with patch("snap_workflow.core.spoints.get_dependent_spoint_info", return_value=mock_dep_info):
+    with patch("snap_workflow.core.domain.spoints.get_dependent_spoint_info", return_value=mock_dep_info):
         paths = get_dependency_rel_paths("sweep1", "stage2", {"x": 5, "y": 10})
         assert "dep_stage1/spoints/x_5" in paths
         assert "dep_stage2/spoints/x_5_y_1" in paths
@@ -328,17 +332,17 @@ def test_get_dependency_rel_paths_with_convergence(sandbox, env_dir):
 
 def test_check_data_locality_eligibility_scenarios(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.core.server import check_data_locality_eligibility
+    from snap_workflow.server import check_data_locality_eligibility
     
-    with patch("snap_workflow.core.server.get_dependency_rel_paths", return_value=["dep1"]):
+    with patch("snap_workflow.server.get_dependency_rel_paths", return_value=["dep1"]):
         # 1. Size > 1GB -> False deferred (line 90)
-        with patch("snap_workflow.core.server.load_spoint_metadata", return_value={"dep1": {"host": "remote_host", "size_bytes": 2_000_000_000}}):
+        with patch("snap_workflow.server.load_spoint_metadata", return_value={"dep1": {"host": "remote_host", "size_bytes": 2_000_000_000}}):
             runnable, status_str, detail = check_data_locality_eligibility("sweep1", "stage1", {}, "local")
             assert runnable is False
             assert status_str == "deferred"
             
         # 2. Size <= 1GB -> True sync_needed (line 94)
-        with patch("snap_workflow.core.server.load_spoint_metadata", return_value={"dep1": {"host": "remote_host", "size_bytes": 100_000}}):
+        with patch("snap_workflow.server.load_spoint_metadata", return_value={"dep1": {"host": "remote_host", "size_bytes": 100_000}}):
             runnable, status_str, detail = check_data_locality_eligibility("sweep1", "stage1", {}, "local")
             assert runnable is True
             assert status_str == "sync_needed"
@@ -349,11 +353,11 @@ def test_resolve_deadlock_host_scenarios(sandbox, env_dir):
     configure_stage_resources("stage1")
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-    from snap_workflow.core.server import resolve_deadlock_host
+    from snap_workflow.server import resolve_deadlock_host
     
     # 1. Successful resolve deadlock routing to max local size host (lines 113-119)
-    with patch("snap_workflow.core.server.get_dependency_rel_paths", return_value=["dep1", "dep2"]), \
-         patch("snap_workflow.core.server.load_spoint_metadata", return_value={"dep1": {"host": "remote1", "size_bytes": 100}, "dep2": {"host": "remote2", "size_bytes": 200}}), \
+    with patch("snap_workflow.server.get_dependency_rel_paths", return_value=["dep1", "dep2"]), \
+         patch("snap_workflow.server.load_spoint_metadata", return_value={"dep1": {"host": "remote1", "size_bytes": 100}, "dep2": {"host": "remote2", "size_bytes": 200}}), \
          patch("snap_workflow.cli.load_global_remotes", return_value={"remote1": {}, "remote2": {}}):
          
          host, syncs = resolve_deadlock_host("sweep1", "stage1", {"x": 5})
@@ -371,19 +375,19 @@ def test_check_and_prepare_dependencies_deadlock_and_locality(sandbox, env_dir):
     configure_stage_resources("stage1")
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-    from snap_workflow.core.server import check_and_prepare_dependencies
+    from snap_workflow.server import check_and_prepare_dependencies
     
     # 1. target_host == best_host -> True (line 145)
-    with patch("snap_workflow.core.spoints.check_submittable", return_value=True), \
-         patch("snap_workflow.core.server.check_data_locality_eligibility", return_value=(False, "deferred", ("dep1", "remote_host", 2000000000))), \
-         patch("snap_workflow.core.server.resolve_deadlock_host", return_value=("remote_host", [("dep1", "other_host", 2000000000)])), \
-         patch("snap_workflow.core.sync.transit_sync_dependency"):
+    with patch("snap_workflow.core.domain.spoints.check_submittable", return_value=True), \
+         patch("snap_workflow.server.check_data_locality_eligibility", return_value=(False, "deferred", ("dep1", "remote_host", 2000000000))), \
+         patch("snap_workflow.server.resolve_deadlock_host", return_value=("remote_host", [("dep1", "other_host", 2000000000)])), \
+         patch("snap_workflow.server.sync.transit_sync_dependency"):
         assert check_and_prepare_dependencies("sweep1", "stage1", {"x": 5}, "remote_host") is True
 
     # 2. target_host != best_host -> False (line 149)
-    with patch("snap_workflow.core.spoints.check_submittable", return_value=True), \
-         patch("snap_workflow.core.server.check_data_locality_eligibility", return_value=(False, "deferred", ("dep1", "remote_host", 2000000000))), \
-         patch("snap_workflow.core.server.resolve_deadlock_host", return_value=("remote_host", [("dep1", "other_host", 2000000000)])):
+    with patch("snap_workflow.core.domain.spoints.check_submittable", return_value=True), \
+         patch("snap_workflow.server.check_data_locality_eligibility", return_value=(False, "deferred", ("dep1", "remote_host", 2000000000))), \
+         patch("snap_workflow.server.resolve_deadlock_host", return_value=("remote_host", [("dep1", "other_host", 2000000000)])):
         assert check_and_prepare_dependencies("sweep1", "stage1", {"x": 5}, "local") is False
 
     # 3. is_deadlock is False (someone else is runnable) -> False (line 152)
@@ -391,19 +395,19 @@ def test_check_and_prepare_dependencies_deadlock_and_locality(sandbox, env_dir):
         if host == "remote_host":
             return True, "runnable", []
         return False, "deferred", ("dep1", "remote_host", 2000000000)
-    with patch("snap_workflow.core.spoints.check_submittable", return_value=True), \
-         patch("snap_workflow.core.server.check_data_locality_eligibility", side_effect=mock_eligibility), \
+    with patch("snap_workflow.core.domain.spoints.check_submittable", return_value=True), \
+         patch("snap_workflow.server.check_data_locality_eligibility", side_effect=mock_eligibility), \
          patch("snap_workflow.cli.load_global_remotes", return_value={"remote_host": {}}):
         assert check_and_prepare_dependencies("sweep1", "stage1", {"x": 5}, "local") is False
 
     # 4. Mock load_global_remotes to raise exception in check_and_prepare_dependencies (line 134)
-    with patch("snap_workflow.core.spoints.check_submittable", return_value=True), \
-         patch("snap_workflow.core.server.check_data_locality_eligibility", return_value=(False, "deferred", ("dep1", "remote_host", 2000000000))), \
+    with patch("snap_workflow.core.domain.spoints.check_submittable", return_value=True), \
+         patch("snap_workflow.server.check_data_locality_eligibility", return_value=(False, "deferred", ("dep1", "remote_host", 2000000000))), \
          patch("snap_workflow.cli.load_global_remotes", side_effect=RuntimeError("load error")):
          assert check_and_prepare_dependencies("sweep1", "stage1", {"x": 5}, "remote_host") is False
 
 def test_parse_memory_to_gb_edge_cases():
-    from snap_workflow.core.server import parse_memory_to_gb
+    from snap_workflow.server import parse_memory_to_gb
     assert parse_memory_to_gb("") == 0.0
     assert parse_memory_to_gb("16K") == 16.0 / (1024 * 1024)
     assert parse_memory_to_gb("16KB") == 16.0 / (1024 * 1024)
@@ -423,7 +427,7 @@ def test_orchestrator_scheduler_exclusions_and_errors(sandbox, env_dir, workflow
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
-    from snap_workflow.core.server import OrchestratorScheduler
+    from snap_workflow.server import OrchestratorScheduler
     
     # 1. Test exclusions mapping (exclude_stages, exclude_sweeps filters)
     scheduler = OrchestratorScheduler(
@@ -449,6 +453,7 @@ def test_orchestrator_scheduler_exclusions_and_errors(sandbox, env_dir, workflow
         urllib.request.urlopen(req)
 
     # Valid submit_auto
+    configure_stage_resources("stage1")
     payload = {
         "remote": "local",
         "stages": "stage1",
@@ -491,7 +496,7 @@ def test_orchestrator_scheduler_exclusions_and_errors(sandbox, env_dir, workflow
         
     with patch("subprocess.Popen", side_effect=mock_popen), \
          patch("time.sleep", side_effect=mock_sleep_poll), \
-         patch("snap_workflow.core.status.load_status", return_value="complete"):
+         patch("snap_workflow.core.domain.status.load_status", return_value="complete"):
         # We start the stage1 task combo which transitions status
         status.write_status("initialized", "stage1/spoints/x_5")
         scheduler4.run()
@@ -560,13 +565,13 @@ def test_check_and_prepare_dependencies_sync_needed(sandbox, env_dir):
     configure_stage_resources("stage1")
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-    from snap_workflow.core.server import check_and_prepare_dependencies
+    from snap_workflow.server import check_and_prepare_dependencies
 
     # 5. target_host has sync_needed -> returns True, runs ssh sync commands (mocked)
-    with patch("snap_workflow.core.spoints.check_submittable", return_value=True), \
-         patch("snap_workflow.core.server.check_data_locality_eligibility", return_value=(True, "sync_needed", [("dep1", "remote_host", 1000)])), \
-         patch("snap_workflow.core.server.get_remote_conn", return_value=("remote", "ssh_host", "/path")), \
-         patch("snap_workflow.core.sync.transit_sync_dependency") as mock_sync_dep:
+    with patch("snap_workflow.core.domain.spoints.check_submittable", return_value=True), \
+         patch("snap_workflow.server.check_data_locality_eligibility", return_value=(True, "sync_needed", [("dep1", "remote_host", 1000)])), \
+         patch("snap_workflow.server.get_remote_conn", return_value=("remote", "ssh_host", "/path")), \
+         patch("snap_workflow.server.sync.transit_sync_dependency") as mock_sync_dep:
          
         assert check_and_prepare_dependencies("sweep1", "stage1", {"x": 5}, "local") is True
         mock_sync_dep.assert_called_once()
@@ -578,7 +583,7 @@ def test_orchestrator_scheduler_additional_branches(sandbox, env_dir):
     configure_stage_resources("stage1")
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-    from snap_workflow.core.server import OrchestratorScheduler
+    from snap_workflow.server import OrchestratorScheduler
 
     # 1. Test other scheduler detected aborts scheduler (lines 490-510)
     scheduler_abort = OrchestratorScheduler(remote="local")
@@ -611,7 +616,7 @@ def test_orchestrator_scheduler_additional_branches(sandbox, env_dir):
 
     # 3. Load config failure in stage resources (lines 555-556)
     scheduler_res_err = OrchestratorScheduler(remote="local")
-    with patch("snap_workflow.core.io.load_config", side_effect=RuntimeError("load error")), \
+    with patch("snap_workflow.utils.io.load_config", side_effect=RuntimeError("load error")), \
          patch("time.sleep", side_effect=lambda x: scheduler_res_err.shutdown_event.set()):
          scheduler_res_err.run()
 
@@ -640,7 +645,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
     configure_stage_resources("stage1")
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-    from snap_workflow.core.server import OrchestratorScheduler
+    from snap_workflow.server import OrchestratorScheduler
 
     # 1. Test local Slurm polling and local sbatch submit (line 589)
     scheduler_local = OrchestratorScheduler(remote="local", stages="stage1", sweeps="sweep1")
@@ -669,6 +674,9 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
             ret.returncode = 0
             return ret
         if "ssh" in cmd[0]:
+            if "python3 -c" in cmd[2] or "python -c" in cmd[2]:
+                ret.returncode = 0
+                return ret
             if "which sbatch" in cmd[2] or "sbatch" in cmd[2]:
                 ret.returncode = 0
                 return ret
@@ -682,10 +690,10 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
     with patch("snap_workflow.cli.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
          patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.run", side_effect=mock_run_remote), \
-         patch("snap_workflow.core.server.get_remote_conn", return_value=("remote", "Lab_Main", "/path")), \
-         patch("snap_workflow.core.sync.measure_directory_size", return_value=123), \
-         patch("snap_workflow.core.server.update_spoint_metadata") as mock_update, \
-         patch("snap_workflow.core.sync.pull_spoint_data") as mock_pull, \
+         patch("snap_workflow.server.get_remote_conn", return_value=("remote", "Lab_Main", "/path")), \
+         patch("snap_workflow.server.sync.measure_directory_size", return_value=123), \
+         patch("snap_workflow.server.update_spoint_metadata") as mock_update, \
+         patch("snap_workflow.server.sync.pull_spoint_data") as mock_pull, \
          patch("time.sleep", side_effect=lambda x: scheduler_remote.shutdown_event.set()):
          
          scheduler_remote.run()
@@ -715,10 +723,10 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
     with patch("snap_workflow.cli.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
          patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.run", side_effect=mock_run_remote_fail), \
-         patch("snap_workflow.core.server.get_remote_conn", return_value=("remote", "Lab_Main", "/path")), \
-         patch("snap_workflow.core.sync.measure_directory_size", return_value=123), \
-         patch("snap_workflow.core.server.update_spoint_metadata"), \
-         patch("snap_workflow.core.sync.pull_spoint_data"), \
+         patch("snap_workflow.server.get_remote_conn", return_value=("remote", "Lab_Main", "/path")), \
+         patch("snap_workflow.server.sync.measure_directory_size", return_value=123), \
+         patch("snap_workflow.server.update_spoint_metadata"), \
+         patch("snap_workflow.server.sync.pull_spoint_data"), \
          patch("time.sleep", side_effect=lambda x: scheduler_remote_fail.shutdown_event.set()):
          
          scheduler_remote_fail.run()
@@ -767,7 +775,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
     with patch("snap_workflow.cli.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
          patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.run", side_effect=mock_run_remote_submit), \
-         patch("snap_workflow.core.server.check_and_prepare_dependencies", return_value=True), \
+         patch("snap_workflow.server.check_and_prepare_dependencies", return_value=True), \
          patch("time.sleep", side_effect=lambda x: scheduler_remote_submit.shutdown_event.set()):
          scheduler_remote_submit.run()
 
@@ -775,7 +783,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
     scheduler_dep_fail = OrchestratorScheduler(remote="local", stages="stage1", sweeps="sweep1")
     status.write_status("initialized", "stage1/spoints/x_5")
     with patch("subprocess.run", side_effect=mock_run_local), \
-         patch("snap_workflow.core.server.check_and_prepare_dependencies", return_value=False), \
+         patch("snap_workflow.server.check_and_prepare_dependencies", return_value=False), \
          patch("time.sleep", side_effect=lambda x: scheduler_dep_fail.shutdown_event.set()):
          scheduler_dep_fail.run()
 
@@ -786,7 +794,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
         scheduler_break.shutdown_event.set()
         return True
     with patch("subprocess.run", side_effect=mock_run_local), \
-         patch("snap_workflow.core.server.check_and_prepare_dependencies", side_effect=mock_check_and_prepare_dep), \
+         patch("snap_workflow.server.check_and_prepare_dependencies", side_effect=mock_check_and_prepare_dep), \
          patch("time.sleep", side_effect=lambda x: scheduler_break.shutdown_event.set()):
          scheduler_break.run()
 
@@ -805,7 +813,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
         return ret
 
     with patch("subprocess.run", side_effect=mock_run_fail), \
-         patch("snap_workflow.core.server.check_and_prepare_dependencies", return_value=True), \
+         patch("snap_workflow.server.check_and_prepare_dependencies", return_value=True), \
          patch("time.sleep", side_effect=lambda x: scheduler_fail.shutdown_event.set()):
          scheduler_fail.run()
 
@@ -823,7 +831,7 @@ def test_orchestrator_workstation_mode_additional_branches(sandbox, env_dir):
         
     add_variable("x", ["int"], add_to_stages=["stage_gpu"], default_val=10)
     add_sweep("sweep1", include_stages=["stage_gpu"], variable_values={"x": [5]})
-    from snap_workflow.core.server import OrchestratorScheduler, register_auto_scheduler
+    from snap_workflow.server import OrchestratorScheduler, register_auto_scheduler
 
     scheduler = OrchestratorScheduler(remote="local", stages="stage_gpu", sweeps="sweep1")
     status.write_status("initialized", "stage_gpu/spoints/x_5")
@@ -839,11 +847,11 @@ def test_orchestrator_workstation_mode_additional_branches(sandbox, env_dir):
         if sleep_count >= 2:
             scheduler.shutdown_event.set()
 
-    with patch("snap_workflow.core.worker.detect_system_resources", return_value=(8, 1, 16.0)), \
+    with patch("snap_workflow.worker.detect_system_resources", return_value=(8, 1, 16.0)), \
          patch("subprocess.Popen", return_value=mock_proc) as mock_popen, \
          patch("time.sleep", side_effect=mock_sleep_poll), \
-         patch("snap_workflow.core.server.get_remote_conn", return_value=("remote", "ssh_host", "/path")), \
-         patch("snap_workflow.core.server.check_and_prepare_dependencies", return_value=True):
+         patch("snap_workflow.server.get_remote_conn", return_value=("remote", "ssh_host", "/path")), \
+         patch("snap_workflow.server.check_and_prepare_dependencies", return_value=True):
          scheduler.run()
          
     # Verify CUDA_VISIBLE_DEVICES env var was populated correctly in local process spawn (line 704)
@@ -865,11 +873,11 @@ def test_orchestrator_workstation_mode_additional_branches(sandbox, env_dir):
         if sleep_count_fail >= 3:
             scheduler_fail.shutdown_event.set()
 
-    with patch("snap_workflow.core.worker.detect_system_resources", return_value=(8, 1, 16.0)), \
+    with patch("snap_workflow.worker.detect_system_resources", return_value=(8, 1, 16.0)), \
          patch("subprocess.Popen", return_value=mock_proc_fail), \
          patch("time.sleep", side_effect=mock_sleep_poll_fail), \
-         patch("snap_workflow.core.server.get_remote_conn", return_value=("remote", "ssh_host", "/path")), \
-         patch("snap_workflow.core.server.check_and_prepare_dependencies", return_value=True):
+         patch("snap_workflow.server.get_remote_conn", return_value=("remote", "ssh_host", "/path")), \
+         patch("snap_workflow.server.check_and_prepare_dependencies", return_value=True):
          scheduler_fail.run()
 
     # Test local workstation process completion with success (poll returns 0) to cover lines 654-664
@@ -885,16 +893,16 @@ def test_orchestrator_workstation_mode_additional_branches(sandbox, env_dir):
         if sleep_count_success >= 3:
             scheduler_success.shutdown_event.set()
 
-    with patch("snap_workflow.core.worker.detect_system_resources", return_value=(8, 1, 16.0)), \
+    with patch("snap_workflow.worker.detect_system_resources", return_value=(8, 1, 16.0)), \
          patch("subprocess.Popen", return_value=mock_proc_success), \
          patch("time.sleep", side_effect=mock_sleep_poll_success), \
-         patch("snap_workflow.core.server.get_remote_conn", return_value=("local", None, None)), \
-         patch("snap_workflow.core.sync.measure_directory_size", return_value=100), \
-         patch("snap_workflow.core.server.update_spoint_metadata") as mock_update_work, \
-         patch("snap_workflow.core.sync.pull_spoint_data") as mock_pull_work, \
-         patch("snap_workflow.core.spoints.get_dependent_spoint_info", return_value={}), \
-         patch("snap_workflow.core.spoints.link_dependent_combo") as mock_link_work, \
-         patch("snap_workflow.core.server.check_and_prepare_dependencies", return_value=True):
+         patch("snap_workflow.server.get_remote_conn", return_value=("local", None, None)), \
+         patch("snap_workflow.server.sync.measure_directory_size", return_value=100), \
+         patch("snap_workflow.server.update_spoint_metadata") as mock_update_work, \
+         patch("snap_workflow.server.sync.pull_spoint_data") as mock_pull_work, \
+         patch("snap_workflow.core.domain.spoints.get_dependent_spoint_info", return_value={}), \
+         patch("snap_workflow.core.domain.spoints.link_dependent_combo") as mock_link_work, \
+         patch("snap_workflow.server.check_and_prepare_dependencies", return_value=True):
          scheduler_success.run()
 
     mock_update_work.assert_called_once()
@@ -909,12 +917,13 @@ def test_orchestrator_workstation_mode_additional_branches(sandbox, env_dir):
     
     def mock_run_remote_workstation(cmd, *args, **kwargs):
         ret = MagicMock()
+        if "python3 -c" in str(cmd) or "python -c" in str(cmd):
+            ret.returncode = 0
+            if "detect_system_resources" in str(cmd):
+                ret.stdout = "[8, 1, 16.0]"
+            return ret
         if "sbatch" in cmd or "which sbatch" in cmd:
             ret.returncode = 1
-            return ret
-        if "detect_system_resources" in cmd[-1]:
-            ret.returncode = 0
-            ret.stdout = "[8, 1, 16.0]"
             return ret
         ret.returncode = 1
         return ret
@@ -923,7 +932,7 @@ def test_orchestrator_workstation_mode_additional_branches(sandbox, env_dir):
          patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.Popen", return_value=mock_proc_remote) as mock_popen_remote, \
          patch("subprocess.run", side_effect=mock_run_remote_workstation), \
-         patch("snap_workflow.core.server.check_and_prepare_dependencies", return_value=True), \
+         patch("snap_workflow.server.check_and_prepare_dependencies", return_value=True), \
          patch("time.sleep", side_effect=lambda x: scheduler_remote.shutdown_event.set()):
          scheduler_remote.run()
          
@@ -948,11 +957,11 @@ def test_run_server_foreground(sandbox, env_dir):
     mock_thread = MagicMock()
     mock_server.auto_schedulers = {"local": mock_thread}
     
-    with patch("snap_workflow.core.server.HTTPServer", return_value=mock_server), \
-         patch("snap_workflow.core.server.stage_tools.validate_stage_resources"), \
-         patch("snap_workflow.core.server.setup_logging"):
+    with patch("snap_workflow.server.HTTPServer", return_value=mock_server), \
+         patch("snap_workflow.server.stage_tools.validate_stage_resources"), \
+         patch("snap_workflow.server.setup_logging"):
         
-        from snap_workflow.core.server import run_server_foreground
+        from snap_workflow.server import run_server_foreground
         run_server_foreground()
         
         mock_thread.shutdown_event.set.assert_called_once()
@@ -960,7 +969,7 @@ def test_run_server_foreground(sandbox, env_dir):
         mock_server.server_close.assert_called_once()
 
 def test_get_stage_depth():
-    from snap_workflow.core.server import get_stage_depth
+    from snap_workflow.server import get_stage_depth
     stages_dict = {
         "stage1": {"dependent_stages": []},
         "stage2": {"dependent_stages": ["stage1"]}
@@ -995,8 +1004,8 @@ def test_notify_shutdown_endpoint(sandbox, env_dir, workflow_server):
     
     # 2. Test notification with remote worker (mocking get_remote_conn and pull_worker_logs)
     from unittest.mock import patch
-    with patch("snap_workflow.core.server.get_remote_conn", return_value=("remote", "Lab_Main", "~/some_path")), \
-         patch("snap_workflow.core.sync.pull_worker_logs") as mock_pull:
+    with patch("snap_workflow.server.get_remote_conn", return_value=("remote", "Lab_Main", "~/some_path")), \
+         patch("snap_workflow.server.sync.pull_worker_logs") as mock_pull:
          
         req = urllib.request.Request(
             f"http://127.0.0.1:{port}/notify_shutdown",

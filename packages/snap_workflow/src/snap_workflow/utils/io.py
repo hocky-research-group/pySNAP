@@ -1,7 +1,7 @@
 import numpy as np
 import os,sys
 import json
-from .strings import GLOBAL_CONFIG_DIR
+from snap_workflow.utils.constants import GLOBAL_CONFIG_DIR
 
 def extract(kwargs,allowable_keys):# {{{
     extracted = None
@@ -16,7 +16,7 @@ def extract(kwargs,allowable_keys):# {{{
         extracted = kwargs.pop(name)
     return extracted_key,extracted
 # }}}
-class Input_Collector:# {{{
+class InputCollector:# {{{
     def __init__(self,prompt, #{{{
                         help_string=None,
                         is_list = False,
@@ -219,17 +219,19 @@ class Input_Collector:# {{{
         input = input.split()
         return input# }}}
 # }}}
+
 yes = ['y','Y',"yes","Yes"]
 no = ['n','N',"no","No"]
 def make_yes_no_collector(prompt,help_string = None):# {{{
     if help_string is None:
         help_string = "Please enter yes or no"
-    collector = Input_Collector(prompt,help_string = help_string,valid_options=yes+no)
+    collector = InputCollector(prompt,help_string = help_string,valid_options=yes+no)
     return collector#}}}
-def isYes(answer):# {{{
+def is_yes(answer):# {{{
     return answer in yes# }}}
-def isNo(answer):# {{{
+def is_no(answer):# {{{
     return answer in no# }}}
+
 def warn_unused_kwargs(kwargs):# {{{
     if len(kwargs) == 0:
         return
@@ -249,8 +251,8 @@ def recursive_print(object_dictionary,level = 0):# {{{
     return
 # }}}
 def load_json(path, full_path = False):# {{{
-    from . import path as w_path
-    from .workflow import WORKFLOW
+    from snap_workflow.utils import path as w_path
+    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
@@ -262,8 +264,8 @@ def load_json(path, full_path = False):# {{{
     return obj
 # }}}
 def make_json(path, full_path = False,obj = None):# {{{
-    from . import path as w_path
-    from .workflow import WORKFLOW
+    from snap_workflow.utils import path as w_path
+    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
@@ -277,8 +279,8 @@ def make_json(path, full_path = False,obj = None):# {{{
     return obj
 # }}}
 def save_json(path,obj,full_path = False):# {{{
-    from . import path as w_path
-    from .workflow import WORKFLOW
+    from snap_workflow.utils import path as w_path
+    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
@@ -288,8 +290,8 @@ def save_json(path,obj,full_path = False):# {{{
 # }}}
 
 def load_config(path, full_path=False):
-    from . import path as w_path
-    from .workflow import WORKFLOW
+    from snap_workflow.utils import path as w_path
+    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
@@ -316,8 +318,8 @@ def load_config(path, full_path=False):
     raise FileNotFoundError(f"Cannot load config {path}. File does not exist as JSON or YAML.")
 
 def save_config(path, obj, format="json", full_path=False):
-    from . import path as w_path
-    from .workflow import WORKFLOW
+    from snap_workflow.utils import path as w_path
+    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path

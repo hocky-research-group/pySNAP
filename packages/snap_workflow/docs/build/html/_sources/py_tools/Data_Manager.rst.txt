@@ -1,19 +1,19 @@
-Data_Manager
-============
+DataManager
+===========
 
-Implemented internally with numpy arrays, the :py:class:`Data_Manager` is the data structure that stores all collected data by :program:`workflow collect`.
-After running :program:`workflow collect` a pickled :py:class:`Data_Manager` can be found in each stages :file:`collect` directory as :file:`*stage_name*.pkl`.
-:py:class:`Data_Manager` objects provide useful utility for filtering and sorting collected data by job variables.
+Implemented internally with numpy arrays, the :py:class:`DataManager` is the data structure that stores all collected data by :program:`workflow collect`.
+After running :program:`workflow collect` a pickled :py:class:`DataManager` can be found in each stage's :file:`collect` directory as :file:`*stage_name*.pkl`.
+:py:class:`DataManager` (legacy alias: ``Data_Manager``) objects provide useful utility for filtering and sorting collected data by job variables.
 See the below examples and documentation for more info on this utility.
 
 .. code:: python
     
-    from snap_workflow import Data_Manager 
+    from snap_workflow import DataManager
 
-    #Load in Data_Manager with- 
+    # Load in DataManager with:
     #    Job variables: N(int), eta(float), gamma(float)
     #    Collected data: t, bonds (both numpy arrays)
-    dm = Data_Manager("path/to/data_manager.pkl")
+    dm = DataManager("path/to/data_manager.pkl")
 
 
     #Filter by variable comparison

@@ -1,17 +1,12 @@
-from .strings import *
 import os
 import shutil
 import json
 import sys
 import subprocess
-
-from . import version as vrs
-from . import path
-from . import stages
-from . import variables
-from . import sweeps
-from . import spoints
-from . import io
+from snap_workflow.utils.constants import *
+from snap_workflow.utils import version as vrs
+from snap_workflow.utils import path, io
+from snap_workflow.core.domain import stages, variables, sweeps, spoints
 
 def initialize(env_path=None, force=False):
     if not force:
@@ -101,7 +96,7 @@ def zip_workflow(zip_name, sweep_names=None, stage_names=None, include_spoints=F
     elif not isinstance(stage_names, list):
         stage_names = [stage_names]
 
-    with path.From_Root():
+    with path.FromRoot():
         print("Zipping workflow:")
         print("\tessentials")
         subprocess.run(["zip", "-ryq", zip_name, ".workflow"])

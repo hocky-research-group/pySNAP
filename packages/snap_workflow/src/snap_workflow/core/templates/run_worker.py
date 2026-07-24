@@ -5,10 +5,10 @@ import sys
 sys.path.insert(0, os.getcwd() + "/src")
 
 try:
-    from snap_workflow.core.worker import worker_loop
+    from snap_workflow.worker import worker_loop
 except ImportError:
     # If installed in editable mode, PYTHONPATH might not need src/
-    from snap_workflow.core.worker import worker_loop
+    from snap_workflow.worker import worker_loop
 
 # Load variables passed by submit command
 port = os.getenv("SERVER_PORT")

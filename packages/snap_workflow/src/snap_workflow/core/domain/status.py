@@ -1,6 +1,6 @@
 import os
-from .strings import *
-from . import spoints
+from snap_workflow.utils.constants import *
+from snap_workflow.core.domain import spoints
 
 def set_status(new_status, old_status=None, sweep_names=None, stage_names=None):
     if new_status not in ALL_STATUS:

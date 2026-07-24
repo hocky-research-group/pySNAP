@@ -105,9 +105,9 @@ my_stage/
 Edit `my_stage/my_stage.py`:
 
 ```python
-from snap_workflow import SPoint_Manager
+from snap_workflow import SPointManager
 
-with SPoint_Manager() as sm:
+with SPointManager() as sm:
     import numpy as np
     
     # Define a function to automatically save progress state on timeout or signal interrupt
@@ -115,7 +115,7 @@ with SPoint_Manager() as sm:
         print("Saving checkpoint progress before timeout...")
         np.save("state.npy", current_state)  # Note: current_state must be defined in your computation loop below
         
-    # Register the save function with the SPoint_Manager instance
+    # Register the save function with the SPointManager instance
     sm.set_save_func(save_progress)
     
     params = sm.load_params()

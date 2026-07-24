@@ -1,5 +1,5 @@
 import os,sys
-from .strings import *
+from snap_workflow.utils.constants import *
 def get_root(relative_to="."):# {{{
     start = os.getcwd()
     os.chdir(relative_to)
@@ -18,7 +18,7 @@ def get_root(relative_to="."):# {{{
     raise Exception("Not in a workflow system. Run workflow init to start setup")
 
 # }}}
-class From_Root():# {{{
+class FromRoot():# {{{
     def __init__(self):
         return
 
@@ -32,7 +32,7 @@ class From_Root():# {{{
         os.chdir(self.start)
         return
 # }}}
-class From_Dir():# {{{
+class FromDir():# {{{
     def __init__(self,from_dir=None):
         self.start = os.getcwd()
         self.from_dir = from_dir
@@ -46,6 +46,7 @@ class From_Dir():# {{{
         os.chdir(self.start)
         return
 # }}}
+
 def make_sym(real,link,overwrite=False):# {{{
     if not os.path.islink(link):
         os.symlink(real,link) 

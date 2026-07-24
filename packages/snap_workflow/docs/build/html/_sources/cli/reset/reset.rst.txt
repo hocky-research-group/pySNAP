@@ -7,12 +7,12 @@ Synopsis
 **workflow reset** <*component*> ...
 
 Description
-"""""""""""""""
+"""""""""""
 
 Resets <*component*> in the workflow.
 
 Arguments 
-""""""""""""""
+"""""""""
 
 <*component*>
     Can be any of the following:
@@ -20,6 +20,7 @@ Arguments
     * :doc:`errors <errors>`
     * :doc:`sweep <sweep>`
     * :doc:`params <params>`
+    * :doc:`spoint <spoint>`
 
 .. toctree::
    :maxdepth: 1
@@ -28,3 +29,4 @@ Arguments
    errors 
    sweep
    params
+   spoint

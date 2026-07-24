@@ -2,10 +2,10 @@ import os
 import pytest
 from unittest.mock import patch
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core.stages import add_stage
-from snap_workflow.core.variables import add_variable
-from snap_workflow.core.sweeps import add_sweep
-from snap_workflow.core import status
+from snap_workflow.core.domain.stages import add_stage
+from snap_workflow.core.domain.variables import add_variable
+from snap_workflow.core.domain.sweeps import add_sweep
+from snap_workflow.core.domain import status
 
 def test_status_checks(sandbox, env_dir):
     initialize(env_dir)

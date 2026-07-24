@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 import pytest
-from snap_workflow.core.server import start_server
+from snap_workflow.server import start_server
 
 @pytest.fixture
 def sandbox():

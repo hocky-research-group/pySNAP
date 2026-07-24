@@ -5,9 +5,9 @@ import pytest
 import numpy as np
 from unittest.mock import patch, MagicMock
 from snap_workflow.core.workflow import initialize
-from snap_workflow.core.stages import add_stage
-from snap_workflow.core.variables import add_variable
-from snap_workflow.core.sweeps import add_sweep
+from snap_workflow.core.domain.stages import add_stage
+from snap_workflow.core.domain.variables import add_variable
+from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.data import collect_data, Data_Manager
 
 def test_collect_data_routing(sandbox, env_dir, capsys):
@@ -91,7 +91,7 @@ def test_data_manager_class(sandbox, env_dir):
         Data_Manager("nonexistent_data")
 
     # Test candidate lookup Exception handler path
-    with patch("snap_workflow.core.path.get_root", side_effect=RuntimeError("no root")):
+    with patch("snap_workflow.utils.path.get_root", side_effect=RuntimeError("no root")):
         with pytest.raises(ValueError):
             Data_Manager("nonexistent_data")
 

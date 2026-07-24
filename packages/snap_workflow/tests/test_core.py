@@ -9,8 +9,8 @@ from snap_workflow.core import (
     initialize, add_stage, add_variable, add_sweep, 
     set_status, print_status, zip_workflow, load_stages
 )
-from snap_workflow.core.sweeps import load_sweeps
-from snap_workflow.core.variables import load_variables
+from snap_workflow.core.domain.sweeps import load_sweeps
+from snap_workflow.core.domain.variables import load_variables
 
 def test_workflow_lifecycle(sandbox, env_dir):
     # 1. Initialize

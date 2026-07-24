@@ -74,10 +74,16 @@ Injects the active value of a sweep variable directly into your configuration pa
 2. Math Expression Parsing (``!m_``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Evaluates a mathematical formula containing sweep variables:
+Evaluates a mathematical formula containing sweep variables, arithmetic operators, built-in constants (``pi``, ``e``), and mathematical functions (``sin``, ``ln``, ``sqrt``, etc.):
 
-* **Directive**: ``"!m_mesh_size * 2"``
+* **Directives**:
+  - ``"!m_mesh_size * 2"``
+  - ``"!m_2 * sin(pi / 4)"``
+  - ``"!m_sqrt(x**2 + y**2)"``
 * **Resolution**: Evaluates the math expression against active variables and returns the computed number.
+
+.. note::
+   For the complete list of supported mathematical functions (trigonometric, logarithmic, exponential, rounding, angle conversions, etc.) and default constants, see the :doc:`/py_tools/System_Params` API documentation.
 
 3. Type Casting (``!i_`` and ``!f_``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

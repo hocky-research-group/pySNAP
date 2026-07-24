@@ -72,49 +72,6 @@ def setup_blank_workflow():
     if not os.path.isfile(spoint_sh):
         shutil.copy(os.path.join(os.path.dirname(__file__), "templates", "spoint.sh"), spoint_sh)
 
-    os.makedirs("workers", exist_ok=True)
-    
-    cpu_json = os.path.join("workers", "cpu.json")
-    cpu_yaml = os.path.join("workers", "cpu.yaml")
-    cpu_yml = os.path.join("workers", "cpu.yml")
-    if not os.path.isfile(cpu_json) and not os.path.isfile(cpu_yaml) and not os.path.isfile(cpu_yml):
-        cpu_data = {
-            "partition": "FIXME",
-            "nodes": 1,
-            "ntasks-per-node": 1,
-            "cpus-per-task": 8,
-            "mem": "16G",
-            "time": "04:00:00"
-        }
-        if fmt == "yaml":
-            import yaml
-            with open(cpu_yaml, 'w') as f:
-                yaml.safe_dump(cpu_data, f, default_flow_style=False)
-        else:
-            with open(cpu_json, 'w') as f:
-                json.dump(cpu_data, f, indent=4)
-            
-    gpu_json = os.path.join("workers", "gpu.json")
-    gpu_yaml = os.path.join("workers", "gpu.yaml")
-    gpu_yml = os.path.join("workers", "gpu.yml")
-    if not os.path.isfile(gpu_json) and not os.path.isfile(gpu_yaml) and not os.path.isfile(gpu_yml):
-        gpu_data = {
-            "partition": "FIXME",
-            "nodes": 1,
-            "ntasks-per-node": 1,
-            "cpus-per-task": 4,
-            "mem": "32G",
-            "gres": "gpu:1",
-            "time": "08:00:00"
-        }
-        if fmt == "yaml":
-            import yaml
-            with open(gpu_yaml, 'w') as f:
-                yaml.safe_dump(gpu_data, f, default_flow_style=False)
-        else:
-            with open(gpu_json, 'w') as f:
-                json.dump(gpu_data, f, indent=4)
-
     stages.make_stages()
     variables.make_variables()
     sweeps.make_sweeps()

@@ -105,6 +105,54 @@ def load_spoint(spoint_dir="."):
         spoint_string = file.readline()
     return parse_spoint_string(spoint_string)
 
+def reset_spoint(spoint_dir=".", hard=False):
+    var_file = os.path.join(spoint_dir, SPOINT_INFO, COMBO_VARS)
+    abs_path = os.path.abspath(spoint_dir)
+    if not os.path.isfile(var_file):
+        raise ValueError(f"Error: Current working directory '{abs_path}' is not an SPoint directory.")
+
+    spoint_dict = load_spoint(spoint_dir)
+    root = path.get_root(spoint_dir)
+    abs_root = os.path.abspath(root)
+    rel_path = os.path.relpath(abs_path, abs_root)
+    parts = os.path.normpath(rel_path).split(os.sep)
+
+    if len(parts) < 3 or parts[1] != SPOINTS:
+        raise ValueError(f"Error: Current working directory '{abs_path}' is not an SPoint directory.")
+    stage_name = parts[0]
+
+    info_dir = os.path.join(spoint_dir, SPOINT_INFO)
+    if hard:
+        path.clear_directory(spoint_dir)
+
+    os.makedirs(info_dir, exist_ok=True)
+    write_spoint(spoint_dict, spoint_dir)
+    status.write_status(INITIALIZED, spoint_dir)
+    status.write_progress(NONE, spoint_dir)
+    write_time([], spoint_dir)
+
+    params.set_spoint_params(None, stage_name, spoint_dict)
+    relink_spoint_dependencies(stage_name, spoint_dict)
+
+def relink_spoint_dependencies(stage_name, spoint_dict):
+    sweeps = sweep_tools.load_sweeps()
+    for sweep_name, sweep in sweeps.items():
+        if stage_name not in sweep["stages"]:
+            continue
+        sweep_values = sweep["values"]
+        match = True
+        for var, val in spoint_dict.items():
+            if var not in sweep_values:
+                match = False
+                break
+            str_vals = [str(v) for v in sweep_values[var]]
+            if str(val) not in str_vals:
+                match = False
+                break
+        if match:
+            dep_info = get_dependent_spoint_info(stage_name, sweep_name, spoint_dict)
+            link_dependent_combo(stage_name, spoint_dict, dep_info)
+
 def spoint_still_defined(sname, stage_name, spoint_dict):
     sweeps = sweep_tools.load_sweeps()
     for sweep_name, sweep in sweeps.items():
@@ -124,7 +172,6 @@ def spoint_still_defined(sname, stage_name, spoint_dict):
     return False
 
 def submit_spoints(sweep_names=None, stage_names=None, test_submit=False, no_sbatch=False, num_submits=None):
-    stage_tools.validate_stage_resources()
     root = path.get_root()
     os.makedirs(os.path.join(root, "slurm_out"), exist_ok=True)
 

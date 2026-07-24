@@ -318,7 +318,7 @@
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">variant</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">variant</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">Interpolate</span><span class="p">(</span><span class="n">initial_box</span><span class="o">=</span><span class="n">initial_box</span><span class="p">,</span><span class="n">final_box</span><span class="o">=</span><span class="n">final_box</span><span class="p">,</span><span class="n">variant</span><span class="o">=</span><span class="n">ramp</span><span class="p">)</span>
-        <span class="n">box_resize</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">update</span><span class="o">.</span><span class="n">BoxResize</span><span class="p">(</span><span class="n">trigger</span><span class="o">=</span><span class="n">resize_trigger</span><span class="p">,</span><span class="n">box</span><span class="o">=</span><span class="n">box_variant</span><span class="p">)</span>
+        <span class="n">box_resize</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">update</span><span class="o">.</span><span class="n">BoxResize</span><span class="p">(</span><span class="n">trigger</span><span class="o">=</span><span class="n">resize_trigger</span><span class="p">,</span><span class="n">box</span><span class="o">=</span><span class="n">variant</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="n">box_resize</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">update</span><span class="o">.</span><span class="n">BoxResize</span><span class="p">(</span><span class="n">trigger</span><span class="o">=</span><span class="n">resize_trigger</span><span class="p">,</span>
                                             <span class="n">box1</span><span class="o">=</span><span class="n">initial_box</span><span class="p">,</span>
@@ -326,7 +326,7 @@
                                             <span class="n">variant</span><span class="o">=</span><span class="n">ramp</span><span class="p">)</span>    
                                                        
     <span class="n">sim</span><span class="o">.</span><span class="n">operations</span><span class="o">.</span><span class="n">updaters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">box_resize</span><span class="p">)</span>
-    <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">shrink_steps</span><span class="p">)</span>
+    <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">shrink_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">operations</span><span class="o">.</span><span class="n">updaters</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">box_resize</span><span class="p">)</span>
     <span class="k">return</span></div>
 

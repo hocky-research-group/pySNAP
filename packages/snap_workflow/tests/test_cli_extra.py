@@ -72,6 +72,10 @@ def test_cli_reset(sandbox, env_dir):
     main_reset("workflow reset", ["sweep", "-w", "sweep1", "--hard", "--force"])
     main_reset("workflow reset", ["sweep", "-w", "sweep1", "--hard", "-f"])
 
+    # 7. Test reset sweep with positional sweep name passed on command line (should not prompt for sweep name)
+    main_reset("workflow reset", ["sweep", "sweep1"])
+    main_reset("workflow reset", ["sweep", "sweep1", "--hard", "--force"])
+
 def test_cli_remove_force(sandbox, env_dir):
     initialize(env_dir)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])

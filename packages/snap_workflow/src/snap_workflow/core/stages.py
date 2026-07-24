@@ -158,4 +158,40 @@ def validate_stage_resources():
                 f"(cpus={cpus}, gpus={gpus}, mem={mem}). Resource values cannot be -1."
             )
 
+def set_python_config(python_path=None, is_global=False, stage_names=None):
+    if not python_path:
+        python_path = shutil.which("python3") or shutil.which("python") or sys.executable
+    
+    root = path.get_root()
+    if is_global:
+        try:
+            cfg = io.load_json(LOCAL_CONFIG)
+            cfg["default_python_env"] = python_path
+            io.save_json(LOCAL_CONFIG, cfg)
+            print(f"Updated global default_python_env to '{python_path}'")
+        except Exception as e:
+            print(f"Warning: Failed to update global python config: {e}")
+            
+    if stage_names:
+        all_stages = load_stages()
+        target_stages = list(all_stages.keys()) if ("all" in stage_names) else stage_names
+        for st in target_stages:
+            st_dir = os.path.join(root, st)
+            if not os.path.isdir(st_dir):
+                print(f"Warning: Stage '{st}' directory does not exist.")
+                continue
+            env_file = None
+            for ext in [".json", ".yaml", ".yml"]:
+                candidate = os.path.join(st_dir, f"env{ext}")
+                if os.path.isfile(candidate):
+                    env_file = candidate
+                    break
+            if env_file:
+                env_data = io.load_config(os.path.join(st_dir, "env"), full_path=True)
+                env_data["python_path"] = python_path
+                fmt = "yaml" if (env_file.endswith(".yaml") or env_file.endswith(".yml")) else "json"
+                io.save_config(os.path.join(st_dir, "env"), env_data, format=fmt, full_path=True)
+                print(f"Updated stage '{st}' python_path to '{python_path}'")
+
+
 

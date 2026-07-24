@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snap_analyze"
+version = "0.0.1"
+
+#[tool.setuptools.packages.find]
+#where = ["src"]
+#include = ["snap"]
+#namespaces = false
+

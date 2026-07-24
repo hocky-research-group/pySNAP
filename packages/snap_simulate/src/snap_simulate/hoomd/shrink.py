@@ -40,7 +40,7 @@ def shrink_box(sim,params,hoomd_objs = None):
 
     try:
         variant = hoomd.variant.box.Interpolate(initial_box=initial_box,final_box=final_box,variant=ramp)
-        box_resize = hoomd.update.BoxResize(trigger=resize_trigger,box=box_variant)
+        box_resize = hoomd.update.BoxResize(trigger=resize_trigger,box=variant)
     except Exception:
         box_resize = hoomd.update.BoxResize(trigger=resize_trigger,
                                             box1=initial_box,
@@ -48,6 +48,6 @@ def shrink_box(sim,params,hoomd_objs = None):
                                             variant=ramp)    
                                                        
     sim.operations.updaters.append(box_resize)
-    sim.run(shrink_steps)
+    sim.run(shrink_steps + 1)
     sim.operations.updaters.remove(box_resize)
     return

@@ -8,6 +8,7 @@ version = "1.0.0"
 dependencies = [
     "snap_workflow",
     "snap_simulate",
+    "snap_analyze",
 ]
 
 [tool.setuptools]

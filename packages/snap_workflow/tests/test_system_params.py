@@ -4,6 +4,7 @@ import pytest
 import pickle
 from snap_workflow.core.params.system_params import System_Params
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_system_params_dir_loading(sandbox):
     # 1. Create a mock parameters directory
     param_dir = "mock_params"
@@ -78,6 +79,7 @@ def test_directive_exceptions(sandbox):
     raw_str = sp._parse_directives(["!", "v"], "nonexistent_var")
     assert raw_str == "!!v_nonexistent_var"
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_update_parameters(sandbox):
     param_dir = "mock_params"
     os.makedirs(param_dir, exist_ok=True)
@@ -132,6 +134,7 @@ def test_invalid_param_path():
     with pytest.raises(Exception, match="neither a file nor directory"):
         System_Params("invalid_path_to_params")
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_system_params_corner_cases(sandbox):
     param_dir = "mock_params"
     os.makedirs(param_dir, exist_ok=True)
@@ -231,5 +234,97 @@ def test_system_params_recursive_and_missing_keys(sandbox):
     
     # update() when update key is missing
     sp.update() # returns early cleanly
+
+
+def test_system_params_init_from_dict_and_list():
+    data = {
+        "box": {
+            "shrink": {"method": "linear", "rate": 0.01},
+        },
+        "polymers": [
+            {"type": "A", "length": 100},
+        ],
+    }
+
+    # Direct System_Params construction from dict (zero copy)
+    sp = System_Params(data)
+    assert id(sp.params) == id(data)
+
+    # __getitem__ returns raw dict/list
+    assert isinstance(sp["box"], dict)
+    assert isinstance(sp["box", "shrink"], dict)
+    assert sp["box", "shrink", "method"] == "linear"
+
+    # Explicit System_Params sub-object wrapping without copying
+    shrink_sp = System_Params(sp["box", "shrink"])
+    assert shrink_sp["method"] == "linear"
+    assert id(shrink_sp.params) == id(data["box"]["shrink"])
+
+
+def test_system_params_pop():
+    data = {
+        "box": {
+            "shrink": {"method": "linear", "rate": 0.01},
+            "status": "active",
+        },
+        "polymers": [
+            {"type": "A", "length": 100},
+            {"type": "B", "length": 50},
+        ],
+        "simple_key": 42,
+    }
+
+    sp = System_Params(data)
+
+    # 1. Pop nested key pair: params.pop("box", "shrink")
+    shrink_dict = sp.pop("box", "shrink")
+    assert isinstance(shrink_dict, dict)
+    assert shrink_dict["method"] == "linear"
+    assert "shrink" not in data["box"]
+    assert "shrink" not in sp["box"]
+
+    # Wrap popped dict in System_Params in-place
+    shrink_sp = System_Params(shrink_dict)
+    assert shrink_sp["method"] == "linear"
+
+    # 2. Pop list element: params.pop("polymers", 0)
+    poly0 = sp.pop("polymers", 0)
+    assert isinstance(poly0, dict)
+    assert poly0["type"] == "A"
+    assert len(data["polymers"]) == 1
+
+    # 3. Pop with tuple key path: params.pop(("box", "status"))
+    status = sp.pop(("box", "status"))
+    assert status == "active"
+    assert "status" not in data["box"]
+
+    # 4. Pop single key: params.pop("simple_key")
+    simple = sp.pop("simple_key")
+    assert simple == 42
+    assert "simple_key" not in sp
+
+    # 5. Pop with default fallback
+    fallback = sp.pop("nonexistent", default="fallback_val")
+    assert fallback == "fallback_val"
+
+    fallback_nested = sp.pop("box", "nonexistent", default=999)
+    assert fallback_nested == 999
+
+    # 6. Pop error without default
+    with pytest.raises(KeyError):
+        sp.pop("nonexistent_key")
+
+
+def test_set_stages_deprecation_warning(sandbox):
+    param_dir = "mock_params"
+    os.makedirs(param_dir, exist_ok=True)
+    with open(os.path.join(param_dir, "stage1.json"), "w") as f:
+        json.dump({"stage1": {"val": 1}}, f)
+
+    sp = System_Params(param_dir)
+    with pytest.deprecated_call():
+        sp.set_stages("stage1")
+
+
 
 

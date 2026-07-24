@@ -1,6 +1,7 @@
 import numpy as np
 import os,sys
 import json
+from .strings import GLOBAL_CONFIG_DIR
 
 def extract(kwargs,allowable_keys):# {{{
     extracted = None
@@ -337,7 +338,7 @@ def save_config(path, obj, format="json", full_path=False):
         return obj
 
 def get_default_format():
-    global_config_file = os.path.expanduser("~/.snap_workflow/config.json")
+    global_config_file = os.path.join(GLOBAL_CONFIG_DIR, "config.json")
     if os.path.isfile(global_config_file):
         try:
             with open(global_config_file, 'r') as f:

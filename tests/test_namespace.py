@@ -1,6 +1,7 @@
 import pySNAP
 import snap_simulate
 import snap_workflow
+import snap_analyze
 
 def test_pysnap_namespace_exports():
     # Verify imports from snap_simulate
@@ -13,10 +14,14 @@ def test_pysnap_namespace_exports():
     assert pySNAP.SPoint_Manager is snap_workflow.SPoint_Manager
     assert pySNAP.System_Params is snap_workflow.core.params.system_params.System_Params
 
+    # Verify imports from snap_analyze
+    assert pySNAP.analyze is snap_analyze
+
     # Verify __all__ contains the expected attributes
     expected_exports = {
         "workflow",
         "simulate",
+        "analyze",
         "gen_mixture",
         "build_simulation",
         "shrink_box",

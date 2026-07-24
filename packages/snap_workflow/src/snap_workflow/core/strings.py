@@ -34,7 +34,7 @@ CLUSTERS_FILE = ".workflow/clusters.json"
 SERVER_INFO = ".workflow/server_info.json"
 SERVER_LOG = ".workflow/server.log"
 
-GLOBAL_CONFIG_DIR = os.path.expanduser("~/.snap_workflow")
+GLOBAL_CONFIG_DIR = os.path.expanduser("~/.config/snap_workflow")
 GLOBAL_REMOTES_FILE = os.path.join(GLOBAL_CONFIG_DIR, "remotes.json")
 LOCAL_REMOTES_FILE = "remotes.json"
 

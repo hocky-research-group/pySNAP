@@ -34,12 +34,6 @@ def test_workflow_init_yaml(sandbox, env_dir):
         # Verify variables.yaml was created instead of variables.json
         assert os.path.isfile("params/variables.yaml")
         assert not os.path.isfile("params/variables.json")
-        
-        # Verify cpu.yaml and gpu.yaml was created instead of cpu.json / gpu.json
-        assert os.path.isfile("workers/cpu.yaml")
-        assert os.path.isfile("workers/gpu.yaml")
-        assert not os.path.isfile("workers/cpu.json")
-        assert not os.path.isfile("workers/gpu.json")
 
 def test_stage_add_yaml(sandbox, env_dir):
     with patch("snap_workflow.core.io.get_default_format", return_value="yaml"):
@@ -76,9 +70,9 @@ def test_stage_add_yaml(sandbox, env_dir):
 def test_cli_init_prompt_json(sandbox, env_dir):
     # Test main_init interactive prompt defaulting to json
     with patch("snap_workflow.core.io.Input_Collector.collect", side_effect=["y", "json", env_dir]):
-        # Ensure we patch out the expanduser configuration file location
         temp_config = os.path.join(env_dir, "config.json")
-        with patch("os.path.expanduser", return_value=env_dir):
+        with patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", env_dir), \
+             patch("snap_workflow.core.io.GLOBAL_CONFIG_DIR", env_dir):
             with pytest.raises(SystemExit):
                 cli.main_init("init", [])
             
@@ -91,7 +85,8 @@ def test_cli_init_prompt_yaml(sandbox, env_dir):
     # Test main_init interactive prompt choosing yaml
     with patch("snap_workflow.core.io.Input_Collector.collect", side_effect=["y", "yaml", env_dir]):
         temp_config = os.path.join(env_dir, "config.json")
-        with patch("os.path.expanduser", return_value=env_dir):
+        with patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", env_dir), \
+             patch("snap_workflow.core.io.GLOBAL_CONFIG_DIR", env_dir):
             with pytest.raises(SystemExit):
                 cli.main_init("init", [])
             

@@ -24,9 +24,6 @@ def test_workflow_lifecycle(sandbox, env_dir):
     assert "default_activate_cmd" in cfg
     assert "default_env_vars" in cfg
     assert os.path.isfile(".workflow/spoint.sh")
-    assert os.path.isdir("workers")
-    assert os.path.isfile("workers/cpu.json")
-    assert os.path.isfile("workers/gpu.json")
     
     # 2. Add stage
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])

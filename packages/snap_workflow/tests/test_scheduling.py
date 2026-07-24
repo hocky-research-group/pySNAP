@@ -203,17 +203,27 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         from snap_workflow.cli import remote_add_cmd, remote_setup_cmd, load_global_remotes, load_local_remotes
         
         # Test adding remote globally
-        remote_add_cmd("workflow remote add", ["my_workstation", "--host", "tanner@workstation.local"])
+        with patch("subprocess.run") as mock_run_add:
+            mock_res_add = MagicMock()
+            mock_res_add.stdout = "ok\n"
+            mock_run_add.return_value = mock_res_add
+            remote_add_cmd("workflow remote add", ["my_workstation", "--host", "tanner@workstation.local"])
         
         global_data = load_global_remotes()
         assert "my_workstation" in global_data
         assert global_data["my_workstation"]["host"] == "tanner@workstation.local"
         
         # Test local path setup (with patch to mock ssh commands)
-        with patch("subprocess.run") as mock_run:
+        def mock_ssh_run(cmd, **kwargs):
             mock_res = MagicMock()
-            mock_res.stdout = "empty\n"
-            mock_run.return_value = mock_res
+            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+            if "echo ok" in cmd_str:
+                mock_res.stdout = "ok\n"
+            else:
+                mock_res.stdout = "empty\n"
+            return mock_res
+
+        with patch("subprocess.run", side_effect=mock_ssh_run) as mock_run:
             remote_setup_cmd("workflow remote setup", ["my_workstation", "--path", "/home/tanner/sims"])
             assert mock_run.called
             
@@ -224,7 +234,7 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         # 2. Test pre-flight worker submission checks (fail when server not running)
         from snap_workflow.cli import server_submit_worker_cmd
         with pytest.raises(ValueError) as exc:
-            server_submit_worker_cmd("workflow server submit worker", ["my_workstation", "--num-workers", "1"])
+            server_submit_worker_cmd("workflow server submit worker", ["my_workstation", "template", "--num-workers", "1"])
         assert "Manager server is not running" in str(exc.value)
 
         # 3. Test spawning local workers
@@ -233,7 +243,7 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
             json.dump({"port": 1234, "token": "dummy_token"}, f)
             
         with patch("subprocess.Popen") as mock_popen:
-            server_submit_worker_cmd("workflow server submit worker", ["local", "--num-workers", "3", "--stage", "stage1"])
+            server_submit_worker_cmd("workflow server submit worker", ["local", "cpu", "--num-workers", "3", "--stage", "stage1"])
             assert mock_popen.call_count == 3
             # Check command arguments passed to local worker execution
             first_args = mock_popen.call_args_list[0][0][0]

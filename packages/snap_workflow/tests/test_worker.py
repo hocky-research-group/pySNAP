@@ -232,7 +232,7 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
     
     # 1. ServerNotRunningError when SERVER_INFO is missing
     with pytest.raises(ServerNotRunningError):
-        worker.launch_remote_workers("Lab_Main", "~/test_snap_setup")
+        worker.launch_remote_workers("Lab_Main", "~/test_snap_setup", "template")
         
     # Create SERVER_INFO
     from snap_workflow.core.strings import SERVER_INFO
@@ -240,41 +240,36 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
         
-    # Write mock global profiles (both invalid and valid to test parser warning and success paths)
-    global_profile_dir = os.path.expanduser("~/.snap_workflow/workers")
-    os.makedirs(global_profile_dir, exist_ok=True)
-    
-    # 1. Invalid profile to test try/except warning logs (line 188-189)
-    global_profile_bad = os.path.join(global_profile_dir, "test_prof.json")
-    with open(global_profile_bad, "w") as f:
-        f.write("invalid json profile")
-        
-    # 2. Valid profile to test profile sbatch flags compiler paths (line 204 and 211)
-    global_profile_good = os.path.join(global_profile_dir, "valid_prof.json")
-    with open(global_profile_good, "w") as f:
-        json.dump({"gpu": None}, f)
-        
-    # Write invalid local profile to test local profile warning exception path (line 195-196)
-    os.makedirs("workers", exist_ok=True)
-    local_profile_bad = "workers/test_prof.json"
-    with open(local_profile_bad, "w") as f:
-        f.write("invalid local json profile")
-        
+    # Test FIXME profile validation failure
+    def mock_ssh_run_fixme(cmd, **kwargs):
+        mock_res = MagicMock()
+        if "python3 -c" in cmd[2]:
+            mock_res.stdout = '{"partition": "FIXME"}'
+        else:
+            mock_res.stdout = "workflow_root\n"
+        return mock_res
+
+    with patch("subprocess.run", side_effect=mock_ssh_run_fixme):
+        with pytest.raises(ValueError) as exc:
+            worker.launch_remote_workers(
+                remote_host="Lab_Main",
+                remote_path="~/test_snap_setup",
+                profile="template"
+            )
+        assert "FIXME" in str(exc.value)
+
+    # Test valid profile success path
+    def mock_ssh_run_valid(cmd, **kwargs):
+        mock_res = MagicMock()
+        if "python3 -c" in cmd[2]:
+            mock_res.stdout = '{"partition": "test"}'
+        else:
+            mock_res.stdout = "workflow_root\n"
+        return mock_res
+
     with patch("time.sleep", side_effect=KeyboardInterrupt), \
          patch("subprocess.Popen") as mock_popen, \
-         patch("subprocess.run") as mock_run:
-        # Call with test_prof (both global and local are invalid JSON) to cover lines 188-189 and 195-196
-        worker.launch_remote_workers(
-            remote_host="Lab_Main",
-            remote_path="~/test_snap_setup",
-            profile="test_prof",
-            sbatch_args="--partition=test"
-        )
-        
-    with patch("time.sleep", side_effect=KeyboardInterrupt), \
-         patch("subprocess.Popen") as mock_popen, \
-         patch("subprocess.run") as mock_run:
-        # Call with valid_prof and custom sbatch args to cover lines 204 and 211
+         patch("subprocess.run", side_effect=mock_ssh_run_valid) as mock_run:
         worker.launch_remote_workers(
             remote_host="Lab_Main",
             remote_path="~/test_snap_setup",
@@ -284,7 +279,7 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
             sweeps="sweep1",
             exclude_stages="stage2",
             exclude_sweeps="sweep2",
-            remote_name="my_remote_node" # triggers WORKER_HOST env export
+            remote_name="my_remote_node"
         )
         
         # Verify custom env arguments mapping
@@ -295,7 +290,6 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
         assert "WORKER_EXCLUDE_STAGES=stage2" in cmd_str
         assert "WORKER_EXCLUDE_SWEEPS=sweep2" in cmd_str
         assert "WORKER_HOST=my_remote_node" in cmd_str
-        # Verify compiled sbatch arguments from profile and parameters
         assert "--partition=test" in cmd_str
 
 def test_parse_memory_tb_units():
@@ -423,6 +417,7 @@ def test_launch_local_workers_parameters_and_errors(sandbox, env_dir):
         assert "--exclude_sweeps" in args
         assert "sweep2" in args
 
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_worker_cli_argparse_and_shutdown():
     import sys
     import runpy
@@ -489,13 +484,22 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
         
     # We patch Popen to mock tunnel, and sleep to raise KeyboardInterrupt to exit loop cleanly.
     # We patch run to capture and verify sbatch submissions.
+    def mock_ssh_run_valid(cmd, **kwargs):
+        mock_res = MagicMock()
+        if len(cmd) > 2 and "python3 -c" in str(cmd[2]):
+            mock_res.stdout = '{"partition": "test"}'
+        else:
+            mock_res.stdout = "workflow_root\n"
+        return mock_res
+
     with patch("time.sleep", side_effect=KeyboardInterrupt), \
          patch("subprocess.Popen") as mock_popen, \
-         patch("subprocess.run") as mock_run:
+         patch("subprocess.run", side_effect=mock_ssh_run_valid) as mock_run:
          
         worker.launch_remote_workers(
             remote_host="Lab_Main",
             remote_path=remote_path,
+            profile="template",
             num_workers=1,
             concurrency=1
         )
@@ -505,7 +509,7 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
         # Verify tunnel ssh was opened
         assert any("ssh" in c[0][0][0] and "-R" in c[0][0] for c in mock_popen.call_args_list)
         # Verify sbatch submission command was sent via ssh
-        assert any("ssh" in c[0][0][0] and "sbatch" in c[0][0][2] for c in mock_run.call_args_list)
+        assert any("ssh" in c[0][0][0] and "sbatch" in str(c[0][0][2]) for c in mock_run.call_args_list)
 
 def test_resolve_remote_path(sandbox, env_dir):
     initialize(env_dir)
@@ -548,5 +552,56 @@ def test_resolve_remote_path(sandbox, env_dir):
         from snap_workflow.core import path as core_path
         expected = f"~/my_path/{os.path.basename(os.path.abspath(core_path.get_root()))}"
         assert path_res == expected
+
+def test_set_python_config(sandbox, env_dir):
+    initialize(env_dir)
+    from snap_workflow.core.stages import add_stage, set_python_config
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    
+    # 1. Test set_python_config global
+    set_python_config(python_path="/usr/bin/custom_python", is_global=True)
+    with open(".workflow/config.json") as f:
+        cfg = json.load(f)
+    assert cfg["default_python_env"] == "/usr/bin/custom_python"
+    
+    # 2. Test set_python_config stage
+    set_python_config(python_path="/usr/bin/stage_python", stage_names=["stage1"])
+    with open("stage1/env.json") as f:
+        scfg = json.load(f)
+    assert scfg["python_path"] == "/usr/bin/stage_python"
+
+def test_cli_set_python(sandbox, env_dir):
+    initialize(env_dir)
+    from snap_workflow.cli import main_set
+    from snap_workflow.core.stages import add_stage
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    
+    main_set("workflow set", ["python", "/bin/my_py", "--global"])
+    with open(".workflow/config.json") as f:
+        cfg = json.load(f)
+    assert cfg["default_python_env"] == "/bin/my_py"
+    
+    main_set("workflow set", ["python", "/bin/stage_py", "-s", "stage1"])
+    with open("stage1/env.json") as f:
+        scfg = json.load(f)
+    assert scfg["python_path"] == "/bin/stage_py"
+
+def test_remote_preflight_checks(sandbox, env_dir):
+    initialize(env_dir)
+    from snap_workflow.cli import remote_add_cmd
+    from snap_workflow.core.worker import setup_remote_cluster
+    
+    # 1. Test remote_add_cmd connection failure raises ValueError
+    with patch("subprocess.run", side_effect=subprocess.CalledProcessError(255, "ssh")):
+        with pytest.raises(ValueError) as exc:
+            remote_add_cmd("workflow remote add", ["bad_remote", "--host", "unreachable.host.edu"])
+        assert "Cannot connect to remote host" in str(exc.value)
+
+    # 2. Test setup_remote_cluster connection failure raises ValueError
+    with patch("subprocess.run", side_effect=subprocess.CalledProcessError(255, "ssh")):
+        with pytest.raises(ValueError) as exc:
+            setup_remote_cluster("unreachable.host.edu", "~/my_path")
+        assert "Cannot connect to remote host" in str(exc.value)
+
 
 

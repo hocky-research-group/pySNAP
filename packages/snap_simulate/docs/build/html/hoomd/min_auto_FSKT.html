@@ -284,7 +284,7 @@
 <h1>min_auto_FSKT<a class="headerlink" href="#min-auto-fskt" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="snap_simulate.hoomd.min_auto_FSKT">
-<span class="sig-prename descclassname"><span class="pre">snap_simulate.hoomd.</span></span><span class="sig-name descname"><span class="pre">min_auto_FSKT</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_avg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/snap_simulate/hoomd/auto_correlation.html#min_auto_FSKT"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#snap_simulate.hoomd.min_auto_FSKT" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">snap_simulate.hoomd.</span></span><span class="sig-name descname"><span class="pre">min_auto_FSKT</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptype</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/snap_simulate/hoomd/auto_correlation.html#min_auto_FSKT"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#snap_simulate.hoomd.min_auto_FSKT" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p>This function returns a pair of sample/check functions that measure the intermediate scattering function (<span class="math notranslate nohighlight">\(F_s(k, t)\)</span>) to determine the relaxation and autocorrelation time of particle positions.</p>
@@ -293,15 +293,13 @@
 <ul class="simple">
 <li><p><strong>sim</strong> (<em>hoomd.Simulation</em>): The active HOOMD-blue simulation object.</p></li>
 <li><p><strong>ptype</strong> (<em>int</em>): The particle type index to filter and analyze.</p></li>
-<li><p><strong>num_avg</strong> (<em>int, optional</em>): The number of recent elements at the end of the <span class="math notranslate nohighlight">\(F_s(k, t)\)</span> array to average for checking convergence. Defaults to <cite>10</cite>.</p></li>
-<li><p><strong>min_value</strong> (<em>float, optional</em>): The threshold below which the averaged <span class="math notranslate nohighlight">\(F_s(k, t)\)</span> is considered decorrelated. Defaults to <cite>0.01</cite>.</p></li>
 </ul>
 </section>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><strong>sample_function</strong> (<em>callable</em>): Records particle coordinates for the specified type.</p></li>
-<li><p><strong>check_function</strong> (<em>callable</em>): Computes <span class="math notranslate nohighlight">\(F_s(k, t)\)</span> using the <cite>nyut_analyze</cite> package and checks if the average of the last <cite>num_avg</cite> entries drops below <cite>min_value</cite>.</p></li>
+<li><p><strong>check_function</strong> (<em>callable</em>): Computes <span class="math notranslate nohighlight">\(F_s(k, t)\)</span> using the <cite>snap_analyze</cite> package and checks if the average decorrelates.</p></li>
 </ul>
 </section>
 </section>

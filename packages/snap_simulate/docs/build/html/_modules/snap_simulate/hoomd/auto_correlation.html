@@ -274,109 +274,551 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for snap_simulate.hoomd.auto_correlation</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mp</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_sampler_worker_loop</span><span class="p">(</span><span class="n">sampler_factory</span><span class="p">,</span> <span class="n">init_kwargs</span><span class="p">,</span> <span class="n">input_queue</span><span class="p">,</span> <span class="n">result_queue</span><span class="p">,</span> <span class="n">worker_name</span><span class="o">=</span><span class="s2">&quot;FSKT_Worker&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generic background process worker loop for any BaseSampler subclass.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">setproctitle</span>
+        <span class="n">setproctitle</span><span class="o">.</span><span class="n">setproctitle</span><span class="p">(</span><span class="n">worker_name</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span>
+        <span class="c1"># Set Linux process name (PR_SET_NAME = 15) for /proc/PID/comm</span>
+        <span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="s2">&quot;libc.so.6&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">prctl</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="n">worker_name</span><span class="p">[:</span><span class="mi">15</span><span class="p">]</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">sampler_inst</span> <span class="o">=</span> <span class="n">sampler_factory</span><span class="p">(</span><span class="o">**</span><span class="n">init_kwargs</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">result_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;ERROR&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
+        <span class="k">return</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cmd</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="n">input_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;SAMPLE&quot;</span><span class="p">:</span>
+                <span class="n">timestep</span><span class="p">,</span> <span class="n">payload</span> <span class="o">=</span> <span class="n">args</span>
+                <span class="n">sampler_inst</span><span class="o">.</span><span class="n">_internal_sample</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;COMPUTE&quot;</span><span class="p">:</span>
+                <span class="n">tail_window</span><span class="p">,</span> <span class="n">threshold</span> <span class="o">=</span> <span class="n">args</span> <span class="k">if</span> <span class="n">args</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">sampler_inst</span><span class="o">.</span><span class="n">_internal_compute</span><span class="p">(</span><span class="n">tail_window</span><span class="o">=</span><span class="n">tail_window</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span>
+                <span class="n">result_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;SAVE&quot;</span><span class="p">:</span>
+                <span class="n">file_name</span> <span class="o">=</span> <span class="n">args</span>
+                <span class="n">sampler_inst</span><span class="o">.</span><span class="n">_internal_save_state</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;LOAD&quot;</span><span class="p">:</span>
+                <span class="n">file_name</span> <span class="o">=</span> <span class="n">args</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">sampler_inst</span><span class="o">.</span><span class="n">_internal_load_state</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+                <span class="n">result_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;SAVE_DATA&quot;</span><span class="p">:</span>
+                <span class="n">file_name</span> <span class="o">=</span> <span class="n">args</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">sampler_inst</span><span class="o">.</span><span class="n">save_data</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+                <span class="n">result_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;TERMINATE&quot;</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">result_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;ERROR&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseSampler</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for autocorrelation samplers supporting logarithmic scheduling and background multiprocessing.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;sampler_state.pkl&quot;</span><span class="p">,</span>
+        <span class="n">sampling_mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+        <span class="n">min_interval</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">max_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">Nmag</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">Navg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_multiprocessing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">auto_load</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span> <span class="o">=</span> <span class="n">sampling_mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span> <span class="o">=</span> <span class="n">min_interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span> <span class="o">=</span> <span class="n">max_interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Nmag</span> <span class="o">=</span> <span class="n">Nmag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Navg</span> <span class="o">=</span> <span class="n">Navg</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="o">=</span> <span class="n">use_multiprocessing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_load</span> <span class="o">=</span> <span class="n">auto_load</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_timestep</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span> <span class="o">=</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_extended_sample_times</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result_queue</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">steps_ran</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Total simulation timesteps executed under this sampler.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_timestep</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_timestep</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_init_multiprocessing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sampler_factory</span><span class="p">,</span> <span class="n">init_kwargs</span><span class="p">,</span> <span class="n">worker_name</span><span class="o">=</span><span class="s2">&quot;FSKT_Worker&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">ctx</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">get_context</span><span class="p">(</span><span class="s2">&quot;fork&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+                <span class="n">ctx</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">get_context</span><span class="p">(</span><span class="s2">&quot;spawn&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_result_queue</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="n">_sampler_worker_loop</span><span class="p">,</span>
+                <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">sampler_factory</span><span class="p">,</span> <span class="n">init_kwargs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result_queue</span><span class="p">,</span> <span class="n">worker_name</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">worker_name</span><span class="p">,</span>
+                <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_extended_sample_times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_log_points</span><span class="o">=</span><span class="mi">500</span><span class="p">):</span>
+        <span class="n">log_times</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">max_int</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_log_points</span><span class="p">):</span>
+            <span class="n">tau</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span> <span class="o">*</span> <span class="p">(</span><span class="mf">10.0</span> <span class="o">**</span> <span class="p">(</span><span class="n">k</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">Nmag</span><span class="p">))))</span>
+            <span class="n">log_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tau</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">tau</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="n">sample_times</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">dt</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Navg</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">dt</span> <span class="ow">in</span> <span class="n">log_times</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sample_times</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span> <span class="k">for</span> <span class="n">st</span> <span class="ow">in</span> <span class="n">sample_times</span> <span class="k">if</span> <span class="n">st</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">sample_times</span><span class="p">)))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_next_sample_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates the next simulation step interval based on sampling_mode, Nmag, and Navg.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span> <span class="o">==</span> <span class="s2">&quot;logarithmic&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extended_sample_times</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_extended_sample_times</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_extended_sample_times</span><span class="p">()</span>
+            <span class="n">extended_times</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extended_sample_times</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_count</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">extended_times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">extended_times</span><span class="p">):</span>
+                <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">extended_times</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">-</span> <span class="n">extended_times</span><span class="p">[</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">step_after</span> <span class="o">=</span> <span class="n">extended_times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">extended_times</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">extended_times</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span>
+                <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span><span class="p">,</span> <span class="n">step_after</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown sampling_mode: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sample data at a given timestep.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_timestep</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">interval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_next_sample_interval</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initial_timestep</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">timestep</span> <span class="o">-</span> <span class="n">interval</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">timestep</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_frame_payload</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;SAMPLE&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">timestep</span><span class="p">,</span> <span class="n">payload</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sample_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_sample</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample_val</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">sample_val</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tail_window</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check autocorrelation condition. Returns (minimized: bool, auto_value).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;COMPUTE&quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">tail_window</span><span class="p">,</span> <span class="n">threshold</span><span class="p">)))</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ERROR&quot;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">res</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span> <span class="o">=</span> <span class="n">res</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_compute</span><span class="p">(</span><span class="n">tail_window</span><span class="o">=</span><span class="n">tail_window</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save sampler state to a pickle file.&quot;&quot;&quot;</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span>
+        <span class="n">base_state</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;timesteps&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span><span class="p">,</span>
+            <span class="s2">&quot;samples&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">,</span>
+            <span class="s2">&quot;sample_count&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_count</span><span class="p">,</span>
+            <span class="s2">&quot;initial_timestep&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_timestep</span><span class="p">,</span>
+            <span class="s2">&quot;sampling_mode&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span><span class="p">,</span>
+            <span class="s2">&quot;min_interval&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span><span class="p">,</span>
+            <span class="s2">&quot;max_interval&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span><span class="p">,</span>
+            <span class="s2">&quot;Nmag&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">Nmag</span><span class="p">,</span>
+            <span class="s2">&quot;Navg&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">Navg</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">base_state</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;SAVE&quot;</span><span class="p">,</span> <span class="n">file_name</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_internal_save_state</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load sampler state from a pickle file if it exists.&quot;&quot;&quot;</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">base_state</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timesteps&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;samples&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sample_count&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">initial_timestep</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;initial_timestep&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="c1"># Only fallback to state file for scheduling properties if not already set on self</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;sampling_mode&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sampling_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;min_interval&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_interval&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;max_interval&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_interval&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Nmag&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">Nmag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">Nmag</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Nmag&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Navg&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">Navg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">Navg</span> <span class="o">=</span> <span class="n">base_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Navg&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_extended_sample_times</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;LOAD&quot;</span><span class="p">,</span> <span class="n">file_name</span><span class="p">))</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">res</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_load_state</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;sampled_data.txt&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save sampled data as a function of time/timestep.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;SAVE_DATA&quot;</span><span class="p">,</span> <span class="n">file_name</span><span class="p">))</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">res</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_save_data</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_frame_payload</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract payload from frame for background process. Override in subclass.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">frame</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">frame_or_payload</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tail_window</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_save_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_load_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">file_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">):</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;timestep sample&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up background worker process.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;TERMINATE&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PESampler</span><span class="p">(</span><span class="n">BaseSampler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Potential Energy autocorrelation sampler.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">logger</span><span class="p">,</span>
+        <span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;pe_sampler.pkl&quot;</span><span class="p">,</span>
+        <span class="n">sampling_mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+        <span class="n">min_interval</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">max_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">Nmag</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">Navg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_multiprocessing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">auto_load</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">file_name</span><span class="o">=</span><span class="n">file_name</span><span class="p">,</span>
+            <span class="n">sampling_mode</span><span class="o">=</span><span class="n">sampling_mode</span><span class="p">,</span>
+            <span class="n">min_interval</span><span class="o">=</span><span class="n">min_interval</span><span class="p">,</span>
+            <span class="n">max_interval</span><span class="o">=</span><span class="n">max_interval</span><span class="p">,</span>
+            <span class="n">Nmag</span><span class="o">=</span><span class="n">Nmag</span><span class="p">,</span>
+            <span class="n">Navg</span><span class="o">=</span><span class="n">Navg</span><span class="p">,</span>
+            <span class="n">use_multiprocessing</span><span class="o">=</span><span class="n">use_multiprocessing</span><span class="p">,</span>
+            <span class="n">auto_load</span><span class="o">=</span><span class="n">auto_load</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_load</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_name</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_state</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="n">PE</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">log</span><span class="p">()[</span><span class="s1">&#39;md&#39;</span><span class="p">][</span><span class="s1">&#39;compute&#39;</span><span class="p">][</span><span class="s2">&quot;ThermodynamicQuantities&quot;</span><span class="p">][</span><span class="s2">&quot;potential_energy&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">PE</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tail_window</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">tail_window</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span>
+
+        <span class="n">samples_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span>
+        <span class="n">avg</span> <span class="o">=</span> <span class="n">samples_arr</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">samples_arr</span><span class="p">)</span>
+        <span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">samples_arr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">var</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">samples_arr</span><span class="p">)</span>
+
+        <span class="n">ft_signal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfft</span><span class="p">(</span><span class="n">avg</span><span class="p">)</span>
+        <span class="n">convolution</span> <span class="o">=</span> <span class="n">ft_signal</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">conjugate</span><span class="p">(</span><span class="n">ft_signal</span><span class="p">)</span>
+        <span class="n">auto</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfft</span><span class="p">(</span><span class="n">convolution</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples_arr</span><span class="p">)</span> <span class="o">*</span> <span class="n">var</span><span class="p">)</span>
+        <span class="n">last_auto</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">auto</span><span class="p">[</span><span class="o">-</span><span class="n">tail_window</span><span class="p">:])</span>
+
+        <span class="k">if</span> <span class="n">last_auto</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">auto</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">auto</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">timesteps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">file_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">):</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;timestep potential_energy&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_FSKTInternalWorker</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">box</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">ptype</span><span class="p">,</span> <span class="n">file_name</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">Navg</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">snap_analyze</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fskt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">box</span> <span class="o">=</span> <span class="n">box</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span> <span class="o">=</span> <span class="n">ptype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">Fskt</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">min_avg_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="n">sampling_mode</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="n">Nmag</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">payload</span><span class="p">):</span>
+        <span class="n">pos</span><span class="p">,</span> <span class="n">image</span> <span class="o">=</span> <span class="n">payload</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">append_timestep</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tail_window</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+        <span class="n">dt</span><span class="p">,</span> <span class="n">Fskt_vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">calc_Fskt</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Fskt_vals</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">tail_window</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">Fskt_vals</span>
+        <span class="n">auto</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">Fskt_vals</span><span class="p">[</span><span class="o">-</span><span class="n">tail_window</span><span class="p">:])</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">auto</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">),</span> <span class="n">Fskt_vals</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_save_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="n">state_file</span> <span class="o">=</span> <span class="p">(</span><span class="n">file_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.dyn&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">state_file</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_load_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="n">state_file</span> <span class="o">=</span> <span class="p">(</span><span class="n">file_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.dyn&quot;</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">state_file</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">state_file</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;fskt_data.txt&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+        <span class="n">dt</span><span class="p">,</span> <span class="n">Fskt_vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">calc_Fskt</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">((</span><span class="n">dt</span><span class="p">,</span> <span class="n">Fskt_vals</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">file_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">):</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;delta_t Fskt&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">FSKTSampler</span><span class="p">(</span><span class="n">BaseSampler</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Intermediate scattering function Fs(k,t) autocorrelation sampler.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sim</span><span class="p">,</span>
+        <span class="n">ptype</span><span class="p">,</span>
+        <span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;fskt_sampler.pkl&quot;</span><span class="p">,</span>
+        <span class="n">sampling_mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+        <span class="n">min_interval</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">max_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">Nmag</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">Navg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">use_multiprocessing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">auto_load</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">file_name</span><span class="o">=</span><span class="n">file_name</span><span class="p">,</span>
+            <span class="n">sampling_mode</span><span class="o">=</span><span class="n">sampling_mode</span><span class="p">,</span>
+            <span class="n">min_interval</span><span class="o">=</span><span class="n">min_interval</span><span class="p">,</span>
+            <span class="n">max_interval</span><span class="o">=</span><span class="n">max_interval</span><span class="p">,</span>
+            <span class="n">Nmag</span><span class="o">=</span><span class="n">Nmag</span><span class="p">,</span>
+            <span class="n">Navg</span><span class="o">=</span><span class="n">Navg</span><span class="p">,</span>
+            <span class="n">use_multiprocessing</span><span class="o">=</span><span class="n">use_multiprocessing</span><span class="p">,</span>
+            <span class="n">auto_load</span><span class="o">=</span><span class="n">auto_load</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">snap_analyze</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fskt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">operations</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">dt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">box</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">L</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span> <span class="o">=</span> <span class="n">ptype</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">Fskt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">min_avg_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="n">sampling_mode</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="n">Nmag</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">init_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;box&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span>
+                <span class="s2">&quot;dt&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+                <span class="s2">&quot;ptype&quot;</span><span class="p">:</span> <span class="n">ptype</span><span class="p">,</span>
+                <span class="s2">&quot;file_name&quot;</span><span class="p">:</span> <span class="n">file_name</span><span class="p">,</span>
+                <span class="s2">&quot;sampling_mode&quot;</span><span class="p">:</span> <span class="n">sampling_mode</span><span class="p">,</span>
+                <span class="s2">&quot;Nmag&quot;</span><span class="p">:</span> <span class="n">Nmag</span><span class="p">,</span>
+                <span class="s2">&quot;Navg&quot;</span><span class="p">:</span> <span class="n">Navg</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_init_multiprocessing</span><span class="p">(</span><span class="n">_FSKTInternalWorker</span><span class="p">,</span> <span class="n">init_kwargs</span><span class="p">,</span> <span class="n">worker_name</span><span class="o">=</span><span class="s2">&quot;FSKT_Worker&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_load</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_name</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_state</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_frame_payload</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">position</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">image</span>
+        <span class="n">particle_types</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">typeid</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="n">particle_types</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="n">flags</span><span class="p">],</span> <span class="n">image</span><span class="p">[</span><span class="n">flags</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">frame_or_payload</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">frame_or_payload</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">pos</span><span class="p">,</span> <span class="n">image</span> <span class="o">=</span> <span class="n">frame_or_payload</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="n">frame_or_payload</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">position</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="n">frame_or_payload</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">image</span>
+            <span class="n">flags</span> <span class="o">=</span> <span class="n">frame_or_payload</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">typeid</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="n">pos</span><span class="p">[</span><span class="n">flags</span><span class="p">]</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">flags</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">append_timestep</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tail_window</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+        <span class="n">dt</span><span class="p">,</span> <span class="n">Fskt_vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">calc_Fskt</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Fskt_vals</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">tail_window</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">Fskt_vals</span>
+        <span class="n">auto</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">Fskt_vals</span><span class="p">[</span><span class="o">-</span><span class="n">tail_window</span><span class="p">:])</span>
+
+        <span class="k">if</span> <span class="n">auto</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">Fskt_vals</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">Fskt_vals</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_save_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="n">dyn_file</span> <span class="o">=</span> <span class="p">(</span><span class="n">file_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.dyn&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dyn_file</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_load_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="n">dyn_file</span> <span class="o">=</span> <span class="p">(</span><span class="n">file_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.dyn&quot;</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">dyn_file</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dyn_file</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+            <span class="n">dt</span><span class="p">,</span> <span class="n">Fskt_vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span><span class="o">.</span><span class="n">calc_Fskt</span><span class="p">()</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">((</span><span class="n">dt</span><span class="p">,</span> <span class="n">Fskt_vals</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">file_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">):</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;delta_t Fskt&quot;</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="minimize_autocorrelation">
 <a class="viewcode-back" href="../../../hoomd/minimize_autocorrelation.html#snap_simulate.hoomd.minimize_autocorrelation">[docs]</a>
-<span></span><span class="k">def</span><span class="w"> </span><span class="nf">minimize_autocorrelation</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span><span class="n">max_steps</span><span class="p">,</span><span class="n">sample_rate</span><span class="p">,</span><span class="n">sample_function</span><span class="p">,</span><span class="n">check_rate</span><span class="p">,</span><span class="n">check_function</span><span class="p">):</span><span class="c1"># {{{</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">minimize_autocorrelation</span><span class="p">(</span>
+    <span class="n">sim</span><span class="p">,</span>
+    <span class="n">sampler</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+    <span class="n">tail_window</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">max_steps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run simulation while checking autocorrelation after each sample until decorrelated or max_steps reached.&quot;&quot;&quot;</span>
+    <span class="n">target_max_steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span> <span class="k">if</span> <span class="n">max_steps</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">max_steps</span>
+
     <span class="n">minimized</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">timesteps</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">steps_since_check</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">total_steps</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">while</span> <span class="ow">not</span> <span class="n">minimized</span> <span class="ow">and</span> <span class="n">total_steps</span> <span class="o">&lt;</span> <span class="n">max_steps</span><span class="p">:</span>
-        <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">sample_rate</span><span class="p">)</span>
+    <span class="n">auto</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sampler</span><span class="o">.</span><span class="n">timesteps</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">minimized</span><span class="p">,</span> <span class="n">auto</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">tail_window</span><span class="o">=</span><span class="n">tail_window</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">minimized</span> <span class="ow">and</span> <span class="n">sampler</span><span class="o">.</span><span class="n">steps_ran</span> <span class="o">&lt;</span> <span class="n">target_max_steps</span><span class="p">:</span>
+        <span class="n">step_interval</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">get_next_sample_interval</span><span class="p">()</span>
+        <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">step_interval</span><span class="p">)</span>
 
         <span class="n">snap</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">get_snapshot</span><span class="p">()</span>
         <span class="n">timestep</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">timestep</span>
-        <span class="n">sample</span> <span class="o">=</span> <span class="n">sample_function</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span><span class="n">snap</span><span class="p">)</span>
-        <span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
-        <span class="n">timesteps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">timestep</span><span class="p">)</span>
+        <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span> <span class="n">snap</span><span class="p">)</span>
 
-        <span class="n">steps_since_check</span> <span class="o">+=</span> <span class="n">sample_rate</span>
-        <span class="n">total_steps</span> <span class="o">+=</span> <span class="n">sample_rate</span>
+        <span class="n">minimized</span><span class="p">,</span> <span class="n">auto</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">tail_window</span><span class="o">=</span><span class="n">tail_window</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">steps_since_check</span> <span class="o">&gt;=</span> <span class="n">check_rate</span><span class="p">:</span>
-            <span class="n">steps_since_check</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="n">minimized</span><span class="p">,</span><span class="n">auto</span> <span class="o">=</span> <span class="n">check_function</span><span class="p">(</span><span class="n">timesteps</span><span class="p">,</span><span class="n">samples</span><span class="p">)</span>
+    <span class="n">steps_ran</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">steps_ran</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">minimized</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unable to minimize autocorrelation within </span><span class="si">{</span><span class="n">max_steps</span><span class="si">}</span><span class="s2"> timesteps&quot;</span><span class="p">)</span>
+        <span class="n">limit_str</span> <span class="o">=</span> <span class="s2">&quot;infinite&quot;</span> <span class="k">if</span> <span class="n">max_steps</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">max_steps</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unable to minimize autocorrelation within </span><span class="si">{</span><span class="n">limit_str</span><span class="si">}</span><span class="s2"> timesteps&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Finished minimizing autocorrelation function in </span><span class="si">{</span><span class="n">total_steps</span><span class="si">}</span><span class="s2"> timesteps&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Finished minimizing autocorrelation function in </span><span class="si">{</span><span class="n">steps_ran</span><span class="si">}</span><span class="s2"> timesteps&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">()</span>
 
-    <span class="n">res</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;minimized&quot;</span><span class="p">:</span><span class="n">minimized</span><span class="p">,</span>
-           <span class="s2">&quot;auto&quot;</span><span class="p">:</span><span class="n">auto</span><span class="p">,</span>
-           <span class="s2">&quot;steps_ran&quot;</span><span class="p">:</span><span class="n">total_steps</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;minimized&quot;</span><span class="p">:</span> <span class="n">minimized</span><span class="p">,</span>
+        <span class="s2">&quot;auto&quot;</span><span class="p">:</span> <span class="n">auto</span><span class="p">,</span>
+        <span class="s2">&quot;steps_ran&quot;</span><span class="p">:</span> <span class="n">steps_ran</span><span class="p">,</span>
+        <span class="s2">&quot;sampler&quot;</span><span class="p">:</span> <span class="n">sampler</span><span class="p">,</span>
+    <span class="p">}</span></div>
 
-    <span class="k">return</span> <span class="n">res</span> </div>
 
-<span class="c1"># }}}</span>
+
 <div class="viewcode-block" id="min_auto_FSKT">
 <a class="viewcode-back" href="../../../hoomd/min_auto_FSKT.html#snap_simulate.hoomd.min_auto_FSKT">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">min_auto_FSKT</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span><span class="n">ptype</span><span class="p">,</span><span class="n">num_avg</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">min_value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span><span class="c1"># {{{</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">nyut_analyze</span><span class="w"> </span><span class="kn">import</span> <span class="n">dynamics</span>
-    <span class="n">dt</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">operations</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">dt</span>
-    <span class="n">box</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">L</span>
-    <span class="n">dyn</span> <span class="o">=</span> <span class="n">dynamics</span><span class="p">(</span><span class="n">box</span><span class="p">,</span><span class="n">kmag</span><span class="o">=</span><span class="mf">1.1</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">min_auto_FSKT</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">ptype</span><span class="p">):</span>
+    <span class="n">sampler</span> <span class="o">=</span> <span class="n">FSKTSampler</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">ptype</span><span class="o">=</span><span class="n">ptype</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="n">sampler</span><span class="o">.</span><span class="n">check</span></div>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">sample_function</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span><span class="n">frame</span><span class="p">):</span>
-        <span class="n">pos</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">position</span>
-        <span class="n">image</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">image</span>
 
-        <span class="n">particle_types</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">particles</span><span class="o">.</span><span class="n">typeid</span>
-        <span class="n">flags</span> <span class="o">=</span> <span class="n">particle_types</span> <span class="o">==</span> <span class="n">ptype</span>
 
-        <span class="n">pos</span> <span class="o">=</span> <span class="n">pos</span><span class="p">[</span><span class="n">flags</span><span class="p">]</span>
-        <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">flags</span><span class="p">]</span>
-
-        <span class="n">dyn</span><span class="o">.</span><span class="n">append_timestep</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">None</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">check_function</span><span class="p">(</span><span class="n">timesteps</span><span class="p">,</span><span class="n">samples</span><span class="p">):</span>
-        <span class="n">dyn</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
-        <span class="n">dt</span><span class="p">,</span><span class="n">Fskt</span> <span class="o">=</span> <span class="n">dyn</span><span class="o">.</span><span class="n">calc_Fskt</span><span class="p">()</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Fskt</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">num_avg</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span><span class="n">Fskt</span>
-        <span class="n">auto</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">Fskt</span><span class="p">[</span><span class="o">-</span><span class="n">num_avg</span><span class="p">:])</span>
-
-        <span class="k">if</span> <span class="n">auto</span> <span class="o">&lt;</span> <span class="n">min_value</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span><span class="n">Fskt</span>
-        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span><span class="n">Fskt</span>
-
-    <span class="k">return</span> <span class="n">sample_function</span><span class="p">,</span><span class="n">check_function</span></div>
-
-<span class="c1"># }}}</span>
 <div class="viewcode-block" id="min_auto_PE">
 <a class="viewcode-back" href="../../../hoomd/min_auto_PE.html#snap_simulate.hoomd.min_auto_PE">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">min_auto_PE</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span><span class="n">num_avg</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">min_value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span><span class="c1"># {{{</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">min_auto_PE</span><span class="p">(</span><span class="n">logger</span><span class="p">):</span>
+    <span class="n">sampler</span> <span class="o">=</span> <span class="n">PESampler</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="n">sampler</span><span class="o">.</span><span class="n">check</span></div>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">sample_function</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span><span class="n">frame</span><span class="p">):</span>
-        <span class="n">PE</span> <span class="o">=</span> <span class="n">logger</span><span class="o">.</span><span class="n">log</span><span class="p">()[</span><span class="s1">&#39;md&#39;</span><span class="p">][</span><span class="s1">&#39;compute&#39;</span><span class="p">][</span><span class="s2">&quot;ThermodynamicQuantities&quot;</span><span class="p">][</span><span class="s2">&quot;potential_energy&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">PE</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">check_function</span><span class="p">(</span><span class="n">timesteps</span><span class="p">,</span><span class="n">samples</span><span class="p">):</span>
-
-        <span class="n">avg</span> <span class="o">=</span> <span class="n">samples</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
-        <span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
-        <span class="n">ft_signal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfft</span><span class="p">(</span><span class="n">avg</span><span class="p">)</span>
-        <span class="n">convolution</span> <span class="o">=</span> <span class="n">ft_signal</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">conjugate</span><span class="p">(</span><span class="n">ft_signal</span><span class="p">)</span>
-        <span class="n">auto</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">irfft</span><span class="p">(</span><span class="n">convolution</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="o">*</span><span class="n">var</span><span class="p">)</span>
-        <span class="n">last_auto</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">auto</span><span class="p">[</span><span class="o">-</span><span class="n">num_avg</span><span class="p">:])</span>
-
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">num_avg</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span><span class="n">auto</span>
-
-        <span class="k">if</span> <span class="n">auto</span> <span class="o">&lt;</span> <span class="n">min_value</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span><span class="n">auto</span>
-        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span><span class="n">auto</span>
-
-    <span class="k">return</span> <span class="n">sample_function</span><span class="p">,</span><span class="n">check_function</span></div>
-
-<span class="c1"># }}}</span>
 </pre></div>
         </article>
       </div>

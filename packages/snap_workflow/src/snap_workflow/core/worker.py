@@ -206,8 +206,8 @@ def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=N
         except Exception as e:
             logger.warning("Failed to notify manager of worker shutdown: %s", e)
 
-def launch_remote_workers(remote_host, remote_path, num_workers=1, concurrency=1, sbatch_args="",
-                          profile="cpu", stages="", sweeps="", exclude_stages="", exclude_sweeps="", remote_name=""):
+def launch_remote_workers(remote_host, remote_path, profile, num_workers=1, concurrency=1, sbatch_args="",
+                          stages="", sweeps="", exclude_stages="", exclude_sweeps="", remote_name=""):
     from . import io
     root = path.get_root()
     
@@ -222,23 +222,44 @@ def launch_remote_workers(remote_host, remote_path, num_workers=1, concurrency=1
     port = server_info["port"]
     token = server_info["token"]
     
-    # Load worker profile (global first, then local override)
-    profile_data = {}
-    global_profile_base = os.path.expanduser(f"~/.snap_workflow/workers/{profile}")
+    # Resolve and validate remote path
+    resolved_path = resolve_remote_path(remote_host, remote_path)
+    
+    # Load worker profile from remote host (global first, then local override)
+    import base64
+    profile_py = (
+        "import os, json\n"
+        f"prof = {repr(profile)}\n"
+        f"r_path = {repr(resolved_path)}\n"
+        "data = {}\n"
+        "def load_prof(p_base):\n"
+        "    for ext in ['', '.json', '.yaml', '.yml']:\n"
+        "        fn = p_base + ext\n"
+        "        if os.path.isfile(fn):\n"
+        "            with open(fn) as f:\n"
+        "                if fn.endswith('.json') or not (fn.endswith('.yaml') or fn.endswith('.yml')):\n"
+        "                    data.update(json.load(f)); return\n"
+        "                else:\n"
+        "                    import yaml; data.update(yaml.safe_load(f)); return\n"
+        "load_prof(os.path.expanduser(f'~/.config/snap_workflow/workers/{prof}'))\n"
+        "load_prof(os.path.join(r_path, 'workers', prof))\n"
+        "print(json.dumps(data))\n"
+    )
+    b64_prof = base64.b64encode(profile_py.encode()).decode()
+    b64_cmd = f"import base64; exec(base64.b64decode('{b64_prof}'))"
     try:
-        profile_data.update(io.load_config(global_profile_base, full_path=True))
-    except FileNotFoundError:
-        pass
+        res = subprocess.run(["ssh", remote_host, f"python3 -c {repr(b64_cmd)}"], capture_output=True, text=True, check=True)
+        profile_data = json.loads(res.stdout.strip())
     except Exception as e:
-        logger.warning("Failed to load global worker profile %s: %s", global_profile_base, e)
-        
-    local_profile_base = f"workers/{profile}"
-    try:
-        profile_data.update(io.load_config(local_profile_base, full_path=True))
-    except FileNotFoundError:
-        pass
-    except Exception as e:
-        logger.warning("Failed to load local worker profile %s: %s", local_profile_base, e)
+        profile_data = {}
+        logger.warning("Failed to load worker profile '%s' from remote %s: %s", profile, remote_host, e)
+
+    if not profile_data:
+        raise ValueError(f"Worker profile '{profile}' was not found on remote '{remote_host}' at '{resolved_path}/workers/{profile}' or '~/.config/snap_workflow/workers/{profile}'.")
+
+    for k, v in profile_data.items():
+        if "FIXME" in str(v).upper():
+            raise ValueError(f"Worker profile '{profile}' on remote '{remote_host}' contains unconfigured 'FIXME' setting for parameter '{k}'. Please edit '{resolved_path}/workers/{profile}' on the cluster before submitting workers.")
             
     profile_sbatch_args = ""
     if profile_data:
@@ -256,10 +277,7 @@ def launch_remote_workers(remote_host, remote_path, num_workers=1, concurrency=1
             sbatch_args = f"{profile_sbatch_args} {sbatch_args}"
         else:
             sbatch_args = profile_sbatch_args
-    
-    # Resolve and validate remote path
-    resolved_path = resolve_remote_path(remote_host, remote_path)
-    
+
     # 2. Sync local codebase to cluster
     # Exclude spoints/combos and dynamic files to minimize transfer weight
     logger.info("Syncing codebase to remote cluster %s:%s...", remote_host, resolved_path)
@@ -355,11 +373,24 @@ def resolve_remote_path(remote_host, remote_path):
     return new_remote_path
 
 def setup_remote_cluster(remote_host, remote_path):
+    # Pre-flight SSH connectivity test
+    ssh_test = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", remote_host, "echo ok"]
+    try:
+        res = subprocess.run(ssh_test, capture_output=True, text=True, check=True)
+        if res.stdout.strip() != "ok":
+            raise ValueError(f"SSH connection test to '{remote_host}' failed.")
+    except Exception as e:
+        raise ValueError(f"Cannot connect to remote host '{remote_host}' via SSH: {e}. Please verify hostname and credentials.")
+
     resolved_path = resolve_remote_path(remote_host, remote_path)
     logger.info("Setting up workflow structure on remote cluster %s:%s...", remote_host, resolved_path)
-    # Ensure remote directory exists
-    ssh_mkdir = ["ssh", remote_host, f"mkdir -p {resolved_path}"]
-    subprocess.run(ssh_mkdir, check=True)
+    
+    # Ensure remote directory exists and is writable
+    try:
+        ssh_mkdir = ["ssh", remote_host, f"mkdir -p {resolved_path}/workers && test -w {resolved_path}"]
+        subprocess.run(ssh_mkdir, check=True)
+    except Exception as e:
+        raise ValueError(f"Failed to create or access remote directory '{resolved_path}' on '{remote_host}': {e}")
     
     # 1. Sync all code and templates, EXCLUDING env.json, config.json, and workers/
     sync_code_command = [
@@ -392,6 +423,40 @@ def setup_remote_cluster(remote_host, remote_path):
         "./", f"{remote_host}:{resolved_path}/"
     ]
     subprocess.run(sync_envs_command, check=True)
+
+    # 3. Post-setup on remote: initialize FIXME for newly synced configs and ensure default template.json profile
+    import base64
+    remote_script = (
+        "import os, json, glob\n"
+        f"r_path = {repr(resolved_path)}\n"
+        "cfg_p = os.path.join(r_path, '.workflow', 'config.json')\n"
+        "if os.path.isfile(cfg_p):\n"
+        "    with open(cfg_p, 'r+') as f:\n"
+        "        c = json.load(f); c['default_python_env'] = 'FIXME'\n"
+        "        f.seek(0); json.dump(c, f, indent=4); f.truncate()\n"
+        "for env_f in glob.glob(os.path.join(r_path, '*', 'env.json')) + glob.glob(os.path.join(r_path, '*', 'env.yaml')) + glob.glob(os.path.join(r_path, '*', 'env.yml')):\n"
+        "    if env_f.endswith('.json'):\n"
+        "        with open(env_f, 'r+') as f:\n"
+        "            c = json.load(f); c['python_path'] = 'FIXME'\n"
+        "            f.seek(0); json.dump(c, f, indent=4); f.truncate()\n"
+        "    else:\n"
+        "        try:\n"
+        "            import yaml\n"
+        "            with open(env_f, 'r+') as f:\n"
+        "                c = yaml.safe_load(f); c['python_path'] = 'FIXME'\n"
+        "                f.seek(0); yaml.safe_dump(c, f, default_flow_style=False); f.truncate()\n"
+        "        except Exception: pass\n"
+        "w_dir = os.path.join(r_path, 'workers')\n"
+        "os.makedirs(w_dir, exist_ok=True)\n"
+        "tmpl_f = os.path.join(w_dir, 'template.json')\n"
+        "if not os.path.isfile(tmpl_f):\n"
+        "    tmpl_data = {'partition': 'FIXME', 'nodes': 1, 'ntasks-per-node': 1, 'cpus-per-task': 8, 'mem': '16G', 'time': '04:00:00'}\n"
+        "    with open(tmpl_f, 'w') as f: json.dump(tmpl_data, f, indent=4)\n"
+    )
+    b64_setup = base64.b64encode(remote_script.encode()).decode()
+    b64_setup_cmd = f"import base64; exec(base64.b64decode('{b64_setup}'))"
+    subprocess.run(["ssh", remote_host, f"python3 -c {repr(b64_setup_cmd)}"], check=True)
+
     logger.info("Remote cluster setup complete. You can now edit configuration environment templates/workers profiles on the cluster at '%s:%s'.", remote_host, resolved_path)
     return resolved_path
 

@@ -6,7 +6,7 @@
 
 `snap_simulate` is a powerful Python library designed to automate the generation of initial configurations and the construction, execution, and dynamic monitoring of molecular dynamics (MD) simulations in **HOOMD-blue (v3+)**. It parses structured, parametric configuration dictionaries (from JSON or YAML) to place particles and molecules without overlap, construct complex force fields, manage rigid bodies, execute adaptive box compression, and dynamically run simulations until statistical properties reach equilibrium.
 
-It is designed to work in tandem with [nyut_workflow](file:///wsl.localhost/Ubuntu/home/tanner/nyut_workflow) to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters.
+It is designed to work in tandem with [snap_workflow](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_workflow) to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters.
 
 ---
 
@@ -40,13 +40,13 @@ It is designed to work in tandem with [nyut_workflow](file:///wsl.localhost/Ubun
 
 ## Core Capabilities
 
-- **Pack Particles without Overlaps**: Uses a cell-list-based spatial partitioner ([overlap_checker](file:///wsl.localhost/Ubuntu/home/tanner/snap_simulate/src/snap_simulate/system/system.py#L45)) to randomly place complex particles or multi-bead molecules inside a box without overlap.
+- **Pack Particles without Overlaps**: Uses a cell-list-based spatial partitioner ([overlap_checker](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_simulate/src/snap_simulate/system/system.py#L45)) to randomly place complex particles or multi-bead molecules inside a box without overlap.
 - **Topological Template Generators**: Generates molecular structures dynamically from templates (e.g. Star Polymers, Comb Polymers, Grafted/Patchy Colloids) using geometric algorithms like Fibonacci sphere discretization.
-- **Automatic Moment of Inertia Calculations**: Automates calculation of center of mass, total mass, and the moment of inertia tensor, including diagonalization ([system.py](file:///wsl.localhost/Ubuntu/home/tanner/snap_simulate/src/snap_simulate/system/system.py#L119)) to set up rigid bodies.
+- **Automatic Moment of Inertia Calculations**: Automates calculation of center of mass, total mass, and the moment of inertia tensor, including diagonalization ([system.py](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_simulate/src/snap_simulate/system/system.py#L119)) to set up rigid bodies.
 - **Flexible Box Sizing**: Computes box lengths dynamically from target volume fractions (`vol_frac`), area fractions (`area_frac`), aspect ratios, or explicit box dimensions.
 - **Declarative HOOMD-blue Builder**: Instantiates device profiles (CPU/GPU), integrators, thermostats, forces (including tabulated potentials), loggers, and writers based on config dictionaries.
-- **Autocorrelation-Driven Runtimes**: Dynamically runs simulations ([auto_correlation.py](file:///wsl.localhost/Ubuntu/home/tanner/snap_simulate/src/snap_simulate/hoomd/auto_correlation.py)) until physical quantities (potential energy or self-intermediate scattering function $F_s(k,t)$) decorrelate, preventing over-solving.
-- **Dynamic Box Compression**: Implements automated box shrinking ([shrink.py](file:///wsl.localhost/Ubuntu/home/tanner/snap_simulate/src/snap_simulate/hoomd/shrink.py)) to compress the box to a target volume fraction or aspect ratio over a specified number of simulation steps.
+- **Autocorrelation-Driven Runtimes**: Dynamically runs simulations ([auto_correlation.py](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_simulate/src/snap_simulate/hoomd/auto_correlation.py)) until physical quantities (potential energy or self-intermediate scattering function $F_s(k,t)$) decorrelate, preventing over-solving.
+- **Dynamic Box Compression**: Implements automated box shrinking ([shrink.py](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_simulate/src/snap_simulate/hoomd/shrink.py)) to compress the box to a target volume fraction or aspect ratio over a specified number of simulation steps.
 
 ---
 
@@ -103,10 +103,11 @@ pip install -e .
 
 ### Requirements
 - **Python** &ge; 3.8
-- **hoomd** (v3.x or v4.x)
-- **gsd**
-- **numpy**
-- **nyut_workflow** (companion workspace package)
+- **HOOMD-blue** &ge; v3.0
+- **gsd** &ge; v2.0
+- **numpy** &ge; 1.15
+- **scipy**
+- **snap_workflow** (companion workspace package)
 
 ---
 
@@ -261,7 +262,7 @@ pairs:
 ```
 
 ### Modular Configuration Directory Structure
-When scaling up to large sweeps with the companion package `nyut_workflow`, parameter configurations are split into a nested directory structure within a `params` directory. 
+When scaling up to large sweeps with the companion package `snap_workflow`, parameter configurations are split into a nested directory structure within a `params` directory. 
 
 Recursive file loading maps the folder hierarchy to nested dictionary keys at runtime:
 1. **Filenames as Keys**: The base name of any `.yml` file (excluding the extension) becomes a key in its parent dictionary block.
@@ -421,21 +422,16 @@ sim_params["loggers"] = {
 # Re-build simulation with loggers configured
 sim, sim_objs = snap_simulate.hoomd.build_simulation(sim_params)
 
-# Retrieve autocorrelation sampler and check functions for Potential Energy
-sample_fn, check_fn = snap_simulate.hoomd.min_auto_PE(
-    logger=sim_objs["loggers"]["my_logger"],
-    num_avg=20,
-    min_value=0.01
-)
+# Instantiate Potential Energy autocorrelation sampler
+sampler = snap_simulate.hoomd.PESampler(logger=sim_objs["loggers"]["my_logger"])
 
-# Run minimization loop
+# Run minimization loop until decorrelated
 res = snap_simulate.hoomd.minimize_autocorrelation(
-    sim=sim,
-    max_steps=200000,
-    sample_rate=100,
-    sample_function=sample_fn,
-    check_rate=1000,
-    check_function=check_fn
+    sim,
+    sampler,
+    threshold=0.01,
+    tail_window=20,
+    max_steps=200000
 )
 
 print(f"Autocorrelation run status: Minimized = {res['minimized']}, Steps Ran = {res['steps_ran']}")

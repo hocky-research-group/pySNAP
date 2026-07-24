@@ -14,6 +14,15 @@ from .core.status import set_status, print_status
 from .core.logging_config import setup_logging
 
 
+def get_csv_arg(kwargs, keys):
+    for k in keys:
+        val = kwargs.pop(k, None)
+        if val is not None:
+            if isinstance(val, list):
+                return ",".join(str(x) for x in val)
+            return str(val)
+    return ""
+
 # --- Prompt / Interactive helpers ---
 def prompt_each_stage(prompt):
     stages = load_stages()
@@ -283,13 +292,14 @@ def confirm_hard_sweep_removal(type_str, name):
 
 
 def get_completions(args_before, current_token):
-    top_options = ["init", "update", "submit", "add", "print", "set", "reset", "plot", "collect", "zip", "remove", "server", "remote", "autocomplete"]
+    top_options = ["init", "update", "submit", "add", "print", "set", "reset", "convert", "plot", "collect", "zip", "remove", "server", "remote", "autocomplete"]
 
     sub_options = {
         "add": ["stage", "sweep", "variable"],
         "print": ["status", "stages", "sweeps"],
         "set": ["status"],
-        "reset": ["errors", "params", "sweep"],
+        "reset": ["errors", "params", "spoint", "sweep"],
+        "convert": ["params"],
         "remove": ["sweep"],
         "server": ["start", "submit"],
         "remote": ["add", "setup"],
@@ -489,8 +499,8 @@ def workflow_command():
     from .core.version import check_version
     check_version()
     
-    main_options = ["submit", "add", "print", "set", "reset", "plot", "collect", "zip", "remove", "server", "remote"]
-    main_functions = [main_submit, main_add, main_print, main_set, main_reset, main_plot, 
+    main_options = ["submit", "add", "print", "set", "reset", "convert", "plot", "collect", "zip", "remove", "server", "remote"]
+    main_functions = [main_submit, main_add, main_print, main_set, main_reset, main_convert, main_plot, 
                       main_collect, main_zip, main_remove, main_server, main_remote]
     main_options = {main_options[i]: main_functions[i] for i in range(len(main_options))}
     execute_option("main_option", main_options, parsed_command="workflow")
@@ -512,7 +522,7 @@ def main_init(parsed_command, args):
         raise SystemExit
 
     # Check and configure template format preference
-    global_dir = os.path.expanduser("~/.snap_workflow")
+    global_dir = GLOBAL_CONFIG_DIR
     global_config_file = os.path.join(global_dir, "config.json")
     default_format = None
     if os.path.isfile(global_config_file):
@@ -661,8 +671,8 @@ def print_sweeps_cmd(parsed_command, args):
     print_sweeps()
 
 def main_set(parsed_command, args):
-    set_options = ["status"]
-    set_functions = [set_status_cmd]
+    set_options = ["status", "python"]
+    set_functions = [set_status_cmd, set_python_cmd]
     set_options = {set_options[i]: set_functions[i] for i in range(len(set_options))}
     execute_option("set_option", set_options, parsed_command=parsed_command, args=args)
 
@@ -683,6 +693,21 @@ def set_status_cmd(parsed_command, args):
 
     set_status(new_status, old_status, sweep_names, stage_names)
 
+def set_python_cmd(parsed_command, args):
+    from .core.stages import set_python_config
+    args, kwargs = parse_remaining(args)
+    python_path = args[0] if len(args) > 0 else None
+    is_global = kwargs.pop("global", False) or kwargs.pop("g", False)
+    stage_arg = get_csv_arg(kwargs, ["stage", "s"])
+
+    if not is_global and not stage_arg:
+        is_global = True
+
+    stage_names = [x.strip() for x in stage_arg.split(",") if x.strip()] if stage_arg else []
+
+    io.warn_unused_kwargs(kwargs)
+    set_python_config(python_path=python_path, is_global=is_global, stage_names=stage_names)
+
 def main_remove(parsed_command, args):
     remove_options = ["sweep"]
     remove_functions = [remove_sweep_cmd]
@@ -693,6 +718,8 @@ def remove_sweep_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
     force = kwargs.pop("force", False) or kwargs.pop("f", False)
     hard = kwargs.pop("hard", False)
+    if len(args) > 0 and "sweep" not in kwargs and "w" not in kwargs and "matrix" not in kwargs and "m" not in kwargs:
+        kwargs["sweep"] = args[0]
     sweep_name = get_existing_sweep_name(kwargs, get_input=True)
 
     if not force:
@@ -704,13 +731,15 @@ def remove_sweep_cmd(parsed_command, args):
     print(f"Removed sweep {sweep_name}")
 
 def main_reset(parsed_command, args):
-    reset_options = ["errors", "params", "sweep"]
-    reset_functions = [reset_errors_cmd, reset_params_cmd, reset_sweep_cmd]
+    reset_options = ["errors", "params", "spoint", "sweep"]
+    reset_functions = [reset_errors_cmd, reset_params_cmd, reset_spoint_cmd, reset_sweep_cmd]
     reset_options = {reset_options[i]: reset_functions[i] for i in range(len(reset_options))}
     execute_option("reset_option", reset_options, parsed_command=parsed_command, args=args)
 
 def reset_errors_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
+    if len(args) > 0 and "sweep" not in kwargs and "w" not in kwargs and "matrix" not in kwargs and "m" not in kwargs:
+        kwargs["sweep"] = args[0]
     sweep_names = get_existing_sweep_name(kwargs, include_all=True, is_list=True, get_input=True, default="all")
     stage_names = get_existing_stage_name(kwargs, include_all=True, is_list=True, get_input=True, default="all")
     io.warn_unused_kwargs(kwargs)
@@ -720,16 +749,51 @@ def reset_errors_cmd(parsed_command, args):
 def reset_params_cmd(parsed_command, args):
     from .core.params import set_params
     args, kwargs = parse_remaining(args)
+    if len(args) > 0 and "sweep" not in kwargs and "w" not in kwargs and "matrix" not in kwargs and "m" not in kwargs:
+        kwargs["sweep"] = args[0]
     sweep_names = get_existing_sweep_name(kwargs, include_all=True, is_list=True, get_input=True, default="all")
     stage_names = get_existing_stage_name(kwargs, include_all=True, is_list=True, get_input=True, default="all")
     io.warn_unused_kwargs(kwargs)
 
     set_params(sweep_name=sweep_names, stage_name=stage_names)
 
+def reset_spoint_cmd(parsed_command, args):
+    from .core import spoints
+    args, kwargs = parse_remaining(args)
+    hard = kwargs.pop("hard", False)
+    force = kwargs.pop("force", False) or kwargs.pop("f", False)
+    io.warn_unused_kwargs(kwargs)
+
+    cwd = os.getcwd()
+    try:
+        spoints.load_spoint(cwd)
+    except Exception:
+        print(f"Error: Current working directory '{cwd}' is not an SPoint directory.", file=sys.stderr)
+        raise SystemExit(1)
+
+    if hard and not force:
+        prompt = f"Resetting SPoint with --hard will completely clear all files inside '{cwd}'.\n"
+        prompt += f"Are you sure you want to reset this SPoint (y/n)? "
+        collector = io.make_yes_no_collector(prompt)
+        confirmation = collector.collect()
+        if io.isNo(confirmation):
+            print("SPoint reset cancelled.")
+            raise SystemExit(0)
+
+    try:
+        spoints.reset_spoint(cwd, hard=hard)
+        prefix = "Hard reset" if hard else "Reset"
+        print(f"{prefix} SPoint in '{cwd}' successfully.")
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit(1)
+
 def reset_sweep_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
     force = kwargs.pop("force", False) or kwargs.pop("f", False)
     hard = kwargs.pop("hard", False)
+    if len(args) > 0 and "sweep" not in kwargs and "w" not in kwargs and "matrix" not in kwargs and "m" not in kwargs:
+        kwargs["sweep"] = args[0]
     sweep_name = get_existing_sweep_name(kwargs, get_input=True)
     io.warn_unused_kwargs(kwargs)
 
@@ -743,6 +807,36 @@ def reset_sweep_cmd(parsed_command, args):
             raise SystemExit
 
     reset_sweep(sweep_name, hard=hard)
+
+def main_convert(parsed_command, args):
+    convert_options = ["params"]
+    convert_functions = [convert_params_cmd]
+    convert_options = {convert_options[i]: convert_functions[i] for i in range(len(convert_options))}
+    execute_option("convert_option", convert_options, parsed_command=parsed_command, args=args)
+
+def convert_params_cmd(parsed_command, args):
+    from .core.params import convert_params
+    from .core import spoints
+    args, kwargs = parse_remaining(args)
+    fmt = kwargs.pop("format", "json")
+    
+    cwd = os.getcwd()
+    is_spoint_dir = False
+    try:
+        spoints.load_spoint(cwd)
+        is_spoint_dir = True
+    except Exception:
+        is_spoint_dir = False
+
+    if is_spoint_dir and "sweep" not in kwargs and "stage" not in kwargs and "w" not in kwargs and "s" not in kwargs:
+        res = convert_params(spoint_dir=cwd, format=fmt)
+        print(f"Converted parameter file for SPoint in {cwd} -> {res[0]}")
+    else:
+        sweep_names = get_existing_sweep_name(kwargs, include_all=True, is_list=True, get_input=False, default="all")
+        stage_names = get_existing_stage_name(kwargs, include_all=True, is_list=True, get_input=False, default="all")
+        io.warn_unused_kwargs(kwargs)
+        res = convert_params(sweep_name=sweep_names, stage_name=stage_names, format=fmt)
+        print(f"Converted parameter files for {len(res)} SPoint(s).")
 
 def main_plot(parsed_command, args):
     pass
@@ -978,9 +1072,10 @@ def server_submit_worker_cmd(parsed_command, args):
     exclude_stages = get_csv_arg(kwargs, ["exclude-stage", "exclude_stage", "xs"])
     exclude_sweeps = get_csv_arg(kwargs, ["exclude-sweep", "exclude_sweep", "exclude-matrix", "exclude_matrix", "xw", "xm"])
 
-    if len(args) != 1:
-        raise ValueError("Usage: 'workflow server submit worker remote_name --num-workers N [--sbatch-args S] [--profile P] [--stage S] [--sweep W] [--exclude-stage XS] [--exclude-sweep XW]'")
+    if len(args) != 2:
+        raise ValueError("Usage: 'workflow server submit worker remote_name profile_name [--num-workers N] [--sbatch-args S] [--stage S] [--sweep W] [--exclude-stage XS] [--exclude-sweep XW]'")
     name = args[0]
+    profile = args[1]
     
     # 1. Enforce manager server pre-flight check
     if not os.path.isfile(SERVER_INFO):
@@ -1028,8 +1123,7 @@ def server_submit_worker_cmd(parsed_command, args):
 
     num_workers = int(kwargs.pop("num-workers", kwargs.pop("num_workers", "1")))
     kwargs.pop("concurrency", None)
-    
-    profile = kwargs.pop("profile", "cpu")
+    kwargs.pop("profile", None)
     
     # 3. Local or Remote Worker dispatch
     if name == "local":
@@ -1080,6 +1174,7 @@ def main_remote(parsed_command, args):
 
 def remote_add_cmd(parsed_command, args):
     from .core import io
+    import subprocess
     args, kwargs = parse_remaining(args)
     if len(args) != 1:
         raise ValueError("Usage: 'workflow remote add name --host host_address'")
@@ -1090,6 +1185,15 @@ def remote_add_cmd(parsed_command, args):
     
     io.warn_unused_kwargs(kwargs)
     
+    # Pre-flight SSH connection check
+    check_cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", host, "echo ok"]
+    try:
+        res = subprocess.run(check_cmd, capture_output=True, text=True, check=True)
+        if res.stdout.strip() != "ok":
+            raise ValueError(f"SSH connection test to '{host}' failed.")
+    except Exception as e:
+        raise ValueError(f"Cannot connect to remote host '{host}' via SSH: {e}. Please verify hostname and credentials before registering the remote.")
+
     remotes = load_global_remotes()
     remotes[name] = {"host": host}
     save_global_remotes(remotes)

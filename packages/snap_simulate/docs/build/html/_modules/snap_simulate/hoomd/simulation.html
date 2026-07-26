@@ -217,17 +217,14 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../hoomd/samplers.html">Autocorrelation Samplers</a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/ring_polymer.html">Ring Polymer</a></li>
@@ -274,16 +271,20 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for snap_simulate.hoomd.simulation</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span><span class="o">,</span><span class="w"> </span><span class="nn">sys</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_options</span><span class="p">,</span> <span class="n">decode</span><span class="p">,</span> <span class="n">recursive_print</span><span class="p">,</span> <span class="n">dict_defines</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snap_simulate.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode</span><span class="p">,</span> <span class="n">dict_defines</span><span class="p">,</span> <span class="n">get_options</span><span class="p">,</span> <span class="n">recursive_print</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">get_class</span><span class="p">(</span><span class="n">info</span><span class="p">,</span><span class="n">default</span><span class="p">,</span><span class="n">class_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span><span class="c1"># {{{</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;snap_simulate.hoomd.simulation&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_class</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">hoomd</span>
-    <span class="k">if</span> <span class="n">class_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> 
+    <span class="k">if</span> <span class="n">class_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="s2">&quot;class&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
-            <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Class_name not supplied&quot;</span><span class="p">)</span>
         <span class="n">class_name</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;class&quot;</span><span class="p">]</span>
 
@@ -294,148 +295,96 @@
 
     <span class="n">mod</span> <span class="o">=</span> <span class="n">hoomd</span>
     <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">mod_path</span><span class="p">:</span>
-        <span class="n">mod</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">mod</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span><span class="n">class_name</span><span class="p">)</span><span class="c1"># }}}</span>
+    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">class_name</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_bonded_potentials</span><span class="p">(</span><span class="n">info_dict</span><span class="p">,</span> <span class="n">default_mod_path</span><span class="p">,</span> <span class="n">name_title</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name_title</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+    <span class="n">potentials</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="n">types</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s2">&quot;types&quot;</span><span class="p">]</span>
+    <span class="n">specs</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s2">&quot;specs&quot;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">pot_class</span><span class="p">,</span> <span class="n">pot_data</span> <span class="ow">in</span> <span class="n">specs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">pot_cls</span> <span class="o">=</span> <span class="n">get_class</span><span class="p">(</span><span class="n">pot_data</span><span class="p">,</span> <span class="n">default_mod_path</span><span class="p">,</span> <span class="n">pot_class</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">pot_class</span> <span class="o">==</span> <span class="s2">&quot;Table&quot;</span><span class="p">:</span>
+            <span class="n">table</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;table_file&quot;</span><span class="p">])</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">pot</span> <span class="o">=</span> <span class="n">pot_cls</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">default_mod_path</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;bond&quot;</span><span class="p">:</span>
+                <span class="n">pot_data</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;default_params&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">][</span><span class="s2">&quot;U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
+                <span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">][</span><span class="s2">&quot;F&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;U&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">),</span> <span class="s2">&quot;tau&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">)}</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+                    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;tau&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pot</span> <span class="o">=</span> <span class="n">pot_cls</span><span class="p">()</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="p">,</span> <span class="n">pot_class</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Default parameters:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">types</span><span class="p">:</span>
+            <span class="n">pot</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">]</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Specified parameters:&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">pot_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">pot</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+        <span class="n">potentials</span><span class="p">[</span><span class="n">pot_class</span><span class="p">]</span> <span class="o">=</span> <span class="n">pot</span>
+        <span class="nb">print</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">potentials</span>
+
 
 <div class="viewcode-block" id="build_angles">
 <a class="viewcode-back" href="../../../hoomd/angles.html#snap_simulate.hoomd.simulation.build_angles">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">build_angles</span><span class="p">(</span><span class="n">Angles</span><span class="p">):</span><span class="c1"># {{{</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">hoomd</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Angles:&quot;</span><span class="p">)</span>
-    
-    <span class="n">angles</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-    <span class="n">angle_types</span> <span class="o">=</span> <span class="n">Angles</span><span class="p">[</span><span class="s2">&quot;types&quot;</span><span class="p">]</span>
-    <span class="n">angle_info</span> <span class="o">=</span>  <span class="n">Angles</span><span class="p">[</span><span class="s2">&quot;specs&quot;</span><span class="p">]</span>
-    
-    <span class="k">for</span> <span class="n">angle_class</span><span class="p">,</span> <span class="n">angle_data</span> <span class="ow">in</span> <span class="n">angle_info</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="n">angle</span> <span class="o">=</span> <span class="n">get_class</span><span class="p">(</span><span class="n">angle_data</span><span class="p">,[</span><span class="s2">&quot;md&quot;</span><span class="p">,</span><span class="s2">&quot;angle&quot;</span><span class="p">],</span><span class="n">angle_class</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_angles</span><span class="p">(</span><span class="n">Angles</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_build_bonded_potentials</span><span class="p">(</span><span class="n">Angles</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;md&quot;</span><span class="p">,</span> <span class="s2">&quot;angle&quot;</span><span class="p">],</span> <span class="s2">&quot;Angles&quot;</span><span class="p">)</span></div>
 
-        <span class="k">if</span> <span class="n">angle_class</span> <span class="o">==</span> <span class="s2">&quot;Table&quot;</span><span class="p">:</span>
-            <span class="n">table</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">angle_data</span><span class="p">[</span><span class="s2">&quot;table_file&quot;</span><span class="p">])</span>
-            <span class="n">width</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-            <span class="n">angle</span> <span class="o">=</span> <span class="n">angle</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
-            <span class="n">angle_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;U&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">),</span><span class="s2">&quot;tau&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">)}</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">params</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">angle_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
-                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
-                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;tau&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">angle</span> <span class="o">=</span> <span class="n">angle</span><span class="p">()</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="p">,</span><span class="n">angle_class</span><span class="p">,</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span><span class="s2">&quot;Default parameters:&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span><span class="n">angle_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">])</span>
-        <span class="k">for</span> <span class="n">angle_type</span> <span class="ow">in</span> <span class="n">angle_types</span><span class="p">:</span>
-            <span class="n">angle</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">angle_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">angle_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">]</span>
-    
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span><span class="s2">&quot;Specified parameters:&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">angle_type</span><span class="p">,</span><span class="n">angle_params</span> <span class="ow">in</span> <span class="n">angle_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">angle</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">angle_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">angle_params</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span><span class="n">angle_type</span><span class="p">,</span><span class="s2">&quot; &quot;</span><span class="p">,</span><span class="n">angle_params</span><span class="p">)</span>
-        <span class="n">angles</span><span class="p">[</span><span class="n">angle_class</span><span class="p">]</span> <span class="o">=</span> <span class="n">angle</span>
-        <span class="nb">print</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">angles</span></div>
 
-<span class="c1"># }}}</span>
 <div class="viewcode-block" id="build_bonds">
 <a class="viewcode-back" href="../../../hoomd/bonds.html#snap_simulate.hoomd.simulation.build_bonds">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">build_bonds</span><span class="p">(</span><span class="n">Bonds</span><span class="p">,):</span><span class="c1"># {{{</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">hoomd</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Bonds:&quot;</span><span class="p">)</span>
-    <span class="n">bonds</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-    
-    <span class="n">bond_types</span> <span class="o">=</span> <span class="n">Bonds</span><span class="p">[</span><span class="s2">&quot;types&quot;</span><span class="p">]</span>
-    <span class="n">bond_info</span> <span class="o">=</span> <span class="n">Bonds</span><span class="p">[</span><span class="s2">&quot;specs&quot;</span><span class="p">]</span>
-    
-    <span class="k">for</span> <span class="n">bond_class</span><span class="p">,</span> <span class="n">bond_data</span> <span class="ow">in</span> <span class="n">bond_info</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="n">bond</span> <span class="o">=</span> <span class="n">get_class</span><span class="p">(</span><span class="n">bond_data</span><span class="p">,[</span><span class="s2">&quot;md&quot;</span><span class="p">,</span><span class="s2">&quot;bond&quot;</span><span class="p">],</span><span class="n">bond_class</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_bonds</span><span class="p">(</span><span class="n">Bonds</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_build_bonded_potentials</span><span class="p">(</span><span class="n">Bonds</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;md&quot;</span><span class="p">,</span> <span class="s2">&quot;bond&quot;</span><span class="p">],</span> <span class="s2">&quot;Bonds&quot;</span><span class="p">)</span></div>
 
-        <span class="k">if</span> <span class="n">bond_class</span> <span class="o">==</span> <span class="s2">&quot;Table&quot;</span><span class="p">:</span>
-           <span class="n">table</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">bond_data</span><span class="p">[</span><span class="s2">&quot;table_file&quot;</span><span class="p">])</span>
-           <span class="n">width</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-           <span class="n">bond</span> <span class="o">=</span> <span class="n">bond</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
-           <span class="n">bond_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">][</span><span class="s2">&quot;U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
-           <span class="n">bond_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">][</span><span class="s2">&quot;F&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
-           <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">params</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">bond_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
-               <span class="n">params</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
-               <span class="n">params</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">bond</span> <span class="o">=</span> <span class="n">bond</span><span class="p">()</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="p">,</span><span class="n">bond_class</span><span class="p">,</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span><span class="s2">&quot;Default parameters:&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span><span class="n">bond_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">])</span>
-        <span class="k">for</span> <span class="n">bond_type</span> <span class="ow">in</span> <span class="n">bond_types</span><span class="p">:</span>
-            <span class="n">bond</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">bond_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">bond_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">]</span>
-    
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span><span class="s2">&quot;Specified parameters:&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">bond_type</span><span class="p">,</span> <span class="n">bond_params</span> <span class="ow">in</span> <span class="n">bond_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">bond</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">bond_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">bond_params</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span><span class="n">bond_type</span><span class="p">,</span><span class="s2">&quot; &quot;</span><span class="p">,</span><span class="n">bond_params</span><span class="p">)</span>
-        <span class="n">bonds</span><span class="p">[</span><span class="n">bond_class</span><span class="p">]</span> <span class="o">=</span> <span class="n">bond</span>
-        <span class="nb">print</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">bonds</span></div>
 
-<span class="c1">#}}}# }}}</span>
 <div class="viewcode-block" id="build_computes">
 <a class="viewcode-back" href="../../../hoomd/computes.html#snap_simulate.hoomd.simulation.build_computes">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">build_computes</span><span class="p">(</span><span class="n">Computes</span><span class="p">,</span><span class="n">hoomd_objs</span><span class="p">):</span><span class="c1"># {{{</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_computes</span><span class="p">(</span><span class="n">Computes</span><span class="p">,</span> <span class="n">hoomd_objs</span><span class="p">):</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">hoomd</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Computes:&quot;</span><span class="p">)</span>
     <span class="n">computes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">comp_name</span><span class="p">,</span> <span class="n">comp_info</span> <span class="ow">in</span> <span class="n">Computes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="n">comp_class</span> <span class="o">=</span> <span class="n">get_class</span><span class="p">(</span><span class="n">comp_info</span><span class="p">,[</span><span class="s2">&quot;md&quot;</span><span class="p">,</span><span class="s2">&quot;compute&quot;</span><span class="p">])</span>
+        <span class="n">comp_class</span> <span class="o">=</span> <span class="n">get_class</span><span class="p">(</span><span class="n">comp_info</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;md&quot;</span><span class="p">,</span> <span class="s2">&quot;compute&quot;</span><span class="p">])</span>
         <span class="n">options</span> <span class="o">=</span> <span class="n">get_options</span><span class="p">(</span><span class="n">comp_info</span><span class="p">)</span>
 
         <span class="n">comp_filter</span> <span class="o">=</span> <span class="n">hoomd_objs</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">][</span><span class="n">comp_info</span><span class="p">[</span><span class="s1">&#39;filter&#39;</span><span class="p">]]</span>
-        <span class="n">comp</span> <span class="o">=</span> <span class="n">comp_class</span><span class="p">(</span><span class="n">comp_filter</span><span class="p">,</span><span class="o">**</span><span class="n">options</span><span class="p">)</span>
+        <span class="n">comp</span> <span class="o">=</span> <span class="n">comp_class</span><span class="p">(</span><span class="n">comp_filter</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
         <span class="n">computes</span><span class="p">[</span><span class="n">comp_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="p">,</span> <span class="n">comp_name</span><span class="p">,</span> <span class="n">comp_info</span><span class="p">[</span><span class="s2">&quot;class&quot;</span><span class="p">])</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Filter:&quot;</span><span class="p">,</span> <span class="n">comp_info</span><span class="p">[</span><span class="s2">&quot;filter&quot;</span><span class="p">])</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Options:&quot;</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Filter:&quot;</span><span class="p">,</span> <span class="n">comp_info</span><span class="p">[</span><span class="s2">&quot;filter&quot;</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Options:&quot;</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">()</span>
 
-    <span class="k">return</span> <span class="n">computes</span><span class="c1"># }}}</span></div>
+    <span class="k">return</span> <span class="n">computes</span></div>
+
+
 
 <div class="viewcode-block" id="build_dihedrals">
 <a class="viewcode-back" href="../../../hoomd/dihedrals.html#snap_simulate.hoomd.simulation.build_dihedrals">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">build_dihedrals</span><span class="p">(</span><span class="n">Dihedrals</span><span class="p">):</span><span class="c1"># {{{</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">hoomd</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dihedrals:&quot;</span><span class="p">)</span>
-    
-    <span class="n">dihedrals</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-    <span class="n">dihedral_types</span> <span class="o">=</span> <span class="n">Dihedrals</span><span class="p">[</span><span class="s2">&quot;types&quot;</span><span class="p">]</span>
-    <span class="n">dihedral_info</span> <span class="o">=</span>  <span class="n">Dihedrals</span><span class="p">[</span><span class="s2">&quot;specs&quot;</span><span class="p">]</span>
-    
-    <span class="k">for</span> <span class="n">dihedral_class</span><span class="p">,</span> <span class="n">dihedral_data</span> <span class="ow">in</span> <span class="n">dihedral_info</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="n">dihedral</span> <span class="o">=</span> <span class="n">get_class</span><span class="p">(</span><span class="n">dihedral_data</span><span class="p">,[</span><span class="s2">&quot;md&quot;</span><span class="p">,</span><span class="s2">&quot;dihedral&quot;</span><span class="p">],</span><span class="n">dihedral_class</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_dihedrals</span><span class="p">(</span><span class="n">Dihedrals</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_build_bonded_potentials</span><span class="p">(</span><span class="n">Dihedrals</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;md&quot;</span><span class="p">,</span> <span class="s2">&quot;dihedral&quot;</span><span class="p">],</span> <span class="s2">&quot;Dihedrals&quot;</span><span class="p">)</span></div>
 
-        <span class="k">if</span> <span class="n">dihedral_class</span> <span class="o">==</span> <span class="s2">&quot;Table&quot;</span><span class="p">:</span>
-            <span class="n">table</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">dihedral_data</span><span class="p">[</span><span class="s2">&quot;table_file&quot;</span><span class="p">])</span>
-            <span class="n">width</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-            <span class="n">dihedral</span> <span class="o">=</span> <span class="n">dihedral</span><span class="p">(</span><span class="n">width</span><span class="p">)</span>
-            <span class="n">dihedral_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;U&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">),</span><span class="s2">&quot;tau&quot;</span><span class="p">:</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">width</span><span class="p">)}</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">params</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dihedral_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
-                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;U&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
-                <span class="n">params</span><span class="p">[</span><span class="s2">&quot;tau&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">dihedral</span> <span class="o">=</span> <span class="n">dihedral</span><span class="p">()</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="p">,</span><span class="n">dihedral_class</span><span class="p">,</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span><span class="s2">&quot;Default parameters:&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span><span class="n">dihedral_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">])</span>
-        <span class="k">for</span> <span class="n">dihedral_type</span> <span class="ow">in</span> <span class="n">dihedral_types</span><span class="p">:</span>
-            <span class="n">dihedral</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">dihedral_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">dihedral_data</span><span class="p">[</span><span class="s2">&quot;default_params&quot;</span><span class="p">]</span>
-    
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span><span class="s2">&quot;Specified parameters:&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">dihedral_type</span><span class="p">,</span><span class="n">dihedral_params</span> <span class="ow">in</span> <span class="n">dihedral_data</span><span class="p">[</span><span class="s2">&quot;params&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">dihedral</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">dihedral_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">dihedral_params</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">3</span><span class="p">,</span><span class="n">dihedral_type</span><span class="p">,</span><span class="s2">&quot; &quot;</span><span class="p">,</span><span class="n">dihedral_params</span><span class="p">)</span>
-        <span class="n">dihedrals</span><span class="p">[</span><span class="n">dihedral_class</span><span class="p">]</span> <span class="o">=</span> <span class="n">dihedral</span>
-        <span class="nb">print</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">dihedrals</span></div>
-
-<span class="c1"># }}}</span>
 <div class="viewcode-block" id="build_dybond">
 <a class="viewcode-back" href="../../../hoomd/dybond.html#snap_simulate.hoomd.simulation.build_dybond">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">build_dybond</span><span class="p">(</span><span class="n">Dybond</span><span class="p">,</span><span class="n">snap</span><span class="p">,</span><span class="n">dt</span><span class="p">,</span><span class="n">seed</span><span class="p">,</span><span class="n">hoomd_objs</span><span class="p">):</span><span class="c1"># {{{</span>
@@ -745,8 +694,7 @@
     <span class="k">if</span> <span class="s2">&quot;simulation&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
         <span class="n">sim_info</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Must have simulation data specified&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Must have simulation data specified&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">sim_info</span><span class="p">[</span><span class="s2">&quot;device&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;GPU&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="s2">&quot;GPUID&quot;</span> <span class="ow">in</span> <span class="n">sim_info</span><span class="p">:</span>
@@ -756,42 +704,38 @@
     <span class="k">elif</span> <span class="n">sim_info</span><span class="p">[</span><span class="s2">&quot;device&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;CPU&quot;</span><span class="p">:</span>
         <span class="n">proc</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">CPU</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Device should be set to either CPU or GPU in </span><span class="si">{</span><span class="n">sim_specs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Device should be set to either CPU or GPU in simulation specs&quot;</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="s2">&quot;random_seed&quot;</span> <span class="ow">in</span> <span class="n">sim_info</span> <span class="ow">and</span> <span class="n">sim_info</span><span class="p">[</span><span class="s2">&quot;random_seed&quot;</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="s2">&quot;seed.txt&quot;</span><span class="p">):</span>
             <span class="n">seed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="s2">&quot;seed.txt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">seed</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">urandom</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span><span class="s2">&quot;big&quot;</span><span class="p">)</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="s2">&quot;seed.txt&quot;</span><span class="p">,[</span><span class="n">seed</span><span class="p">])</span>
+            <span class="n">seed</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">urandom</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="s2">&quot;big&quot;</span><span class="p">)</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="s2">&quot;seed.txt&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">seed</span><span class="p">])</span>
     <span class="k">elif</span> <span class="s2">&quot;seed&quot;</span> <span class="ow">in</span> <span class="n">sim_info</span><span class="p">:</span>
         <span class="n">seed</span> <span class="o">=</span> <span class="n">sim_info</span><span class="p">[</span><span class="s2">&quot;seed&quot;</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;&#39;seed&#39; or &#39;random seed&#39; must be set&quot;</span><span class="p">)</span>
     
 
     <span class="n">sim</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">Simulation</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">proc</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
-    <span class="n">continue_successful</span> <span class="o">=</span> <span class="n">_set_initial_configuration</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span><span class="n">sim_info</span><span class="p">,</span><span class="s2">&quot;continue_file&quot;</span><span class="p">)</span>
+    <span class="n">continue_successful</span> <span class="o">=</span> <span class="n">_set_initial_configuration</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">sim_info</span><span class="p">,</span> <span class="s2">&quot;continue_file&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">continue_successful</span><span class="p">:</span>
-        <span class="n">init_successful</span> <span class="o">=</span> <span class="n">_set_initial_configuration</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span><span class="n">sim_info</span><span class="p">,</span><span class="s2">&quot;init_file&quot;</span><span class="p">)</span>
+        <span class="n">init_successful</span> <span class="o">=</span> <span class="n">_set_initial_configuration</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">sim_info</span><span class="p">,</span> <span class="s2">&quot;init_file&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">init_successful</span><span class="p">:</span>
-            <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;No suitable initial configuration found: &#39;continue_file&#39; and/or &#39;init_file&#39; either not set or not pointing to valid configurations&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">dict_defines</span><span class="p">(</span><span class="n">sim_info</span><span class="p">,</span><span class="s2">&quot;thermalize_initial&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">dict_defines</span><span class="p">(</span><span class="n">sim_info</span><span class="p">,</span> <span class="s2">&quot;thermalize_initial&quot;</span><span class="p">):</span>
             <span class="n">therm_info</span> <span class="o">=</span> <span class="n">sim_info</span><span class="p">[</span><span class="s2">&quot;thermalize_initial&quot;</span><span class="p">]</span>
             <span class="n">therm_options</span> <span class="o">=</span> <span class="n">get_options</span><span class="p">(</span><span class="n">therm_info</span><span class="p">)</span>
             <span class="n">therm_options</span><span class="p">[</span><span class="s2">&quot;filter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hoomd_objects</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">][</span><span class="n">therm_info</span><span class="p">[</span><span class="s2">&quot;filter&quot;</span><span class="p">]]</span>
             <span class="n">sim</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">thermalize_particle_momenta</span><span class="p">(</span><span class="o">**</span><span class="n">therm_options</span><span class="p">)</span>
 
     <span class="n">hoomd_objects</span><span class="p">[</span><span class="s2">&quot;simulation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sim</span>
-    <span class="c1">#}}}</span>
-    <span class="c1">#---- Integrator ---- {{{</span>
+
+    <span class="c1"># ---- Integrator ----</span>
     <span class="k">if</span> <span class="s2">&quot;integrator&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
         <span class="n">int_info</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;integrator&quot;</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Integrator information must be defined to build a simulation&quot;</span><span class="p">)</span>
     <span class="n">integrator</span> <span class="o">=</span> <span class="n">build_integrator</span><span class="p">(</span><span class="n">int_info</span><span class="p">,</span> <span class="n">hoomd_objects</span><span class="p">)</span>
 
@@ -946,34 +890,31 @@
 
         <span class="k">if</span> <span class="s2">&quot;trigger&quot;</span> <span class="ow">in</span> <span class="n">writer_info</span><span class="p">:</span>
             <span class="n">trigger_info</span> <span class="o">=</span> <span class="n">writer_info</span><span class="p">[</span><span class="s2">&quot;trigger&quot;</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trigger_info</span><span class="p">,</span><span class="nb">str</span><span class="p">):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;trigger: &quot;</span><span class="p">,</span><span class="n">trigger_info</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trigger_info</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;trigger: &quot;</span><span class="p">,</span> <span class="n">trigger_info</span><span class="p">)</span>
                 <span class="n">trigger</span> <span class="o">=</span> <span class="n">obj_dict</span><span class="p">[</span><span class="s2">&quot;triggers&quot;</span><span class="p">][</span><span class="n">trigger_info</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot build info of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">trigger_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> into a trigger&quot;</span><span class="p">)</span>
             <span class="n">options</span><span class="p">[</span><span class="s2">&quot;trigger&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trigger</span>
 
         <span class="k">if</span> <span class="s2">&quot;logger&quot;</span> <span class="ow">in</span> <span class="n">writer_info</span><span class="p">:</span>
             <span class="n">logger_info</span> <span class="o">=</span> <span class="n">writer_info</span><span class="p">[</span><span class="s2">&quot;logger&quot;</span><span class="p">]</span>
 
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">logger_info</span><span class="p">,</span><span class="nb">str</span><span class="p">):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;logger: &quot;</span><span class="p">,</span><span class="n">logger_info</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">logger_info</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;logger: &quot;</span><span class="p">,</span> <span class="n">logger_info</span><span class="p">)</span>
                 <span class="n">logger_name</span> <span class="o">=</span> <span class="n">logger_info</span>
-                <span class="n">logger</span> <span class="o">=</span> <span class="n">obj_dict</span><span class="p">[</span><span class="s2">&quot;loggers&quot;</span><span class="p">][</span><span class="n">logger_name</span><span class="p">]</span>
+                <span class="n">logger_obj</span> <span class="o">=</span> <span class="n">obj_dict</span><span class="p">[</span><span class="s2">&quot;loggers&quot;</span><span class="p">][</span><span class="n">logger_name</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot build info of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">logger_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> into a logger&quot;</span><span class="p">)</span>
 
-            <span class="n">options</span><span class="p">[</span><span class="s2">&quot;logger&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">logger</span>
+            <span class="n">options</span><span class="p">[</span><span class="s2">&quot;logger&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">logger_obj</span>
 
         <span class="k">if</span> <span class="s2">&quot;filter&quot;</span> <span class="ow">in</span> <span class="n">writer_info</span><span class="p">:</span>
             <span class="n">filter_info</span> <span class="o">=</span> <span class="n">writer_info</span><span class="p">[</span><span class="s2">&quot;filter&quot;</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filter_info</span><span class="p">,</span><span class="nb">str</span><span class="p">):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;filter: &quot;</span><span class="p">,</span><span class="n">filter_info</span><span class="p">)</span>
-                <span class="nb">filter</span> <span class="o">=</span> <span class="n">obj_dict</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">][</span><span class="n">filter_info</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filter_info</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    &quot;</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;filter: &quot;</span><span class="p">,</span> <span class="n">filter_info</span><span class="p">)</span>
+                <span class="n">filter_obj</span> <span class="o">=</span> <span class="n">obj_dict</span><span class="p">[</span><span class="s2">&quot;filters&quot;</span><span class="p">][</span><span class="n">filter_info</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">tracebacklimit</span> <span class="o">=</span> <span class="mi">0</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot build info of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">filter_info</span><span class="p">)</span><span class="si">}</span><span class="s2"> into a filter&quot;</span><span class="p">)</span>
             <span class="n">options</span><span class="p">[</span><span class="s2">&quot;filter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">filter</span> 
 

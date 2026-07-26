@@ -17,3 +17,4 @@ The primary simulation workflows are built and driven by the following functions
    hoomd/build_simulation
    hoomd/shrink_box
    hoomd/minimize_autocorrelation
+   hoomd/samplers

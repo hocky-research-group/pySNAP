@@ -217,17 +217,14 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../hoomd/samplers.html">Autocorrelation Samplers</a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/ring_polymer.html">Ring Polymer</a></li>
@@ -274,61 +271,170 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for snap_simulate.hoomd.shrink</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">hoomd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">snap_simulate</span>
+
+
 <div class="viewcode-block" id="shrink_box">
 <a class="viewcode-back" href="../../../hoomd/shrink_box.html#snap_simulate.hoomd.shrink_box">[docs]</a>
-<span></span><span class="k">def</span><span class="w"> </span><span class="nf">shrink_box</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span><span class="n">params</span><span class="p">,</span><span class="n">hoomd_objs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">hoomd</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">snap_simulate</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">shrink_box</span><span class="p">(</span>
+    <span class="n">sim</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">total_steps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">updater_period</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">final_box_length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">final_vol_frac</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">final_area_frac</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">final_aspect_ratio</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">molecules</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">particles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">dimensions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">hoomd_objs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shrink the HOOMD simulation box to a target box length, volume fraction, or area fraction.</span>
 
-    <span class="k">if</span> <span class="s2">&quot;final_vol_frac&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">]:</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">][</span><span class="s2">&quot;vol_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">,</span><span class="s2">&quot;final_vol_frac&quot;</span><span class="p">]</span>
-    <span class="k">elif</span> <span class="s2">&quot;final_area_frac&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">]:</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">][</span><span class="s2">&quot;area_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">,</span><span class="s2">&quot;final_area_frac&quot;</span><span class="p">]</span>
-    <span class="k">if</span> <span class="s2">&quot;final_aspect_ratio&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">]:</span>
-        <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">][</span><span class="s2">&quot;aspect_ratio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">,</span><span class="s2">&quot;final_aspect_ratio&quot;</span><span class="p">]</span>
+<span class="sd">    Accepts parameters either via a nested ``params`` dictionary/object or via direct kwargs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">box_cfg</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">shrink_cfg</span> <span class="o">=</span> <span class="p">{}</span>
 
-    <span class="k">if</span> <span class="s2">&quot;final_box_length&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">]:</span>
-        <span class="n">new_box_length</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">,</span><span class="s2">&quot;final_box_length&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Resolve box config</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;box&quot;</span> <span class="ow">in</span> <span class="n">params</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">],</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">object</span><span class="p">)):</span>
+                    <span class="n">box_cfg</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># Resolve shrink config: check (&quot;box&quot;, &quot;shrink&quot;), &quot;box&quot; -&gt; &quot;shrink&quot;, then top-level &quot;shrink&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;box&quot;</span><span class="p">,</span> <span class="s2">&quot;shrink&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+                    <span class="n">shrink_cfg</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span> <span class="s2">&quot;shrink&quot;</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="s2">&quot;box&quot;</span> <span class="ow">in</span> <span class="n">params</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">],</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;shrink&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">]:</span>
+                    <span class="n">shrink_cfg</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">][</span><span class="s2">&quot;shrink&quot;</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="s2">&quot;shrink&quot;</span> <span class="ow">in</span> <span class="n">params</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;shrink&quot;</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="n">shrink_cfg</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;shrink&quot;</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">if</span> <span class="n">molecules</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;molecules&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+                    <span class="n">molecules</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;molecules&quot;</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">if</span> <span class="n">particles</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;particles&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+                    <span class="n">particles</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;particles&quot;</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+    <span class="c1"># Resolve values with precedence: explicit kwarg &gt; shrink_cfg / box_cfg</span>
+    <span class="k">if</span> <span class="n">total_steps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">total_steps</span> <span class="o">=</span> <span class="n">shrink_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_steps&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">total_steps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;shrink_box requires &#39;total_steps&#39; specified in kwargs or params.&quot;</span><span class="p">)</span>
+    <span class="n">total_steps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">total_steps</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">updater_period</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">updater_period</span> <span class="o">=</span> <span class="n">shrink_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;updater_period&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="mi">100</span>
+
+    <span class="k">if</span> <span class="n">final_box_length</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">final_box_length</span> <span class="o">=</span> <span class="n">shrink_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;final_box_length&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">final_vol_frac</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">final_vol_frac</span> <span class="o">=</span> <span class="n">shrink_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;final_vol_frac&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">final_area_frac</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">final_area_frac</span> <span class="o">=</span> <span class="n">shrink_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;final_area_frac&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">final_aspect_ratio</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">final_aspect_ratio</span> <span class="o">=</span> <span class="n">shrink_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;final_aspect_ratio&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">dimensions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">box_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;dimensions&quot;</span> <span class="ow">in</span> <span class="n">box_cfg</span><span class="p">:</span>
+            <span class="n">dimensions</span> <span class="o">=</span> <span class="n">box_cfg</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;box&quot;</span><span class="p">,</span> <span class="s2">&quot;dimensions&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+                    <span class="n">dimensions</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span> <span class="s2">&quot;dimensions&quot;</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+    <span class="k">if</span> <span class="n">dimensions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">dimensions</span> <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="c1"># Calculate target box length</span>
+    <span class="k">if</span> <span class="n">final_box_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">new_box_length</span> <span class="o">=</span> <span class="n">final_box_length</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">if</span> <span class="s2">&quot;box_length&quot;</span> <span class="ow">in</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">]:</span>
-            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;box_length&quot;</span><span class="p">)</span>
-        <span class="n">new_box_length</span> <span class="o">=</span> <span class="n">snap_simulate</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">calc_box_length</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">],</span>
-                                                              <span class="n">params</span><span class="p">[</span><span class="s2">&quot;molecules&quot;</span><span class="p">],</span>
-                                                              <span class="n">params</span><span class="p">[</span><span class="s2">&quot;particles&quot;</span><span class="p">])</span>
+        <span class="n">calc_box_cfg</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">box_cfg</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">box_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="n">calc_box_cfg</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dimensions</span>
+        <span class="k">if</span> <span class="n">final_vol_frac</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">calc_box_cfg</span><span class="p">[</span><span class="s2">&quot;vol_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_vol_frac</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;final_vol_frac&quot;</span> <span class="ow">in</span> <span class="n">shrink_cfg</span><span class="p">:</span>
+                <span class="n">box_cfg</span><span class="p">[</span><span class="s2">&quot;vol_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_vol_frac</span>
+        <span class="k">if</span> <span class="n">final_area_frac</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">calc_box_cfg</span><span class="p">[</span><span class="s2">&quot;area_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_area_frac</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;final_area_frac&quot;</span> <span class="ow">in</span> <span class="n">shrink_cfg</span><span class="p">:</span>
+                <span class="n">box_cfg</span><span class="p">[</span><span class="s2">&quot;area_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_area_frac</span>
+        <span class="k">if</span> <span class="n">final_aspect_ratio</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">calc_box_cfg</span><span class="p">[</span><span class="s2">&quot;aspect_ratio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_aspect_ratio</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;final_aspect_ratio&quot;</span> <span class="ow">in</span> <span class="n">shrink_cfg</span><span class="p">:</span>
+                <span class="n">box_cfg</span><span class="p">[</span><span class="s2">&quot;aspect_ratio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_aspect_ratio</span>
+
+        <span class="k">if</span> <span class="n">molecules</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">particles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;molecules and particles must be provided to compute target box length from volume/area fraction.&quot;</span><span class="p">)</span>
+
+        <span class="n">new_box_length</span> <span class="o">=</span> <span class="n">snap_simulate</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">calc_box_length</span><span class="p">(</span>
+            <span class="n">calc_box_cfg</span><span class="p">,</span>
+            <span class="n">molecules</span><span class="p">,</span>
+            <span class="n">particles</span>
+        <span class="p">)</span>
+
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">iterable</span><span class="p">(</span><span class="n">new_box_length</span><span class="p">):</span>
-        <span class="n">dims</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]</span>
         <span class="n">n_box_length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
-        <span class="n">n_box_length</span><span class="p">[:</span><span class="n">dims</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_box_length</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span>
+        <span class="n">n_box_length</span><span class="p">[:</span><span class="n">dimensions</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_box_length</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dimensions</span><span class="p">)</span>
         <span class="n">new_box_length</span> <span class="o">=</span> <span class="n">n_box_length</span>
-    
+
     <span class="n">initial_box</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">box</span>
     <span class="n">final_box</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="o">*</span><span class="n">new_box_length</span><span class="p">)</span>
-    <span class="c1">#final_box = hoomd.Box.from_box(initial_box)</span>
-    <span class="c1">#final_box.volume = np.prod(new_box_length) </span>
-                                               
-    <span class="n">shrink_steps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">,</span><span class="s2">&quot;total_steps&quot;</span><span class="p">])</span>
-    <span class="n">ramp</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">variant</span><span class="o">.</span><span class="n">Ramp</span><span class="p">(</span><span class="n">A</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">B</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">t_start</span><span class="o">=</span><span class="n">sim</span><span class="o">.</span><span class="n">timestep</span><span class="p">,</span><span class="n">t_ramp</span><span class="o">=</span><span class="n">shrink_steps</span><span class="p">)</span>
 
-    <span class="n">updater_period</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;box&quot;</span><span class="p">,</span><span class="s2">&quot;shrink&quot;</span><span class="p">,</span><span class="s2">&quot;updater_period&quot;</span><span class="p">])</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">updater_period</span><span class="p">,</span><span class="nb">str</span><span class="p">):</span>
-        <span class="n">resize_trigger</span> <span class="o">=</span> <span class="n">hoomd_objs</span><span class="p">[</span><span class="s2">&quot;triggers&quot;</span><span class="p">][</span><span class="n">check_steps</span><span class="p">]</span>
+    <span class="n">ramp</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">variant</span><span class="o">.</span><span class="n">Ramp</span><span class="p">(</span><span class="n">A</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">B</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">t_start</span><span class="o">=</span><span class="n">sim</span><span class="o">.</span><span class="n">timestep</span><span class="p">,</span> <span class="n">t_ramp</span><span class="o">=</span><span class="n">total_steps</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">updater_period</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">hoomd_objs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;triggers&quot;</span> <span class="ow">in</span> <span class="n">hoomd_objs</span><span class="p">:</span>
+            <span class="n">resize_trigger</span> <span class="o">=</span> <span class="n">hoomd_objs</span><span class="p">[</span><span class="s2">&quot;triggers&quot;</span><span class="p">][</span><span class="n">updater_period</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trigger key &#39;</span><span class="si">{</span><span class="n">updater_period</span><span class="si">}</span><span class="s2">&#39; not found in hoomd_objs[&#39;triggers&#39;]&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">updater_period</span><span class="p">,</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">Trigger</span><span class="p">):</span>
+        <span class="n">resize_trigger</span> <span class="o">=</span> <span class="n">updater_period</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">resize_trigger</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">Periodic</span><span class="p">(</span><span class="n">updater_period</span><span class="p">)</span>
+        <span class="n">resize_trigger</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">trigger</span><span class="o">.</span><span class="n">Periodic</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">updater_period</span><span class="p">))</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">variant</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">variant</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">Interpolate</span><span class="p">(</span><span class="n">initial_box</span><span class="o">=</span><span class="n">initial_box</span><span class="p">,</span><span class="n">final_box</span><span class="o">=</span><span class="n">final_box</span><span class="p">,</span><span class="n">variant</span><span class="o">=</span><span class="n">ramp</span><span class="p">)</span>
-        <span class="n">box_resize</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">update</span><span class="o">.</span><span class="n">BoxResize</span><span class="p">(</span><span class="n">trigger</span><span class="o">=</span><span class="n">resize_trigger</span><span class="p">,</span><span class="n">box</span><span class="o">=</span><span class="n">variant</span><span class="p">)</span>
+        <span class="n">variant</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">variant</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">Interpolate</span><span class="p">(</span>
+            <span class="n">initial_box</span><span class="o">=</span><span class="n">initial_box</span><span class="p">,</span> <span class="n">final_box</span><span class="o">=</span><span class="n">final_box</span><span class="p">,</span> <span class="n">variant</span><span class="o">=</span><span class="n">ramp</span>
+        <span class="p">)</span>
+        <span class="n">box_resize</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">update</span><span class="o">.</span><span class="n">BoxResize</span><span class="p">(</span><span class="n">trigger</span><span class="o">=</span><span class="n">resize_trigger</span><span class="p">,</span> <span class="n">box</span><span class="o">=</span><span class="n">variant</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-        <span class="n">box_resize</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">update</span><span class="o">.</span><span class="n">BoxResize</span><span class="p">(</span><span class="n">trigger</span><span class="o">=</span><span class="n">resize_trigger</span><span class="p">,</span>
-                                            <span class="n">box1</span><span class="o">=</span><span class="n">initial_box</span><span class="p">,</span>
-                                            <span class="n">box2</span><span class="o">=</span><span class="n">final_box</span><span class="p">,</span>  
-                                            <span class="n">variant</span><span class="o">=</span><span class="n">ramp</span><span class="p">)</span>    
-                                                       
+        <span class="n">box_resize</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">update</span><span class="o">.</span><span class="n">BoxResize</span><span class="p">(</span>
+            <span class="n">trigger</span><span class="o">=</span><span class="n">resize_trigger</span><span class="p">,</span>
+            <span class="n">box1</span><span class="o">=</span><span class="n">initial_box</span><span class="p">,</span>
+            <span class="n">box2</span><span class="o">=</span><span class="n">final_box</span><span class="p">,</span>
+            <span class="n">variant</span><span class="o">=</span><span class="n">ramp</span>
+        <span class="p">)</span>
+
     <span class="n">sim</span><span class="o">.</span><span class="n">operations</span><span class="o">.</span><span class="n">updaters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">box_resize</span><span class="p">)</span>
-    <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">shrink_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">sim</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">total_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">operations</span><span class="o">.</span><span class="n">updaters</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">box_resize</span><span class="p">)</span>
     <span class="k">return</span></div>
+
+
 
 </pre></div>
         </article>

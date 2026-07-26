@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="gen_mixture" href="system/gen_mixture.html"><link rel="prev" title="min_auto_PE" href="hoomd/min_auto_PE.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="gen_mixture" href="system/gen_mixture.html"><link rel="prev" title="Autocorrelation Samplers" href="hoomd/samplers.html">
         <link rel="prefetch" href="_static/logo_light.png" as="image">
         <link rel="prefetch" href="_static/logo.png" as="image">
 
@@ -218,17 +218,14 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="hoomd/min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l3"><a class="reference internal" href="hoomd/min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hoomd/samplers.html">Autocorrelation Samplers</a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">system</a><input aria-label="Toggle navigation of system" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">system</a><input aria-label="Toggle navigation of system" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/ring_polymer.html">Ring Polymer</a></li>
@@ -282,6 +279,21 @@
         <article role="main" id="furo-main-content">
           <section id="module-snap_simulate.system">
 <span id="system"></span><h1>system<a class="headerlink" href="#module-snap_simulate.system" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="snap_simulate.system.build_rigid">
+<span class="sig-prename descclassname"><span class="pre">snap_simulate.system.</span></span><span class="sig-name descname"><span class="pre">build_rigid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">particle_masses</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">particle_diameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/snap_simulate/system/rigid.html#build_rigid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#snap_simulate.system.build_rigid" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="snap_simulate.system.calc_box_length">
+<span class="sig-prename descclassname"><span class="pre">snap_simulate.system.</span></span><span class="sig-name descname"><span class="pre">calc_box_length</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Box</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Molecules</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Particles</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/snap_simulate/system/box.html#calc_box_length"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#snap_simulate.system.calc_box_length" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="snap_simulate.system.gen_mixture">
+<span class="sig-prename descclassname"><span class="pre">snap_simulate.system.</span></span><span class="sig-name descname"><span class="pre">gen_mixture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/snap_simulate/system/generator.html#gen_mixture"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#snap_simulate.system.gen_mixture" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <section id="system-generation-operations">
 <h2>System Generation Operations<a class="headerlink" href="#system-generation-operations" title="Link to this heading">¶</a></h2>
 <p>The primary system generation workflow is driven by the following function:</p>
@@ -307,14 +319,14 @@
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="hoomd/min_auto_PE.html">
+          <a class="prev-page" href="hoomd/samplers.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">min_auto_PE</div>
+                <div class="title">Autocorrelation Samplers</div>
                 
               </div>
             </a>
@@ -349,6 +361,9 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">system</a><ul>
+<li><a class="reference internal" href="#snap_simulate.system.build_rigid"><code class="docutils literal notranslate"><span class="pre">build_rigid()</span></code></a></li>
+<li><a class="reference internal" href="#snap_simulate.system.calc_box_length"><code class="docutils literal notranslate"><span class="pre">calc_box_length()</span></code></a></li>
+<li><a class="reference internal" href="#snap_simulate.system.gen_mixture"><code class="docutils literal notranslate"><span class="pre">gen_mixture()</span></code></a></li>
 <li><a class="reference internal" href="#system-generation-operations">System Generation Operations</a></li>
 </ul>
 </li>

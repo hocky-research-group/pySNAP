@@ -3,22 +3,42 @@ minimize_autocorrelation
 
 .. autofunction:: snap_simulate.hoomd.minimize_autocorrelation
 
-This function runs a HOOMD-blue simulation and monitors the autocorrelation of a target physical quantity, stopping the simulation once the quantity has decorrelated (i.e. autocorrelation falls below a specified threshold).
+This function runs a HOOMD-blue simulation and continuously evaluates the autocorrelation of a target physical quantity using a sampler object (such as `PESampler` or `FSKTSampler`), stopping the simulation automatically once decorrelation is achieved.
 
 Arguments Description
 ---------------------
 
 * **sim** (*hoomd.Simulation*): The HOOMD-blue simulation object to run.
-* **max_steps** (*int*): The maximum number of timesteps to run the simulation for before timing out.
-* **sample_rate** (*int*): The frequency (in timesteps) at which to call `sample_function` to record the target quantity.
-* **sample_function** (*callable*): A function with signature `sample_function(timestep, frame)` that extracts the desired value from the simulation frame.
-* **check_rate** (*int*): The frequency (in timesteps) at which to call `check_function` to evaluate the autocorrelation.
-* **check_function** (*callable*): A function with signature `check_function(timesteps, samples)` that calculates autocorrelation and returns `(minimized, auto_value)`.
+* **sampler** (*BaseSampler*): An autocorrelation sampler instance (`PESampler`, `FSKTSampler`, or custom `BaseSampler` subclass).
+* **threshold** (*float*, default 0.01): The autocorrelation value threshold below which the quantity is considered decorrelated.
+* **tail_window** (*int*, default 10): Number of trailing sample points over which to average the autocorrelation value.
+* **max_steps** (*int*, optional): Maximum simulation timesteps to run before timing out.
 
-Autocorrelation Methods
------------------------
+Returns
+-------
 
-The following helper functions generate matching `(sample_function, check_function)` pairs to pass into `minimize_autocorrelation`:
+* **result** (*dict*): A dictionary containing:
+  * `"minimized"` (*bool*): True if decorrelation threshold was met.
+  * `"auto"` (*float*): Final computed autocorrelation value.
+  * `"steps_ran"` (*int*): Total simulation timesteps executed.
+  * `"sampler"` (*BaseSampler*): The sampler instance with recorded state and data.
+
+Usage Example
+-------------
+
+.. code-block:: python
+
+   from snap_simulate.hoomd import FSKTSampler, minimize_autocorrelation
+
+   # Create an Fs(k,t) sampler for particle type 0
+   sampler = FSKTSampler(sim, ptype=0, sampling_mode="logarithmic", use_multiprocessing=True)
+
+   # Run simulation until Fs(k,t) decorrelates below 0.01
+   res = minimize_autocorrelation(sim, sampler, threshold=0.01, max_steps=1000000)
+   print(f"Simulation completed in {res['steps_ran']} steps. Decorrelated: {res['minimized']}")
+
+Helper Functions
+----------------
 
 .. toctree::
    :maxdepth: 1

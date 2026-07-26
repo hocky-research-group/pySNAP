@@ -223,6 +223,7 @@
 <li class="toctree-l3"><a class="reference internal" href="min_auto_PE.html">min_auto_PE</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="samplers.html">Autocorrelation Samplers</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -288,21 +289,42 @@
 <dd><p>Run simulation while checking autocorrelation after each sample until decorrelated or max_steps reached.</p>
 </dd></dl>
 
-<p>This function runs a HOOMD-blue simulation and monitors the autocorrelation of a target physical quantity, stopping the simulation once the quantity has decorrelated (i.e. autocorrelation falls below a specified threshold).</p>
+<p>This function runs a HOOMD-blue simulation and continuously evaluates the autocorrelation of a target physical quantity using a sampler object (such as <cite>PESampler</cite> or <cite>FSKTSampler</cite>), stopping the simulation automatically once decorrelation is achieved.</p>
 <section id="arguments-description">
 <h2>Arguments Description<a class="headerlink" href="#arguments-description" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><strong>sim</strong> (<em>hoomd.Simulation</em>): The HOOMD-blue simulation object to run.</p></li>
-<li><p><strong>max_steps</strong> (<em>int</em>): The maximum number of timesteps to run the simulation for before timing out.</p></li>
-<li><p><strong>sample_rate</strong> (<em>int</em>): The frequency (in timesteps) at which to call <cite>sample_function</cite> to record the target quantity.</p></li>
-<li><p><strong>sample_function</strong> (<em>callable</em>): A function with signature <cite>sample_function(timestep, frame)</cite> that extracts the desired value from the simulation frame.</p></li>
-<li><p><strong>check_rate</strong> (<em>int</em>): The frequency (in timesteps) at which to call <cite>check_function</cite> to evaluate the autocorrelation.</p></li>
-<li><p><strong>check_function</strong> (<em>callable</em>): A function with signature <cite>check_function(timesteps, samples)</cite> that calculates autocorrelation and returns <cite>(minimized, auto_value)</cite>.</p></li>
+<li><p><strong>sampler</strong> (<em>BaseSampler</em>): An autocorrelation sampler instance (<cite>PESampler</cite>, <cite>FSKTSampler</cite>, or custom <cite>BaseSampler</cite> subclass).</p></li>
+<li><p><strong>threshold</strong> (<em>float</em>, default 0.01): The autocorrelation value threshold below which the quantity is considered decorrelated.</p></li>
+<li><p><strong>tail_window</strong> (<em>int</em>, default 10): Number of trailing sample points over which to average the autocorrelation value.</p></li>
+<li><p><strong>max_steps</strong> (<em>int</em>, optional): Maximum simulation timesteps to run before timing out.</p></li>
 </ul>
 </section>
-<section id="autocorrelation-methods">
-<h2>Autocorrelation Methods<a class="headerlink" href="#autocorrelation-methods" title="Link to this heading">¶</a></h2>
-<p>The following helper functions generate matching <cite>(sample_function, check_function)</cite> pairs to pass into <cite>minimize_autocorrelation</cite>:</p>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>result</strong> (<em>dict</em>): A dictionary containing:
+* <cite>“minimized”</cite> (<em>bool</em>): True if decorrelation threshold was met.
+* <cite>“auto”</cite> (<em>float</em>): Final computed autocorrelation value.
+* <cite>“steps_ran”</cite> (<em>int</em>): Total simulation timesteps executed.
+* <cite>“sampler”</cite> (<em>BaseSampler</em>): The sampler instance with recorded state and data.</p></li>
+</ul>
+</section>
+<section id="usage-example">
+<h2>Usage Example<a class="headerlink" href="#usage-example" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">snap_simulate.hoomd</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSKTSampler</span><span class="p">,</span> <span class="n">minimize_autocorrelation</span>
+
+<span class="c1"># Create an Fs(k,t) sampler for particle type 0</span>
+<span class="n">sampler</span> <span class="o">=</span> <span class="n">FSKTSampler</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">ptype</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="s2">&quot;logarithmic&quot;</span><span class="p">,</span> <span class="n">use_multiprocessing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Run simulation until Fs(k,t) decorrelates below 0.01</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">minimize_autocorrelation</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">sampler</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">max_steps</span><span class="o">=</span><span class="mi">1000000</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Simulation completed in </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;steps_ran&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> steps. Decorrelated: </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;minimized&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="helper-functions">
+<h2>Helper Functions<a class="headerlink" href="#helper-functions" title="Link to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="min_auto_FSKT.html">min_auto_FSKT</a></li>
@@ -370,7 +392,9 @@
 <li><a class="reference internal" href="#">minimize_autocorrelation</a><ul>
 <li><a class="reference internal" href="#snap_simulate.hoomd.minimize_autocorrelation"><code class="docutils literal notranslate"><span class="pre">minimize_autocorrelation()</span></code></a></li>
 <li><a class="reference internal" href="#arguments-description">Arguments Description</a></li>
-<li><a class="reference internal" href="#autocorrelation-methods">Autocorrelation Methods</a></li>
+<li><a class="reference internal" href="#returns">Returns</a></li>
+<li><a class="reference internal" href="#usage-example">Usage Example</a></li>
+<li><a class="reference internal" href="#helper-functions">Helper Functions</a></li>
 </ul>
 </li>
 </ul>

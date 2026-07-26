@@ -1,13 +1,17 @@
-import os, sys
-import numpy as np
 import json
-from ..tools import get_options, decode, recursive_print, dict_defines
+import logging
+import os
+import sys
+import numpy as np
+from snap_simulate.tools import decode, dict_defines, get_options, recursive_print
 
-def get_class(info,default,class_name=None):# {{{
+logger = logging.getLogger("snap_simulate.hoomd.simulation")
+
+
+def get_class(info, default, class_name=None):
     import hoomd
-    if class_name is None: 
+    if class_name is None:
         if "class" not in info:
-            sys.tracebacklimit = 0
             raise Exception("Class_name not supplied")
         class_name = info["class"]
 
@@ -18,136 +22,84 @@ def get_class(info,default,class_name=None):# {{{
 
     mod = hoomd
     for path in mod_path:
-        mod = getattr(mod,path)
+        mod = getattr(mod, path)
 
-    return getattr(mod,class_name)# }}}
+    return getattr(mod, class_name)
 
-def build_angles(Angles):# {{{
-    import hoomd
-    print("Angles:")
-    
-    angles = dict()
-    angle_types = Angles["types"]
-    angle_info =  Angles["specs"]
-    
-    for angle_class, angle_data in angle_info.items():
-        angle = get_class(angle_data,["md","angle"],angle_class)
 
-        if angle_class == "Table":
-            table = np.load(angle_data["table_file"])
+def _build_bonded_potentials(info_dict, default_mod_path, name_title):
+    print(f"{name_title}:")
+    potentials = dict()
+    types = info_dict["types"]
+    specs = info_dict["specs"]
+
+    for pot_class, pot_data in specs.items():
+        pot_cls = get_class(pot_data, default_mod_path, pot_class)
+
+        if pot_class == "Table":
+            table = np.load(pot_data["table_file"])
             width = table.shape[2]
-            angle = angle(width)
-            angle_data["default_params"] = {"U":np.zeros(width),"tau":np.zeros(width)}
-            for i,params in enumerate(angle_data["params"].values()):
-                params["U"] = table[i,0]
-                params["tau"] = table[i,1]
+            pot = pot_cls(width)
+            if default_mod_path[-1] == "bond":
+                pot_data.setdefault("default_params", {})
+                pot_data["default_params"]["U"] = np.zeros(width)
+                pot_data["default_params"]["F"] = np.zeros(width)
+                for i, params in enumerate(pot_data["params"].values()):
+                    params["U"] = table[i, 0]
+                    params["F"] = table[i, 1]
+            else:
+                pot_data["default_params"] = {"U": np.zeros(width), "tau": np.zeros(width)}
+                for i, params in enumerate(pot_data["params"].values()):
+                    params["U"] = table[i, 0]
+                    params["tau"] = table[i, 1]
         else:
-            angle = angle()
+            pot = pot_cls()
 
-        print("    ",angle_class,":")
-        print("    "*2,"Default parameters:")
-        print("    "*3,angle_data["default_params"])
-        for angle_type in angle_types:
-            angle.params[angle_type] = angle_data["default_params"]
-    
-        print("    "*2,"Specified parameters:")
-        for angle_type,angle_params in angle_data["params"].items():
-            angle.params[angle_type] = angle_params
-            print("    "*3,angle_type," ",angle_params)
-        angles[angle_class] = angle
+        print("    ", pot_class, ":")
+        print("    " * 2, "Default parameters:")
+        print("    " * 3, pot_data["default_params"])
+        for t in types:
+            pot.params[t] = pot_data["default_params"]
+
+        print("    " * 2, "Specified parameters:")
+        for t, params in pot_data["params"].items():
+            pot.params[t] = params
+            print("    " * 3, t, " ", params)
+        potentials[pot_class] = pot
         print()
-    return angles
-# }}}
-def build_bonds(Bonds,):# {{{
-    import hoomd
-    print("Bonds:")
-    bonds = dict()
-    
-    bond_types = Bonds["types"]
-    bond_info = Bonds["specs"]
-    
-    for bond_class, bond_data in bond_info.items():
-        bond = get_class(bond_data,["md","bond"],bond_class)
+    return potentials
 
-        if bond_class == "Table":
-           table = np.load(bond_data["table_file"])
-           width = table.shape[2]
-           bond = bond(width)
-           bond_data["default_params"]["U"] = np.zeros(width)
-           bond_data["default_params"]["F"] = np.zeros(width)
-           for i,params in enumerate(bond_data["params"].values()):
-               params["U"] = table[i,0]
-               params["F"] = table[i,1]
-        else:
-            bond = bond()
 
-        print("    ",bond_class,":")
-        print("    "*2,"Default parameters:")
-        print("    "*3,bond_data["default_params"])
-        for bond_type in bond_types:
-            bond.params[bond_type] = bond_data["default_params"]
-    
-        print("    "*2,"Specified parameters:")
-        for bond_type, bond_params in bond_data["params"].items():
-            bond.params[bond_type] = bond_params
-            print("    "*3,bond_type," ",bond_params)
-        bonds[bond_class] = bond
-        print()
-    return bonds
-#}}}# }}}
-def build_computes(Computes,hoomd_objs):# {{{
+def build_angles(Angles):
+    return _build_bonded_potentials(Angles, ["md", "angle"], "Angles")
+
+
+def build_bonds(Bonds):
+    return _build_bonded_potentials(Bonds, ["md", "bond"], "Bonds")
+
+
+def build_computes(Computes, hoomd_objs):
     import hoomd
     print("Computes:")
     computes = dict()
     for comp_name, comp_info in Computes.items():
-        comp_class = get_class(comp_info,["md","compute"])
+        comp_class = get_class(comp_info, ["md", "compute"])
         options = get_options(comp_info)
 
         comp_filter = hoomd_objs["filters"][comp_info['filter']]
-        comp = comp_class(comp_filter,**options)
+        comp = comp_class(comp_filter, **options)
         computes[comp_name] = comp
         print("    ", comp_name, comp_info["class"])
-        print("    "*2, "Filter:", comp_info["filter"])
-        print("    "*2, "Options:", options)
+        print("    " * 2, "Filter:", comp_info["filter"])
+        print("    " * 2, "Options:", options)
         print()
 
-    return computes# }}}
-def build_dihedrals(Dihedrals):# {{{
-    import hoomd
-    print("Dihedrals:")
-    
-    dihedrals = dict()
-    dihedral_types = Dihedrals["types"]
-    dihedral_info =  Dihedrals["specs"]
-    
-    for dihedral_class, dihedral_data in dihedral_info.items():
-        dihedral = get_class(dihedral_data,["md","dihedral"],dihedral_class)
+    return computes
 
-        if dihedral_class == "Table":
-            table = np.load(dihedral_data["table_file"])
-            width = table.shape[2]
-            dihedral = dihedral(width)
-            dihedral_data["default_params"] = {"U":np.zeros(width),"tau":np.zeros(width)}
-            for i,params in enumerate(dihedral_data["params"].values()):
-                params["U"] = table[i,0]
-                params["tau"] = table[i,1]
-        else:
-            dihedral = dihedral()
 
-        print("    ",dihedral_class,":")
-        print("    "*2,"Default parameters:")
-        print("    "*3,dihedral_data["default_params"])
-        for dihedral_type in dihedral_types:
-            dihedral.params[dihedral_type] = dihedral_data["default_params"]
-    
-        print("    "*2,"Specified parameters:")
-        for dihedral_type,dihedral_params in dihedral_data["params"].items():
-            dihedral.params[dihedral_type] = dihedral_params
-            print("    "*3,dihedral_type," ",dihedral_params)
-        dihedrals[dihedral_class] = dihedral
-        print()
-    return dihedrals
-# }}}
+def build_dihedrals(Dihedrals):
+    return _build_bonded_potentials(Dihedrals, ["md", "dihedral"], "Dihedrals")
+
 def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
     import hoomd
     from hoomd.dybond import DyBond, DyBondUpdater
@@ -437,8 +389,7 @@ def build_simulation(params, output_file = None, print_objs = False):# {{{
     if "simulation" in params:
         sim_info = params['simulation']
     else:
-        sys.tracebacklimit = 0
-        raise Exception(f"Must have simulation data specified")
+        raise Exception("Must have simulation data specified")
 
     if sim_info["device"] == "GPU":
         if "GPUID" in sim_info:
@@ -448,42 +399,38 @@ def build_simulation(params, output_file = None, print_objs = False):# {{{
     elif sim_info["device"] == "CPU":
         proc = hoomd.device.CPU()
     else:
-        sys.tracebacklimit = 0
-        raise ValueError(f"Device should be set to either CPU or GPU in {sim_specs}")
-    
+        raise ValueError(f"Device should be set to either CPU or GPU in simulation specs")
+
     if "random_seed" in sim_info and sim_info["random_seed"]:
         if os.path.isfile("seed.txt"):
             seed = np.loadtxt("seed.txt").astype(int).take(0)
         else:
-            seed = int.from_bytes(os.urandom(2),"big")
-            np.savetxt("seed.txt",[seed])
+            seed = int.from_bytes(os.urandom(2), "big")
+            np.savetxt("seed.txt", [seed])
     elif "seed" in sim_info:
         seed = sim_info["seed"]
     else:
-        sys.tracebacklimit = 0
         raise Exception("'seed' or 'random seed' must be set")
     
 
     sim = hoomd.Simulation(device=proc, seed=seed)
-    continue_successful = _set_initial_configuration(sim,sim_info,"continue_file")
+    continue_successful = _set_initial_configuration(sim, sim_info, "continue_file")
     if not continue_successful:
-        init_successful = _set_initial_configuration(sim,sim_info,"init_file")
+        init_successful = _set_initial_configuration(sim, sim_info, "init_file")
         if not init_successful:
-            sys.tracebacklimit = 0
             raise Exception("No suitable initial configuration found: 'continue_file' and/or 'init_file' either not set or not pointing to valid configurations")
-        if dict_defines(sim_info,"thermalize_initial"):
+        if dict_defines(sim_info, "thermalize_initial"):
             therm_info = sim_info["thermalize_initial"]
             therm_options = get_options(therm_info)
             therm_options["filter"] = hoomd_objects["filters"][therm_info["filter"]]
             sim.state.thermalize_particle_momenta(**therm_options)
 
     hoomd_objects["simulation"] = sim
-    #}}}
-    #---- Integrator ---- {{{
+
+    # ---- Integrator ----
     if "integrator" in params:
         int_info = params["integrator"]
     else:
-        sys.tracebacklimit = 0
         raise Exception("Integrator information must be defined to build a simulation")
     integrator = build_integrator(int_info, hoomd_objects)
 
@@ -632,34 +579,31 @@ def build_writers(Writers, obj_dict):# {{{
 
         if "trigger" in writer_info:
             trigger_info = writer_info["trigger"]
-            if isinstance(trigger_info,str):
-                print("    "*2, "trigger: ",trigger_info)
+            if isinstance(trigger_info, str):
+                print("    " * 2, "trigger: ", trigger_info)
                 trigger = obj_dict["triggers"][trigger_info]
             else:
-                sys.tracebacklimit = 0
                 raise TypeError(f"Cannot build info of type {type(trigger_info)} into a trigger")
             options["trigger"] = trigger
 
         if "logger" in writer_info:
             logger_info = writer_info["logger"]
 
-            if isinstance(logger_info,str):
-                print("    "*2, "logger: ",logger_info)
+            if isinstance(logger_info, str):
+                print("    " * 2, "logger: ", logger_info)
                 logger_name = logger_info
-                logger = obj_dict["loggers"][logger_name]
+                logger_obj = obj_dict["loggers"][logger_name]
             else:
-                sys.tracebacklimit = 0
                 raise TypeError(f"Cannot build info of type {type(logger_info)} into a logger")
 
-            options["logger"] = logger
+            options["logger"] = logger_obj
 
         if "filter" in writer_info:
             filter_info = writer_info["filter"]
-            if isinstance(filter_info,str):
-                print("    "*2, "filter: ",filter_info)
-                filter = obj_dict["filters"][filter_info]
+            if isinstance(filter_info, str):
+                print("    " * 2, "filter: ", filter_info)
+                filter_obj = obj_dict["filters"][filter_info]
             else:
-                sys.tracebacklimit = 0
                 raise TypeError(f"Cannot build info of type {type(filter_info)} into a filter")
             options["filter"] = filter 
 

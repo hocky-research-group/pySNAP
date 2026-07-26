@@ -1,6 +1,7 @@
-def make_patchy_colloid(mol_specs, particle_specs):
-    import numpy as np
+import numpy as np
 
+
+def make_patchy_colloid(mol_specs, particle_specs):
     mol_type = mol_specs.pop("molecule_type")
     if mol_type != "patchy_colloid":
         raise Exception(f"Cannot turn molecule of type {mol_type} into a patchy colloid")

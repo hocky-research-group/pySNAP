@@ -6,88 +6,30 @@
 
 `snap_simulate` is a powerful Python library designed to automate the generation of initial configurations and the construction, execution, and dynamic monitoring of molecular dynamics (MD) simulations in **HOOMD-blue (v3+)**. It parses structured, parametric configuration dictionaries (from JSON or YAML) to place particles and molecules without overlap, construct complex force fields, manage rigid bodies, execute adaptive box compression, and dynamically run simulations until statistical properties reach equilibrium.
 
-It is designed to work in tandem with [snap_workflow](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_workflow) to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters.
+It is designed to work in tandem with `snap_workflow` to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters.
 
 ---
 
 ## Table of Contents
 - [Core Capabilities](#core-capabilities)
-- [Module Architecture & Repository Structure](#module-architecture--repository-structure)
 - [Installation](#installation)
-- [Configuration Parameter Reference](#configuration-parameter-reference)
-  - [1. Simulation](#1-simulation)
-  - [2. Box](#2-box)
-  - [3. Particles](#3-particles)
-  - [4. Molecules](#4-molecules)
-  - [5. Potentials (Pairs, Bonds, Angles, Dihedrals)](#5-potentials-pairs-bonds-angles-dihedrals)
-  - [6. Loggers & Writers](#6-loggers--writers)
-- [Molecule Templates Reference](#molecule-templates-reference)
-  - [Linear Polymer](#linear-polymer)
-  - [Ring Polymer](#ring-polymer)
-  - [Star Polymer](#star-polymer)
-  - [Comb Polymer](#comb-polymer)
-  - [Grafted Colloid](#grafted-colloid)
-  - [Patchy Colloid](#patchy-colloid)
-- [Configuration Design Patterns](#configuration-design-patterns)
-  - [Declaration-and-Reference Pattern](#declaration-and-reference-pattern)
-  - [Modular Configuration Directory Structure](#modular-configuration-directory-structure)
 - [Quick Start Guide & Examples](#quick-start-guide--examples)
-  - [1. Full Simulation Pipeline](#1-full-simulation-pipeline)
-  - [2. Dynamic Box Shrink/Compression](#2-dynamic-box-shrinkcompression)
-  - [3. Autocorrelation-Driven Equilibrium Execution](#3-autocorrelation-driven-equilibrium-execution)
+- [Configuration Parameter Reference](#configuration-parameter-reference)
+- [Molecule Templates Reference](#molecule-templates-reference)
+- [Configuration Design Patterns](#configuration-design-patterns)
+- [Module Architecture & Repository Structure](#module-architecture--repository-structure)
 
 ---
 
 ## Core Capabilities
 
-- **Pack Particles without Overlaps**: Uses a cell-list-based spatial partitioner ([overlap_checker](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_simulate/src/snap_simulate/system/system.py#L45)) to randomly place complex particles or multi-bead molecules inside a box without overlap.
+- **Pack Particles without Overlaps**: Uses a cell-list-based spatial partitioner (`OverlapChecker`) to randomly place complex particles or multi-bead molecules inside a box without overlap.
 - **Topological Template Generators**: Generates molecular structures dynamically from templates (e.g. Star Polymers, Comb Polymers, Grafted/Patchy Colloids) using geometric algorithms like Fibonacci sphere discretization.
-- **Automatic Moment of Inertia Calculations**: Automates calculation of center of mass, total mass, and the moment of inertia tensor, including diagonalization ([system.py](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_simulate/src/snap_simulate/system/system.py#L119)) to set up rigid bodies.
+- **Automatic Moment of Inertia Calculations**: Automates calculation of center of mass, total mass, and the moment of inertia tensor, including diagonalization (`rigid.py`) to set up rigid bodies.
 - **Flexible Box Sizing**: Computes box lengths dynamically from target volume fractions (`vol_frac`), area fractions (`area_frac`), aspect ratios, or explicit box dimensions.
 - **Declarative HOOMD-blue Builder**: Instantiates device profiles (CPU/GPU), integrators, thermostats, forces (including tabulated potentials), loggers, and writers based on config dictionaries.
-- **Autocorrelation-Driven Runtimes**: Dynamically runs simulations ([auto_correlation.py](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_simulate/src/snap_simulate/hoomd/auto_correlation.py)) until physical quantities (potential energy or self-intermediate scattering function $F_s(k,t)$) decorrelate, preventing over-solving.
-- **Dynamic Box Compression**: Implements automated box shrinking ([shrink.py](file:///wsl.localhost/Ubuntu/home/tanner/pySNAP/packages/snap_simulate/src/snap_simulate/hoomd/shrink.py)) to compress the box to a target volume fraction or aspect ratio over a specified number of simulation steps.
-
----
-
-## Module Architecture & Repository Structure
-
-The package is split into two primary modules:
-1. `snap_simulate.system`: Handles snapshot framing, particle packing, and molecule geometry templates.
-2. `snap_simulate.hoomd`: Drives simulation builds, box shrinking, and equilibrium execution controls.
-
-Below is the repository structure:
-
-```text
-snap_simulate/
-├── pyproject.toml                         # Package configuration & metadata
-├── docs/                                  # Sphinx documentation
-├── examples/                              # Python examples demonstrating the library
-│   └── templates/                         # Templates showing each molecule generator
-├── src/
-│   └── snap_simulate/
-│       ├── __init__.py                    # Main package entry point
-│       ├── tools.py                       # Dictionary utilities & decoders
-│       ├── system/
-│       │   ├── __init__.py                # Exposes molecular builders and system generators
-│       │   ├── system.py                  # Overlap checker, placement routines, moment of inertia
-│       │   └── molecules/
-│       │       ├── __init__.py            # Registers molecular templates
-│       │       ├── linear_polymer.py      # Generates coordinate offsets for linear chains
-│       │       ├── ring_polymer.py        # Generates coordinate offsets for ring polymer loops
-│       │       ├── star_polymer.py        # Positions arms on a sphere using Fibonacci spiral
-│       │       ├── comb_polymer.py        # Comb/bottlebrush polymer topologies
-│       │       ├── grafted_colloid.py     # Polymer-grafted colloid hybrids
-│       │       └── patchy_colloid.py      # Patchy colloids with tetrahedral/octahedral/icosahedral/Fibonacci geometries
-│       └── hoomd/
-│           ├── __init__.py                # Exposes HOOMD simulation building blocks and runners
-│           ├── simulation.py              # Main compiler parsing config specs into HOOMD objects
-│           ├── auto_correlation.py        # Dynamic run handlers based on autocorrelation decay
-│           └── shrink.py                  # Box compression script using BoxResize updaters
-└── tests/                                 # Unit testing suite
-    ├── test_templates.py                  # Tests for system builders and templates
-    └── test_dybond.py                     # Tests for dybond simulation compiler features
-```
+- **Autocorrelation-Driven Runtimes**: Dynamically runs simulations (`auto_correlation.py`) until physical quantities (potential energy or self-intermediate scattering function $F_s(k,t)$) decorrelate, preventing over-solving.
+- **Dynamic Box Compression**: Implements automated box shrinking (`shrink.py`) to compress the box to a target volume fraction or aspect ratio over a specified number of simulation steps.
 
 ---
 
@@ -108,6 +50,85 @@ pip install -e .
 - **numpy** &ge; 1.15
 - **scipy**
 - **snap_workflow** (companion workspace package)
+
+---
+
+## Quick Start Guide & Examples
+
+### 1. Full Simulation Pipeline
+Load configuration specs with `snap_workflow`, pack the initial system snapshot, compile HOOMD objects, and run:
+
+```python
+import snap_simulate
+from snap_workflow import System_Params
+
+# 1. Load configuration parameters using snap_workflow
+sim_params = System_Params("path/to/params_dir")
+
+# 2. Place molecules inside box without overlaps, creating a GSD snapshot file
+init_gsd_path = "init_system.gsd"
+snap_simulate.system.gen_mixture(sim_params, init_gsd_path)
+print(f"System GSD successfully compiled at {init_gsd_path}")
+
+# 3. Reference the snapshot in simulation setup parameters
+sim_params["simulation"]["init_file"] = init_gsd_path
+
+# 4. Compile configuration specs into active HOOMD simulation objects
+sim, sim_objs = snap_simulate.hoomd.build_simulation(sim_params)
+
+# 5. Execute simulation steps
+print("Running simulation...")
+sim.run(1000)
+```
+
+### 2. Dynamic Box Shrink/Compression
+Shrink the simulation box dynamically using either a configuration dictionary or direct keyword arguments:
+
+```python
+# Style A: Direct keyword arguments
+snap_simulate.hoomd.shrink_box(
+    sim,
+    total_steps=50000,
+    updater_period=100,
+    final_box_length=[10.0, 10.0, 10.0]
+)
+
+# Style B: Configuration parameters dictionary (checks box["shrink"] first)
+sim_params["box"]["shrink"] = {
+    "final_vol_frac": 0.45,
+    "total_steps": 50000,
+    "updater_period": 100
+}
+snap_simulate.hoomd.shrink_box(sim, sim_params, hoomd_objs=sim_objs)
+```
+
+### 3. Autocorrelation-Driven Equilibrium Execution
+Run simulations adaptively until a physical quantity decorrelates below a target threshold. `snap_simulate.hoomd` provides stateful samplers (`PESampler`, `FSKTSampler`) supporting logarithmic/linear scheduling and background multiprocessing:
+
+```python
+# Option A: Potential Energy Autocorrelation (PESampler)
+sim_params["loggers"] = {
+    "my_logger": {
+        "categories": ["scalar"],
+        "loggables": [[["integrator", "forces", "LJ"], ["energy"]]]
+    }
+}
+sim, sim_objs = snap_simulate.hoomd.build_simulation(sim_params)
+
+pe_sampler = snap_simulate.hoomd.PESampler(logger=sim_objs["loggers"]["my_logger"])
+res_pe = snap_simulate.hoomd.minimize_autocorrelation(sim, pe_sampler, threshold=0.01, max_steps=200000)
+
+# Option B: Intermediate Scattering Function Fs(k,t) (FSKTSampler with Multiprocessing)
+fskt_sampler = snap_simulate.hoomd.FSKTSampler(
+    sim,
+    ptype=0,
+    sampling_mode="logarithmic",
+    use_multiprocessing=True  # Compute autocorrelation in background process
+)
+res_fskt = snap_simulate.hoomd.minimize_autocorrelation(sim, fskt_sampler, threshold=0.01, max_steps=1000000)
+
+print(f"Decorrelated: {res_fskt['minimized']} in {res_fskt['steps_ran']} timesteps.")
+```
 
 ---
 
@@ -290,149 +311,52 @@ molecules:
     # (Loaded from molecules/linear_polymer.yml)
 ```
 
+```
+
 ---
 
-## Quick Start Guide & Examples
+## Module Architecture & Repository Structure
 
-### 1. Full Simulation Pipeline
-The script below demonstrates how to configure parameters, pack a polymer mixture, compile HOOMD objects, and run the simulation:
+The package is split into two primary modules:
+1. `snap_simulate.system`: Handles snapshot framing, particle packing, and molecule geometry templates.
+2. `snap_simulate.hoomd`: Drives simulation builds, box shrinking, and equilibrium execution controls.
 
-```python
-import snap_simulate
+Below is the repository structure:
 
-# 1. Define configuration dictionary
-sim_params = {
-    "simulation": {
-        "device": "CPU",
-        "random_seed": True
-    },
-    "box": {
-        "dimensions": 3,
-        "vol_frac": 0.08,
-        "vol_frac_mols": ["my_star"],
-        "placement_style": "random"
-    },
-    "particles": {
-        "types": ["A", "B", "C"],
-        "diameters": [1.0, 1.0, 1.0],
-        "mass": [1.0, 1.0, 1.0],
-        "excluded_volume": [True, True, True]
-    },
-    "molecules": {
-        "my_star": {
-            "molecule_type": "star_polymer",
-            "num_molecules": 20,
-            "beads_per_arm": 3,
-            "num_arms": 6,
-            "center_type": 0,
-            "arm_type": 1,
-            "end_type": 2,
-            "bond_type": 0
-        }
-    },
-    "bonds": {
-        "types": ["star_bond"],
-        "specs": {
-            "Harmonic": {
-                "default_params": {"k": 300.0, "r0": 0.85},
-                "params": {}
-            }
-        }
-    },
-    "pairs": {
-        "LJ": {
-            "nlist": "cell",
-            "default_params": {"epsilon": 1.0, "sigma": 1.0},
-            "params": {},
-            "rcuts": {}
-        }
-    },
-    "nlist": {
-        "cell": {
-            "class": "Cell",
-            "options": {
-                "buffer": 0.4
-            }
-        }
-    },
-    "filters": {
-        "all": {
-            "class": "All",
-            "composite": False
-        }
-    },
-    "integrator": {
-        "dt": 0.005,
-        "method": {
-            "class": "Langevin",
-            "filter": "all",
-            "options": {
-                "kT": 1.0
-            }
-        }
-    }
-}
-
-# 2. Place molecules inside box without overlaps, creating a GSD snapshot file
-init_gsd_path = "init_system.gsd"
-snap_simulate.system.gen_mixture(sim_params, init_gsd_path)
-print(f"System GSD successfully compiled at {init_gsd_path}")
-
-# 3. Reference the snapshot in simulation setup parameters
-sim_params["simulation"]["init_file"] = init_gsd_path
-
-# 4. Compile configuration specs into active HOOMD simulation objects
-sim, sim_objs = snap_simulate.hoomd.build_simulation(sim_params)
-
-# 5. Execute simulation steps
-print("Running simulation...")
-sim.run(1000)
+```text
+snap_simulate/
+├── pyproject.toml                         # Package configuration & metadata
+├── docs/                                  # Sphinx documentation
+├── examples/                              # Python examples demonstrating the library
+│   └── templates/                         # Templates showing each molecule generator
+├── src/
+│   └── snap_simulate/
+│       ├── __init__.py                    # Main package entry point
+│       ├── tools.py                       # Dictionary utilities & decoders
+│       ├── system/
+│       │   ├── __init__.py                # Exposes gen_mixture, calc_box_length, and build_rigid
+│       │   ├── box.py                     # calc_box_length calculation
+│       │   ├── generator.py               # gen_mixture frame builder & molecule resolution
+│       │   ├── placement.py               # place_simple_cubic & place_random routines
+│       │   ├── rigid.py                   # build_rigid, calculate_moment_inertia, check_rigid
+│       │   ├── spatial.py                 # Container & OverlapChecker spatial grid classes
+│       │   ├── system.py                  # Backward-compatibility re-export proxy
+│       │   └── molecules/
+│       │       ├── __init__.py            # Registers molecular templates
+│       │       ├── resolver.py            # Encapsulates molecule count & group resolution
+│       │       ├── linear_polymer.py      # Generates coordinate offsets for linear chains
+│       │       ├── ring_polymer.py        # Generates coordinate offsets for ring polymer loops
+│       │       ├── star_polymer.py        # Positions arms on a sphere using Fibonacci spiral
+│       │       ├── comb_polymer.py        # Comb/bottlebrush polymer topologies
+│       │       ├── grafted_colloid.py     # Polymer-grafted colloid hybrids
+│       │       └── patchy_colloid.py      # Patchy colloids with tetrahedral/octahedral/icosahedral/Fibonacci geometries
+│       └── hoomd/
+│           ├── __init__.py                # Exposes HOOMD simulation building blocks, samplers, and runners
+│           ├── simulation.py              # Main compiler parsing config specs into HOOMD objects
+│           ├── auto_correlation.py        # Autocorrelation samplers (BaseSampler, PESampler, FSKTSampler) and runners
+│           └── shrink.py                  # Box compression script using BoxResize updaters
+└── tests/                                 # Unit testing suite
+    ├── test_templates.py                  # Tests for system builders and templates
+    └── test_dybond.py                     # Tests for dybond simulation compiler features
 ```
 
-### 2. Dynamic Box Shrink/Compression
-If you want to compress the box to a target volume fraction dynamically during execution:
-
-```python
-# Add shrink block to the configuration parameters
-sim_params["box"]["shrink"] = {
-    "final_vol_frac": 0.45,
-    "total_steps": 50000,
-    "updater_period": 100
-}
-
-# Run shrink box
-snap_simulate.hoomd.shrink_box(sim, sim_params, hoomd_objs=sim_objs)
-```
-
-### 3. Autocorrelation-Driven Equilibrium Execution
-To run a simulation adaptively until the potential energy decorrelates and reaches equilibrium:
-
-```python
-# Configure logger to monitor potential energy
-sim_params["loggers"] = {
-    "my_logger": {
-        "categories": ["scalar"],
-        "loggables": [
-            [["simulation"], ["timestep"]],
-            [["integrator", "forces", "LJ"], ["energy"]]
-        ]
-    }
-}
-
-# Re-build simulation with loggers configured
-sim, sim_objs = snap_simulate.hoomd.build_simulation(sim_params)
-
-# Instantiate Potential Energy autocorrelation sampler
-sampler = snap_simulate.hoomd.PESampler(logger=sim_objs["loggers"]["my_logger"])
-
-# Run minimization loop until decorrelated
-res = snap_simulate.hoomd.minimize_autocorrelation(
-    sim,
-    sampler,
-    threshold=0.01,
-    tail_window=20,
-    max_steps=200000
-)
-
-print(f"Autocorrelation run status: Minimized = {res['minimized']}, Steps Ran = {res['steps_ran']}")
-```

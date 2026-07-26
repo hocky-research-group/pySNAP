@@ -217,17 +217,14 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../../hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../../hoomd/min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../../hoomd/min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../hoomd/samplers.html">Autocorrelation Samplers</a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../../system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../../system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../system/molecules/ring_polymer.html">Ring Polymer</a></li>
@@ -274,11 +271,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for snap_simulate.system.molecules.comb_polymer</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+
 <div class="viewcode-block" id="make_comb_polymer">
 <a class="viewcode-back" href="../../../../system/molecules/comb_polymer.html#snap_simulate.system.molecules.make_comb_polymer">[docs]</a>
-<span></span><span class="k">def</span><span class="w"> </span><span class="nf">make_comb_polymer</span><span class="p">(</span><span class="n">mol_specs</span><span class="p">,</span> <span class="n">particle_specs</span><span class="p">):</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-
+<span class="k">def</span><span class="w"> </span><span class="nf">make_comb_polymer</span><span class="p">(</span><span class="n">mol_specs</span><span class="p">,</span> <span class="n">particle_specs</span><span class="p">):</span>
     <span class="n">mol_type</span> <span class="o">=</span> <span class="n">mol_specs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;molecule_type&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">mol_type</span> <span class="o">!=</span> <span class="s2">&quot;comb_polymer&quot;</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot turn molecule of type </span><span class="si">{</span><span class="n">mol_type</span><span class="si">}</span><span class="s2"> into a comb polymer&quot;</span><span class="p">)</span>

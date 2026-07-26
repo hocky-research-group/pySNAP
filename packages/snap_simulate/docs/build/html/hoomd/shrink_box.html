@@ -218,17 +218,14 @@
 </ul>
 </li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">shrink_box</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l3"><a class="reference internal" href="min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="minimize_autocorrelation.html">minimize_autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="samplers.html">Autocorrelation Samplers</a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/ring_polymer.html">Ring Polymer</a></li>
@@ -284,27 +281,54 @@
 <h1>shrink_box<a class="headerlink" href="#shrink-box" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="snap_simulate.hoomd.shrink_box">
-<span class="sig-prename descclassname"><span class="pre">snap_simulate.hoomd.</span></span><span class="sig-name descname"><span class="pre">shrink_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hoomd_objs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/snap_simulate/hoomd/shrink.html#shrink_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#snap_simulate.hoomd.shrink_box" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">snap_simulate.hoomd.</span></span><span class="sig-name descname"><span class="pre">shrink_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_steps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">updater_period</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_box_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_vol_frac</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_area_frac</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_aspect_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">molecules</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">particles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimensions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hoomd_objs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/snap_simulate/hoomd/shrink.html#shrink_box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#snap_simulate.hoomd.shrink_box" title="Link to this definition">¶</a></dt>
+<dd><p>Shrink the HOOMD simulation box to a target box length, volume fraction, or area fraction.</p>
+<p>Accepts parameters either via a nested <code class="docutils literal notranslate"><span class="pre">params</span></code> dictionary/object or via direct kwargs.</p>
+</dd></dl>
 
-<p>This function drives dynamic box compression/shrinking. The <cite>params</cite> argument is a dictionary that includes <cite>box</cite>, <cite>molecules</cite>, and <cite>particles</cite> sections.
-The box configuration contains a nested <cite>shrink</cite> parameters block:</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">box</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dimensions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
-<span class="w">  </span><span class="nt">vol_frac_mols</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;my_star&quot;</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># Required if final_vol_frac is specified</span>
-<span class="w">  </span><span class="c1"># OR area_frac_mols: [&quot;my_star&quot;]  # Required if final_area_frac is specified</span>
-<span class="w">  </span><span class="nt">shrink</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">final_vol_frac</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4</span><span class="w">       </span><span class="c1"># Target volume fraction to compress to</span>
-<span class="w">    </span><span class="c1"># OR final_area_frac: 0.4  # (For 2D systems) Target area fraction</span>
-<span class="w">    </span><span class="c1"># OR final_box_length: [10, 10, 10] # Direct target dimensions</span>
-<span class="w">    </span><span class="nt">total_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50000</span><span class="w">        </span><span class="c1"># Simulation run duration for box shrink</span>
-<span class="w">    </span><span class="nt">updater_period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">       </span><span class="c1"># Time step frequency between resizing steps</span>
-<span class="nt">molecules</span><span class="p">:</span>
-<span class="w">  </span><span class="c1"># See molecules config details in system module</span>
-<span class="nt">particles</span><span class="p">:</span>
-<span class="w">  </span><span class="c1"># See particles config details in system module</span>
+<p>This function drives dynamic box compression/shrinking. It supports two flexible calling patterns: passing a configuration dictionary (<cite>params</cite>) or passing direct keyword arguments.</p>
+<section id="parameter-lookup-order">
+<h2>Parameter Lookup Order<a class="headerlink" href="#parameter-lookup-order" title="Link to this heading">¶</a></h2>
+<p>When <cite>params</cite> is provided, <cite>shrink</cite> settings are looked up in the following order:</p>
+<ol class="arabic simple">
+<li><p><cite>params[“box”][“shrink”]</cite> or <cite>params[“box”, “shrink”]</cite> <em>(Checked first)</em></p></li>
+<li><p><cite>params[“shrink”]</cite> <em>(Top-level fallback)</em></p></li>
+</ol>
+</section>
+<section id="keyword-arguments">
+<h2>Keyword Arguments<a class="headerlink" href="#keyword-arguments" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>sim</strong> (<em>hoomd.Simulation</em>): The HOOMD-blue simulation instance to compress.</p></li>
+<li><p><strong>params</strong> (<em>dict</em>, optional): System configuration dictionary.</p></li>
+<li><p><strong>total_steps</strong> (<em>int</em>): Total simulation timesteps over which to compress the box (<cite>t_ramp</cite>).</p></li>
+<li><p><strong>updater_period</strong> (<em>int | str | hoomd.trigger.Trigger</em>, default 100): Frequency/period in timesteps for box resize updates.</p></li>
+<li><p><strong>final_box_length</strong> (<em>float | list[float]</em>, optional): Explicit target box dimensions (e.g. <cite>[10.0, 10.0, 10.0]</cite> or scalar <cite>10.0</cite>).</p></li>
+<li><p><strong>final_vol_frac</strong> (<em>float</em>, optional): Target 3D volume fraction to compress to.</p></li>
+<li><p><strong>final_area_frac</strong> (<em>float</em>, optional): Target 2D area fraction to compress to.</p></li>
+<li><p><strong>final_aspect_ratio</strong> (<em>list[float]</em>, optional): Target aspect ratio for 2D/3D boxes.</p></li>
+<li><p><strong>molecules</strong> (<em>dict</em>, optional): Molecules specification dictionary (required when computing box length from volume/area fraction).</p></li>
+<li><p><strong>particles</strong> (<em>dict</em>, optional): Particles specification dictionary (required when computing box length from volume/area fraction).</p></li>
+<li><p><strong>dimensions</strong> (<em>int</em>, default 3): Spatial dimensions (2 or 3).</p></li>
+<li><p><strong>hoomd_objs</strong> (<em>dict</em>, optional): HOOMD object registry containing custom triggers.</p></li>
+</ul>
+</section>
+<section id="usage-examples">
+<h2>Usage Examples<a class="headerlink" href="#usage-examples" title="Link to this heading">¶</a></h2>
+<p><strong>Direct Keyword Arguments:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">snap_simulate.hoomd</span><span class="w"> </span><span class="kn">import</span> <span class="n">shrink_box</span>
+
+<span class="c1"># Compress to explicit target box dimensions over 50,000 steps</span>
+<span class="n">shrink_box</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">total_steps</span><span class="o">=</span><span class="mi">50000</span><span class="p">,</span> <span class="n">updater_period</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">final_box_length</span><span class="o">=</span><span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">])</span>
 </pre></div>
 </div>
+<p><strong>Configuration Dictionary:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">snap_simulate.hoomd</span><span class="w"> </span><span class="kn">import</span> <span class="n">shrink_box</span>
+
+<span class="c1"># Compress using system configuration dictionary</span>
+<span class="n">shrink_box</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">sys_params</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
 </section>
 
         </article>
@@ -364,6 +388,9 @@ The box configuration contains a nested <cite>shrink</cite> parameters block:</p
             <ul>
 <li><a class="reference internal" href="#">shrink_box</a><ul>
 <li><a class="reference internal" href="#snap_simulate.hoomd.shrink_box"><code class="docutils literal notranslate"><span class="pre">shrink_box()</span></code></a></li>
+<li><a class="reference internal" href="#parameter-lookup-order">Parameter Lookup Order</a></li>
+<li><a class="reference internal" href="#keyword-arguments">Keyword Arguments</a></li>
+<li><a class="reference internal" href="#usage-examples">Usage Examples</a></li>
 </ul>
 </li>
 </ul>

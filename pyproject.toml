@@ -6,30 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "pySNAP"
 version = "1.0.0"
 dependencies = [
-    "numpy>=1.15",
+    "snap_workflow @ file:./packages/snap_workflow",
+    "snap_analyze @ file:./packages/snap_analyze",
+    "snap_simulate @ file:./packages/snap_simulate",
 ]
-
-[project.scripts]
-workflow = "snap_workflow.cli:command_line_tool"
 
 [tool.setuptools]
-packages = [
-    "pySNAP",
-    "snap_workflow",
-    "snap_workflow.core",
-    "snap_workflow.core.params",
-    "snap_workflow.remote",
-    "snap_simulate",
-    "snap_simulate.system",
-    "snap_simulate.hoomd",
-    "snap_analyze",
-]
+package-dir = {"" = "src"}
 
-[tool.setuptools.package-dir]
-"pySNAP" = "src/pySNAP"
-"snap_workflow" = "packages/snap_workflow/src/snap_workflow"
-"snap_simulate" = "packages/snap_simulate/src/snap_simulate"
-"snap_analyze" = "packages/snap_analyze/src/snap_analyze"
-
-[tool.setuptools.package-data]
-snap_workflow = ["remote/templates/*", "core/templates/*"]
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false

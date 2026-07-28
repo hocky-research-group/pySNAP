@@ -192,8 +192,21 @@ class Old_Static_Structure_Factor():# {{{
     def __call__(self,pos):# {{{
         self.compute(pos)# }}}
 # }}}
-class Static_Structure_Factor():# {{{
-    def __init__(self, cell_size, box_length, verbose = False):# {{{
+class Static_Structure_Factor:
+    """
+    Computes the static structure factor :math:`S(\\vec{k})` and 1D spherically averaged :math:`S(k)` via Fast Fourier Transforms (FFT).
+
+    Parameters
+    ----------
+    cell_size : float
+        Target grid cell size for spatial grid binning before FFT.
+    box_length : array_like
+        Length of the simulation box in each dimension.
+    verbose : bool, optional
+        If True, prints diagnostic output during calculations. Default is False.
+    """
+
+    def __init__(self, cell_size, box_length, verbose=False):
         self.print = Print_Manager(verbose)
         print = self.print
 
@@ -201,66 +214,104 @@ class Static_Structure_Factor():# {{{
         dims = np.count_nonzero(dim_flag)
         box = box_length[dim_flag]
 
-        num_boxes = np.ceil(box/cell_size).astype(int)
-        cell_size = box/num_boxes
+        num_boxes = np.ceil(box / cell_size).astype(int)
+        cell_size = box / num_boxes
 
         self.num_boxes = num_boxes
         self.cell_size = cell_size
         self.box = box
         self.dim_flag = dim_flag
 
-        self.k = np.array(np.meshgrid(*[fft.fftshift(fft.fftfreq(n,d=1/n)) for n in num_boxes])).T * (2*np.pi/box)
+        self.k = (
+            np.array(np.meshgrid(*[fft.fftshift(fft.fftfreq(n, d=1 / n)) for n in num_boxes])).T
+            * (2 * np.pi / box)
+        )
         self.S = None
         self.num_frames = 0
-        # }}}
-    def append(self,positions):#{{{
+
+    def append(self, positions):
+        """
+        Accumulate a frame of particle positions for structure factor averaging.
+
+        Parameters
+        ----------
+        positions : ndarray
+            Particle position array of shape (N, d).
+        """
         num_boxes = self.num_boxes
         cell_size = self.cell_size
         dim_flag = self.dim_flag
         box = self.box
 
-        positions = positions[:,dim_flag]
+        positions = positions[:, dim_flag]
         if np.any(positions < 0):
             positions = np.copy(positions)
             positions += box / 2
 
-        idx = (positions/cell_size).astype(int)
+        idx = (positions / cell_size).astype(int)
         count = np.zeros(num_boxes)
         count[*idx.T] += 1
 
         S = fft.fftshift(fft.fftn(count))
-        S = np.abs(S)**2/positions.shape[0]
+        S = np.abs(S) ** 2 / positions.shape[0]
         if self.S is None:
             self.S = S
         else:
             self.S += S
         self.num_frames += 1
-        # }}}
-    def get_Sk(self):# {{{
-        return self.k,self.S/self.num_frames
-    # }}}
-    def get_1D_Sk(self,**kwargs):# {{{
-        S = self.S/self.num_frames
 
-        k_mag = np.linalg.norm(self.k,axis = -1)
-        k_sphere = np.min(self.num_boxes*(2*np.pi/self.box))
+    def get_Sk(self):
+        """
+        Get full reciprocal space wavevectors and frame-averaged structure factor array :math:`S(\\vec{k})`.
+
+        Returns
+        -------
+        k : ndarray
+            Reciprocal wavevectors grid matching structure factor grid dimensions.
+        S : ndarray
+            Frame-averaged structure factor :math:`S(\\vec{k})`.
+        """
+        return self.k, self.S / self.num_frames
+
+    def get_1D_Sk(self, **kwargs):
+        """
+        Spherically average :math:`S(\\vec{k})` into 1D scalar wavevector magnitude dependence :math:`S(k)`.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments passed to `np.histogram`.
+
+        Returns
+        -------
+        k : ndarray
+            1D wavevector magnitudes :math:`k`.
+        Sk : ndarray
+            Spherically averaged structure factor :math:`S(k)`.
+        """
+        S = self.S / self.num_frames
+
+        k_mag = np.linalg.norm(self.k, axis=-1)
+        k_sphere = np.min(self.num_boxes * (2 * np.pi / self.box))
         k_flag = k_mag < k_sphere
 
         k_mag = k_mag[k_flag]
         S = S[k_flag]
         kmin = int(np.floor(np.log10(np.min(k_mag[k_mag != 0]))))
         kmax = int(np.ceil(np.log10(np.max(k_mag))))
-        bins = np.logspace(kmin,kmax,100*(kmax-kmin))
-        N,_ = np.histogram(k_mag,bins=bins,**kwargs)
-        S,k = np.histogram(k_mag,weights=S,bins=bins,**kwargs,)
-        k = (k[:-1] + k[1:])/2
-        flag = (k != 0) & (S!=0)
-        return k[flag],S[flag]/N[flag]
-        # }}}
-    def __call__(self,positions=None):# {{{
+        bins = np.logspace(kmin, kmax, 100 * (kmax - kmin))
+        N, _ = np.histogram(k_mag, bins=bins, **kwargs)
+        S, k = np.histogram(k_mag, weights=S, bins=bins, **kwargs)
+        k = (k[:-1] + k[1:]) / 2
+        flag = (k != 0) & (S != 0)
+        return k[flag], S[flag] / N[flag]
+
+    def __call__(self, positions=None):
+        """
+        Accumulate positions if provided, or compute structure factor.
+        """
         if positions is None:
             self.append(positions)
         else:
             self.get_Sk()
-        # }}}
-# }}}
+

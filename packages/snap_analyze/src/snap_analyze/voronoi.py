@@ -156,45 +156,62 @@ class Cell():# {{{
         self.edges[key]=value
     # }}}
     # }}}
-class Voronoi_Analysis():# {{{
-    def __init__(self,box=None,border_ratio=0.0):# {{{
+class Voronoi_Analysis:
+    """
+    Performs 2D Voronoi cell tessellation and topology analysis on particle coordinate sets.
+
+    Parameters
+    ----------
+    box : array_like, optional
+        Simulation box dimensions [Lx, Ly]. If None, inferred from coordinate extrema.
+    border_ratio : float, optional
+        Fractional padding ratio for replicating border particles across periodic boundaries. Default is 0.0.
+    """
+
+    def __init__(self, box=None, border_ratio=0.0):
         self.box = box
         self.border_ratio = border_ratio
-        pass
-        # }}}
-    def compute(self,pts,verbose=False):# {{{
-        #if periodic:
-            #raise NotImplementedError("Periodic BCs are not yet supported")
 
+    def compute(self, pts, verbose=False):
+        """
+        Construct Voronoi cells and network topology for 2D points.
+
+        Parameters
+        ----------
+        pts : ndarray
+            2D particle coordinate array of shape (N, 2).
+        verbose : bool, optional
+            If True, prints progress during cell construction. Default is False.
+        """
         with warnings.catch_warnings(action="ignore"):
             if self.box is None:
                 box = self._calc_box()
             if np.any(pts < 0):
-                pts = np.copy(pts) + self.box/2
+                pts = np.copy(pts) + self.box / 2
                 self.adjusted_pts = True
             else:
                 self.adjusted_pts = False
             self.num_particles = pts.shape[0]
-            pts,border_idx = self._replicate_border(pts)
+            pts, border_idx = self._replicate_border(pts)
             if verbose:
                 print(f"{pts.shape[0] - self.num_particles} border points added")
 
             self._initialize()
-            for i,pt in enumerate(pts):
-                if verbose and i%100 == 0:
+            for i, pt in enumerate(pts):
+                if verbose and i % 100 == 0:
                     print(i)
                 c = Cell(pt)
-                to_add,to_remove = self._compute_add_remove(pt,i)
-                new_verts,new_counts,new_pidx,new_cell = self._parse_add(to_add)
-                self._add_new_edges(c,to_add,new_verts)
-                self._truncate_edges(new_verts,new_pidx,new_cell)
-                self._close_borders(c,new_verts,new_counts)
+                to_add, to_remove = self._compute_add_remove(pt, i)
+                new_verts, new_counts, new_pidx, new_cell = self._parse_add(to_add)
+                self._add_new_edges(c, to_add, new_verts)
+                self._truncate_edges(new_verts, new_pidx, new_cell)
+                self._close_borders(c, new_verts, new_counts)
                 self._remove_edges(to_remove)
                 self.cells[c.count] = c
             self._remove_extra_cells()
             self._relabel_border_cells(border_idx)
         return
-    # }}}
+
     def _plot(self):# {{{
         for idx,c in self.cells.items():
             if idx >= self.num_particles:

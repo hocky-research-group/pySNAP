@@ -5,7 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "snap_simulate"
 version = "0.0.1"
-dependencies = ["snap_workflow"]
+dependencies = [
+    "snap_workflow",
+    "snap_analyze",
+]
 
 #[tool.setuptools.packages.find]
 #where = ["src"]

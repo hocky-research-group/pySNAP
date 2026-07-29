@@ -103,18 +103,12 @@ def shrink_box(
             calc_box_cfg["vol_frac"] = final_vol_frac
             calc_box_cfg.pop("box_length", None)
             calc_box_cfg.pop("area_frac", None)
-            if isinstance(shrink_cfg, dict) and "final_vol_frac" in shrink_cfg and isinstance(box_cfg, dict):
-                box_cfg["vol_frac"] = final_vol_frac
         if final_area_frac is not None:
             calc_box_cfg["area_frac"] = final_area_frac
             calc_box_cfg.pop("box_length", None)
             calc_box_cfg.pop("vol_frac", None)
-            if isinstance(shrink_cfg, dict) and "final_area_frac" in shrink_cfg and isinstance(box_cfg, dict):
-                box_cfg["area_frac"] = final_area_frac
         if final_aspect_ratio is not None:
             calc_box_cfg["aspect_ratio"] = final_aspect_ratio
-            if isinstance(shrink_cfg, dict) and "final_aspect_ratio" in shrink_cfg and isinstance(box_cfg, dict):
-                box_cfg["aspect_ratio"] = final_aspect_ratio
 
         if molecules is None or particles is None:
             raise ValueError("molecules and particles must be provided to compute target box length from volume/area fraction.")
@@ -129,6 +123,11 @@ def shrink_box(
         n_box_length = np.zeros(3)
         n_box_length[:dimensions] = new_box_length * np.ones(dimensions)
         new_box_length = n_box_length
+
+    if isinstance(box_cfg, dict):
+        box_cfg["box_length"] = list(new_box_length)
+        box_cfg.pop("vol_frac", None)
+        box_cfg.pop("area_frac", None)
 
     initial_box = sim.state.box
     final_box = hoomd.Box(*new_box_length)

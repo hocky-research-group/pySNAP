@@ -161,6 +161,8 @@ def gen_mixture(params, outfile=None):
     box_length = np.array(box_length)
 
     Box['box_length'] = box_length
+    Box.pop('vol_frac', None)
+    Box.pop('area_frac', None)
     Box['max'] = box_length / 2
     Box['min'] = -box_length / 2
 

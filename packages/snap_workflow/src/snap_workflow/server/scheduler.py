@@ -182,13 +182,40 @@ class OrchestratorScheduler(threading.Thread):
                     if poll is not None:
                         finished.append(job)
                         status_val = "complete" if poll == 0 else "error"
+                        
+                        stdout, stderr = "", ""
+                        if job.get("proc"):
+                            try:
+                                out, err = job["proc"].communicate(timeout=5)
+                                stdout = out or ""
+                                stderr = err or ""
+                            except Exception:
+                                pass
+
                         if self.remote != "local" and job.get("r_spoint_path"):
                             try:
                                 sync_back = ["rsync", "-avz", f"{host}:{job['r_spoint_path']}/", f"{job['sp_path']}/"]
                                 subprocess.run(sync_back, capture_output=True)
                             except Exception as e:
                                 logger.warning("Failed to sync back outputs for %s: %s", job['sp_path'], e)
-                        logger.info("Workstation job finished: %s %s (status: %s)", job['stage'], job['spoint_dict'], status_val)
+
+                        shell_output = ""
+                        if stdout and stdout.strip():
+                            shell_output += f"\n--- STDOUT ---\n{stdout.strip()}"
+                        if stderr and stderr.strip():
+                            shell_output += f"\n--- STDERR ---\n{stderr.strip()}"
+
+                        if poll != 0:
+                            logger.error(
+                                "Workstation job failed for stage '%s' %s on remote '%s' (exit code %s).%s",
+                                job["stage"], job["spoint_dict"], self.remote, poll, shell_output or " (no shell output captured)"
+                            )
+                        else:
+                            logger.info(
+                                "Workstation job finished for stage '%s' %s (status: %s).%s",
+                                job['stage'], job['spoint_dict'], status_val, shell_output
+                            )
+
                         if self.server:
                             self.server.spoint_manager.set_status(
                                 job["sweep"], job["stage"], job["spoint_dict"], status_val, host=self.remote
@@ -280,18 +307,30 @@ class OrchestratorScheduler(threading.Thread):
                                 proc_env = os.environ.copy()
                                 if st_res.get("gpus", 0) > 0:
                                     proc_env["CUDA_VISIBLE_DEVICES"] = str(gpus_running)
-                                proc = subprocess.Popen(["bash", spoint_sh, sp_path], env=proc_env)
+                                proc = subprocess.Popen(["bash", spoint_sh, sp_path], env=proc_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                             else:
                                 resolved_r_path = resolve_remote_path(host, remote_path)
                                 rel_sp_path = os.path.relpath(sp_path, root_dir)
                                 r_spoint_path = os.path.join(resolved_r_path, rel_sp_path)
+
+                                # Ensure .workflow/spoint.sh is synced to remote host
+                                local_spoint_sh = os.path.join(root_dir, ".workflow", "spoint.sh")
+                                if os.path.isfile(local_spoint_sh):
+                                    try:
+                                        r_wf_dir = f"{resolved_r_path}/.workflow"
+                                        subprocess.run(["ssh", host, f"mkdir -p {r_wf_dir}"], capture_output=True)
+                                        subprocess.run(["rsync", "-avz", local_spoint_sh, f"{host}:{r_wf_dir}/spoint.sh"], capture_output=True)
+                                    except Exception as sh_e:
+                                        logger.warning("Failed to sync spoint.sh to remote %s: %s", host, sh_e)
+
                                 try:
                                     sync_cmd = ["rsync", "-avz", f"{sp_path}/", f"{host}:{r_spoint_path}/"]
                                     subprocess.run(sync_cmd, capture_output=True, check=True)
                                 except Exception as sync_e:
                                     logger.warning("Failed to sync spoint directory %s to %s: %s", sp_path, host, sync_e)
-                                remote_cmd = f"cd {resolved_r_path} && bash .workflow/spoint.sh {r_spoint_path}"
-                                proc = subprocess.Popen(["ssh", host, remote_cmd])
+                                remote_cmd = f"mkdir -p {r_spoint_path} && cd {resolved_r_path} && bash .workflow/spoint.sh {rel_sp_path}"
+                                logger.info("Executing remote workstation command on '%s': ssh %s '%s'", host, host, remote_cmd)
+                                proc = subprocess.Popen(["ssh", host, remote_cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
                             active_jobs.append({
                                 "proc": proc,
@@ -299,7 +338,7 @@ class OrchestratorScheduler(threading.Thread):
                                 "stage": st,
                                 "spoint_dict": sp_dict,
                                 "sp_path": sp_path,
-                                "r_spoint_path": r_spoint_path if self.remote != "local" else None
+                                "r_spoint_path": r_spoint_path if self.remote != "local" else None,
                             })
 
             self.shutdown_event.wait(2.0)

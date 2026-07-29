@@ -1047,6 +1047,7 @@ def server_submit_auto_cmd(parsed_command, args):
     resp = send_request(url, token, data=payload)
     if resp and resp.get("status") == "success":
         print(f"Successfully registered server-side auto-scheduler for remote '{name}'.")
+        print("Server logs are written to '.workflow/server.log' and individual spoint output is captured in '<spoint_dir>/spoint.log'.")
     else:
         err = resp.get("message") if resp else "Connection error"
         print(f"Error: Failed to register auto-scheduler: {err}")

@@ -17,8 +17,9 @@ def test_workflow_lifecycle(sandbox, env_dir):
     initialize(env_dir)
     assert os.path.isdir(".workflow")
     assert os.path.isdir("params")
-    assert os.path.isdir(".agents/skills/snap-workflow")
-    assert os.path.isfile(".agents/skills/snap-workflow/SKILL.md")
+    # .agents directory creation on init disabled
+    # assert os.path.isdir(".agents/skills/snap-workflow")
+    # assert os.path.isfile(".agents/skills/snap-workflow/SKILL.md")
     assert os.path.isfile(".workflow/config.json")
     with open(".workflow/config.json") as f:
         cfg = json.load(f)

@@ -66,3 +66,41 @@ def test_shrink_box_top_level_dict():
 
     assert np.allclose(sim.state.box.L, [6.0, 6.0, 6.0])
 
+
+def test_shrink_box_vol_frac_with_initial_box_length():
+    sim = hoomd.Simulation(hoomd.device.CPU())
+    snapshot = hoomd.Snapshot()
+    snapshot.configuration.box = [10.0, 10.0, 10.0, 0, 0, 0]
+    snapshot.particles.N = 1
+    snapshot.particles.types = ['A']
+    snapshot.particles.position[:] = [[0, 0, 0]]
+    sim.create_state_from_snapshot(snapshot)
+
+    top_level_params = {
+        "box": {
+            "dimensions": 3,
+            "box_length": [10.0, 10.0, 10.0],
+            "placement_style": "random",
+            "vol_frac_mols": ["colloids"],
+        },
+        "shrink": {
+            "final_vol_frac": 0.1,
+            "total_steps": 30,
+            "updater_period": 3,
+        },
+        "molecules": {
+            "colloids": {
+                "num_molecules": 1,
+                "particle_typeid": [0],
+            }
+        },
+        "particles": {
+            "diameters": [1.0],
+            "excluded_volume": [True],
+        }
+    }
+
+    shrink_box(sim, top_level_params)
+    assert sim.state.box.volume > 0
+
+

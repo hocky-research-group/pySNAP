@@ -3,10 +3,8 @@ import os
 CONFIG = ".config/workflow/config.json"
 LOCAL_CONFIG = "config.json"
 SPOINT_INFO = ".spoint_info"
-COMBO_INFO = SPOINT_INFO
-COMBO_VARS = "var.dat"
+SPOINT_VARS = "var.dat"
 SPOINTS = "spoints"
-COMBOS = SPOINTS
 SWEEPS = "sweeps.json"
 STAGES = "stages.json"
 VARIABLES = "variables.json"

@@ -12,10 +12,15 @@ from snap_workflow.server.tunnels import ensure_remote_tunnel
 logger = logging.getLogger("snap_workflow.server.scheduler")
 
 
-def get_stage_depth(stage_name, stages_dict, cache):
+def get_stage_depth(stage_name, stages_dict, cache=None):
+    if cache is None:
+        cache = {}
     if stage_name in cache:
         return cache[stage_name]
-    deps = stages_dict.get(stage_name, {}).get("dependencies", [])
+    stage_cfg = stages_dict.get(stage_name, {})
+    deps = stage_cfg.get("dependencies")
+    if deps is None:
+        deps = stage_cfg.get("dependent_stages", [])
     if not deps:
         cache[stage_name] = 0
         return 0
@@ -133,20 +138,6 @@ class OrchestratorScheduler(threading.Thread):
         if exclude_stages:
             target_stages = [s for s in target_stages if s not in exclude_stages]
 
-        stage_resources = {}
-        for st_name in list(stages_dict.keys()):
-            env_base = os.path.join(root_dir, st_name, "env")
-            try:
-                env_data = io.load_config(env_base, full_path=True)
-                res_cfg = env_data.get("resources", {})
-                stage_resources[st_name] = {
-                    "cpus": int(res_cfg.get("cpus", 1)),
-                    "gpus": int(res_cfg.get("gpus", 0)),
-                    "mem": parse_memory_to_gb(res_cfg.get("mem", "1G"))
-                }
-            except Exception:
-                stage_resources[st_name] = {"cpus": 1, "gpus": 0, "mem": 1.0}
-
         cpus_total = 8
         gpus_total = 0
         mem_total = 16.0
@@ -167,6 +158,19 @@ class OrchestratorScheduler(threading.Thread):
                         self.remote, cpus_total, gpus_total, mem_total)
 
         while not self.shutdown_event.is_set():
+            stage_resources = {}
+            for st_name in list(stages_dict.keys()):
+                env_base = os.path.join(root_dir, st_name, "env")
+                try:
+                    env_data = io.load_config(env_base, full_path=True)
+                    res_cfg = env_data.get("resources", {})
+                    stage_resources[st_name] = {
+                        "cpus": int(res_cfg.get("cpus", 1)),
+                        "gpus": int(res_cfg.get("gpus", 0)),
+                        "mem": parse_memory_to_gb(res_cfg.get("mem", "1G"))
+                    }
+                except Exception:
+                    stage_resources[st_name] = {"cpus": 1, "gpus": 0, "mem": 1.0}
             if not has_slurm:
                 finished = []
                 for job in active_jobs:
@@ -178,6 +182,12 @@ class OrchestratorScheduler(threading.Thread):
                     if poll is not None:
                         finished.append(job)
                         status_val = "complete" if poll == 0 else "error"
+                        if self.remote != "local" and job.get("r_spoint_path"):
+                            try:
+                                sync_back = ["rsync", "-avz", f"{host}:{job['r_spoint_path']}/", f"{job['sp_path']}/"]
+                                subprocess.run(sync_back, capture_output=True)
+                            except Exception as e:
+                                logger.warning("Failed to sync back outputs for %s: %s", job['sp_path'], e)
                         logger.info("Workstation job finished: %s %s (status: %s)", job['stage'], job['spoint_dict'], status_val)
                         if self.server:
                             self.server.spoint_manager.set_status(
@@ -200,7 +210,8 @@ class OrchestratorScheduler(threading.Thread):
                             if curr_status in ("queued", "submitted", "running", "complete", "error"):
                                 continue
 
-                            deps = manager.stages_dict.get(st, {}).get("dependencies", [])
+                            st_cfg = manager.stages_dict.get(st, {})
+                            deps = st_cfg.get("dependencies") if "dependencies" in st_cfg else st_cfg.get("dependent_stages", [])
                             deps_satisfied = True
                             for dep in deps:
                                 dep_spoint = manager.get_spoint(sw, dep, sp_dict)
@@ -219,6 +230,10 @@ class OrchestratorScheduler(threading.Thread):
                 if candidate_spoint:
                     sw, st, sp_dict, sp_path = candidate_spoint
                     st_res = stage_resources.get(st, {"cpus": 1, "gpus": 0, "mem": 1.0})
+                    st_cpus = int(st_res.get("cpus", 1))
+                    st_gpus = int(st_res.get("gpus", 0))
+                    st_mem_val = st_res.get("mem", 1.0)
+                    st_mem = parse_memory_to_gb(st_mem_val) if isinstance(st_mem_val, str) else float(st_mem_val)
 
                     if has_slurm:
                         logger.info("Auto-scheduling spoint: %s %s on Slurm cluster '%s'...", st, sp_dict, self.remote)
@@ -240,28 +255,41 @@ class OrchestratorScheduler(threading.Thread):
                                 sweeps=sw
                             )
                     else:
-                        cpus_running = sum(stage_resources.get(j["stage"], {}).get("cpus", 1) for j in active_jobs)
-                        gpus_running = sum(stage_resources.get(j["stage"], {}).get("gpus", 0) for j in active_jobs)
-                        mem_running = sum(stage_resources.get(j["stage"], {}).get("mem", 1.0) for j in active_jobs)
+                        def _get_stage_mem(stage_n):
+                            m_val = stage_resources.get(stage_n, {}).get("mem", 1.0)
+                            return parse_memory_to_gb(m_val) if isinstance(m_val, str) else float(m_val)
+
+                        cpus_running = sum(int(stage_resources.get(j["stage"], {}).get("cpus", 1)) for j in active_jobs)
+                        gpus_running = sum(int(stage_resources.get(j["stage"], {}).get("gpus", 0)) for j in active_jobs)
+                        mem_running = sum(_get_stage_mem(j["stage"]) for j in active_jobs)
 
                         cpus_avail = cpus_total - cpus_running
                         gpus_avail = -1 if gpus_total == -1 else (gpus_total - gpus_running)
                         mem_avail = mem_total - mem_running
 
-                        fits_cpus = (st_res["cpus"] <= cpus_avail)
-                        fits_gpus = (gpus_avail == -1) or (st_res["gpus"] <= gpus_avail)
-                        fits_mem = (st_res["mem"] <= mem_avail)
+                        fits_cpus = (st_cpus <= cpus_avail)
+                        fits_gpus = (gpus_avail == -1) or (st_gpus <= gpus_avail)
+                        fits_mem = (st_mem <= mem_avail)
 
                         if fits_cpus and fits_gpus and fits_mem:
                             logger.info("Spawning workstation job for %s %s on '%s'...", st, sp_dict, self.remote)
                             manager.set_status(sw, st, sp_dict, "running", host=self.remote)
 
                             if self.remote == "local":
-                                combo_sh = os.path.join(root_dir, ".workflow", "spoint.sh")
-                                proc = subprocess.Popen(["bash", combo_sh, sp_path])
+                                spoint_sh = os.path.join(root_dir, ".workflow", "spoint.sh")
+                                proc_env = os.environ.copy()
+                                if st_res.get("gpus", 0) > 0:
+                                    proc_env["CUDA_VISIBLE_DEVICES"] = str(gpus_running)
+                                proc = subprocess.Popen(["bash", spoint_sh, sp_path], env=proc_env)
                             else:
                                 resolved_r_path = resolve_remote_path(host, remote_path)
-                                r_spoint_path = os.path.join(resolved_r_path, os.path.relpath(sp_path, root_dir))
+                                rel_sp_path = os.path.relpath(sp_path, root_dir)
+                                r_spoint_path = os.path.join(resolved_r_path, rel_sp_path)
+                                try:
+                                    sync_cmd = ["rsync", "-avz", f"{sp_path}/", f"{host}:{r_spoint_path}/"]
+                                    subprocess.run(sync_cmd, capture_output=True, check=True)
+                                except Exception as sync_e:
+                                    logger.warning("Failed to sync spoint directory %s to %s: %s", sp_path, host, sync_e)
                                 remote_cmd = f"cd {resolved_r_path} && bash .workflow/spoint.sh {r_spoint_path}"
                                 proc = subprocess.Popen(["ssh", host, remote_cmd])
 
@@ -269,7 +297,9 @@ class OrchestratorScheduler(threading.Thread):
                                 "proc": proc,
                                 "sweep": sw,
                                 "stage": st,
-                                "spoint_dict": sp_dict
+                                "spoint_dict": sp_dict,
+                                "sp_path": sp_path,
+                                "r_spoint_path": r_spoint_path if self.remote != "local" else None
                             })
 
             self.shutdown_event.wait(2.0)

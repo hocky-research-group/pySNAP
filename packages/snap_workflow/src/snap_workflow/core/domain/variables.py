@@ -81,8 +81,6 @@ def cast_spoint_dict(spoint_dict):
         new_spoint_dict[var] = cast(val, types)
     return new_spoint_dict 
 
-cast_combo_dict = cast_spoint_dict
-
 def generate_values(args):
     if len(args) == 0 or args[0] != "generate":
         return args

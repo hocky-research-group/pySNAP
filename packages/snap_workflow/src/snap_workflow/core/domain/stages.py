@@ -51,10 +51,10 @@ def make_new_stage_files(stage_name, sbatch_details=None):
     stage_dir = os.path.join(root, stage_name)
     os.makedirs(stage_dir, exist_ok=True)
 
-    template_combo = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "combo.py")
+    template_spoint = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "spoint.py")
     template_collect = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "collect.py")
 
-    shutil.copy(template_combo, os.path.join(stage_dir, f"{stage_name}.py"))
+    shutil.copy(template_spoint, os.path.join(stage_dir, f"{stage_name}.py"))
     shutil.copy(template_collect, os.path.join(stage_dir, "collect.py"))
 
     os.makedirs(os.path.join(stage_dir, SPOINTS), exist_ok=True)

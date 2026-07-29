@@ -6,9 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "pySNAP"
 version = "1.0.0"
 dependencies = [
-    "snap_workflow @ file:./packages/snap_workflow",
-    "snap_analyze @ file:./packages/snap_analyze",
-    "snap_simulate @ file:./packages/snap_simulate",
+    "snap_workflow @ file:packages/snap_workflow",
+    "snap_analyze @ file:packages/snap_analyze",
+    "snap_simulate @ file:packages/snap_simulate",
 ]
 
 [tool.setuptools]

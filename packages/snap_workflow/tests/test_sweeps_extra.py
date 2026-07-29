@@ -108,10 +108,10 @@ def test_initialize_sweep_exception(sandbox, env_dir):
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
     
-    with patch("snap_workflow.core.params.set_params", side_effect=RuntimeError("mock params exception")), \
-         patch("sys.stdout") as mock_stdout:
+    with patch("snap_workflow.core.domain.sweeps.params.set_params", side_effect=RuntimeError("mock params exception")), \
+         patch("builtins.print") as mock_print:
         add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-        assert mock_stdout.write.called
+        assert mock_print.called
 
 def test_rename_and_unlink_spoints_convergent_and_exists(sandbox, env_dir):
     initialize(env_dir)

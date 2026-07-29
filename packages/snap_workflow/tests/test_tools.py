@@ -75,7 +75,7 @@ def test_json_and_yaml_parsing(sandbox):
         sim:
           steps: "!i_1000.5"
           factor: "!f_1.5"
-          name: "!str_test_combo"
+          name: "!str_test_spoint"
         """
         with open(os.path.join(sandbox, "params", "yaml_config.yaml"), "w") as f:
             f.write(config_data)
@@ -90,4 +90,4 @@ def test_json_and_yaml_parsing(sandbox):
     if yaml_installed:
         assert params["yaml_config"]["sim"]["steps"] == 1000
         assert abs(params["yaml_config"]["sim"]["factor"] - 1.5) < 1e-6
-        assert params["yaml_config"]["sim"]["name"] == "testcombo"
+        assert params["yaml_config"]["sim"]["name"] == "testspoint"

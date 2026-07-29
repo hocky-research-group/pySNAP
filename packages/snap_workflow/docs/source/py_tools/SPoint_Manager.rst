@@ -41,7 +41,7 @@ To utilize these features, the simulation code in your stage script (e.g. ``my_s
         # ... run computation ...
 
 .. note::
-   For backwards compatibility, ``SPoint_Manager``, ``Combo_Manager``, and ``Job_Manager`` can be used as direct aliases for ``SPointManager``.
+   For backwards compatibility, ``SPoint_Manager`` can be used as a direct alias for ``SPointManager``.
 
 .. autoclass:: snap_workflow.core.domain.spoints.SPointManager
 

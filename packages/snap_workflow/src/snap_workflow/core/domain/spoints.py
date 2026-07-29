@@ -14,6 +14,7 @@ from snap_workflow.core.domain import stages as stage_tools
 from snap_workflow.core.domain import sweeps as sweep_tools
 from snap_workflow.core.params import params
 from snap_workflow.utils.time import load_time, write_time
+from snap_workflow.utils.io import parse_memory_to_gb
 
 def get_spoint_string(spoint_dict):
     if len(spoint_dict) == 0:
@@ -86,6 +87,7 @@ def create_spoint(stage_name, spoint_dict, clear):
         status.write_status(INITIALIZED, spoint_path)
     if not os.path.isfile(os.path.join(spoint_path, SPOINT_INFO, PROGRESS)):
         status.write_progress(NONE, spoint_path)
+
     return True
 
 def create_spoint_dict(spoint_vars, spoint):
@@ -96,16 +98,16 @@ def create_spoint_dict(spoint_vars, spoint):
 
 def write_spoint(spoint_dict, spoint_dir="."):
     spoint_string = get_spoint_string(spoint_dict)
-    with open(os.path.join(spoint_dir, SPOINT_INFO, COMBO_VARS), 'w') as file:
+    with open(os.path.join(spoint_dir, SPOINT_INFO, SPOINT_VARS), 'w') as file:
         file.write(spoint_string)
 
 def load_spoint(spoint_dir="."):
-    with open(os.path.join(spoint_dir, SPOINT_INFO, COMBO_VARS), 'r') as file:
+    with open(os.path.join(spoint_dir, SPOINT_INFO, SPOINT_VARS), 'r') as file:
         spoint_string = file.readline()
     return parse_spoint_string(spoint_string)
 
 def reset_spoint(spoint_dir=".", hard=False):
-    var_file = os.path.join(spoint_dir, SPOINT_INFO, COMBO_VARS)
+    var_file = os.path.join(spoint_dir, SPOINT_INFO, SPOINT_VARS)
     abs_path = os.path.abspath(spoint_dir)
     if not os.path.isfile(var_file):
         raise ValueError(f"Error: Current working directory '{abs_path}' is not an SPoint directory.")
@@ -150,7 +152,7 @@ def relink_spoint_dependencies(stage_name, spoint_dict):
                 break
         if match:
             dep_info = get_dependent_spoint_info(stage_name, sweep_name, spoint_dict)
-            link_dependent_combo(stage_name, spoint_dict, dep_info)
+            link_dependent_spoint(stage_name, spoint_dict, dep_info)
 
 def spoint_still_defined(sname, stage_name, spoint_dict):
     sweeps = sweep_tools.load_sweeps()
@@ -256,7 +258,7 @@ def check_submittable(sweep_name, stage_name, spoint_dict):
                 return False
         else:
             conv_vars = dep_stage["conv_vars"]
-            for conv_spoint in dep_stage["conv_combos"]:
+            for conv_spoint in dep_stage["conv_spoints"]:
                 conv_dict = {var: val for var, val in zip(conv_vars, conv_spoint)}
                 conv_path = os.path.join(dep_path, get_spoint_string(conv_dict))
                 if status.load_status(conv_path) != COMPLETE:
@@ -418,20 +420,20 @@ def get_dependent_spoint_info(stage_name, sweep_name, spoint_dict):
         dep_info["conv_vars"] = conv_vars
         conv_vals = [sweep_values[var] for var in conv_vars]
         conv_spoints = list(itertools.product(*conv_vals))
-        dep_info["conv_combos"] = conv_spoints
+        dep_info["conv_spoints"] = conv_spoints
 
         all_dep_info[dep_stage] = dep_info
     return all_dep_info
 
-def link_dependent_combo(stage_name, spoint_dict, dep_info):
-    combo_path = get_spoint_path(stage_name, spoint_dict)
-    rel_root = path.get_root(combo_path)
+def link_dependent_spoint(stage_name, spoint_dict, dep_info):
+    spoint_path = get_spoint_path(stage_name, spoint_dict)
+    rel_root = path.get_root(spoint_path)
     for dep_stage, info in dep_info.items():
         prop_vars = info["prop_vars"]
         conv_vars = info["conv_vars"]
         dep_dict = {var: spoint_dict[var] for var in prop_vars}
 
-        dep_dir = os.path.join(combo_path, dep_stage)
+        dep_dir = os.path.join(spoint_path, dep_stage)
         if len(conv_vars) == 0:
             dep_link = dep_dir
             dep_target = f"{rel_root}/{dep_stage}/{SPOINTS}/{get_spoint_string(dep_dict)}"
@@ -442,7 +444,7 @@ def link_dependent_combo(stage_name, spoint_dict, dep_info):
                 shutil.rmtree(dep_dir)
             os.makedirs(new_dep_stage_dir, exist_ok=True)
 
-            for conv in info["conv_combos"]:
+            for conv in info["conv_spoints"]:
                 conv_dict = {var: val for var, val in zip(conv_vars, conv)}
                 conv_link = os.path.join(new_dep_stage_dir, get_spoint_string(conv_dict))
                 conv_dict = {**conv_dict, **dep_dict}
@@ -544,7 +546,176 @@ class SPointManager():
     def _track_nvidia(self):
         raise NotImplementedError
 
+class SPointStatusManager:
+    def __init__(self):
+        pass
+
+    @property
+    def stages_dict(self):
+        return stage_tools.load_stages()
+
+    def get_spoints(self, sweep_name, stage_name):
+        result = []
+        for s_name, st_name, sp_dict in iter_spoints(sweep_names=[sweep_name], stage_names=[stage_name]):
+            sp_path = get_spoint_path(st_name, sp_dict)
+            stat_val = "initialized"
+            if os.path.exists(sp_path):
+                stat_val = status.load_status(sp_path)
+            result.append({
+                "variables": sp_dict,
+                "status": stat_val,
+                "path": sp_path
+            })
+        return result
+
+    def get_spoint(self, sweep_name, stage_name, spoint_dict):
+        sp_path = get_spoint_path(stage_name, spoint_dict)
+        if not os.path.exists(sp_path):
+            return None
+        stat_val = status.load_status(sp_path)
+        return {
+            "variables": spoint_dict,
+            "status": stat_val,
+            "path": sp_path
+        }
+
+    def set_status(self, sweep_name, stage_name, spoint_dict, status_val, host="local"):
+        sp_path = get_spoint_path(stage_name, spoint_dict)
+        create_spoint(stage_name, spoint_dict, clear=False)
+        params_file = os.path.join(sp_path, PARAMS)
+        if not os.path.isfile(params_file):
+            try:
+                from snap_workflow.core.params import params as params_tools
+                params_tools.set_spoint_params(sweep_name, stage_name, spoint_dict)
+            except Exception as e:
+                logger.warning("Failed to generate params.pkl for %s: %s", sp_path, e)
+        status.write_status(status_val, sp_path)
+
+    def acquire_next_available(self, cpus_avail=1, gpu_avail=0, mem_avail=0.0, min_cpu_running_gpu=0,
+                               allowed_stages=None, allowed_sweeps=None,
+                               exclude_stages=None, exclude_sweeps=None, host="local"):
+        sweeps = sweep_tools.load_sweeps()
+        stages = stage_tools.load_stages()
+
+        root_dir = path.get_root()
+        def _get_stage_res(st_name):
+            try:
+                cfg = io.load_config(os.path.join(root_dir, st_name, "env"), full_path=True)
+                return cfg.get("resources", {})
+            except Exception:
+                return {}
+
+        for sweep_name in sweeps.keys():
+            if allowed_sweeps and sweep_name not in allowed_sweeps:
+                continue
+            if exclude_sweeps and sweep_name in exclude_sweeps:
+                continue
+
+            stage_names_list = sweeps[sweep_name]["stages"]
+            if gpu_avail > 0:
+                stage_names_list = sorted(stage_names_list, key=lambda s: int(_get_stage_res(s).get("gpus", 0)), reverse=True)
+
+            for stage_name in stage_names_list:
+                if allowed_stages and stage_name not in allowed_stages:
+                    continue
+                if exclude_stages and stage_name in exclude_stages:
+                    continue
+
+                stage = stages.get(stage_name)
+                if not stage:
+                    continue
+
+                res = _get_stage_res(stage_name)
+                cpus_req = int(res.get("cpus", 1))
+                gpus_req = int(res.get("gpus", 0))
+                mem_str = res.get("mem", "0G")
+                mem_req = parse_memory_to_gb(mem_str) if isinstance(mem_str, str) else float(mem_str)
+
+                if cpus_req > cpus_avail:
+                    continue
+                if gpu_avail != -1 and gpus_req > gpu_avail:
+                    continue
+                if mem_req > mem_avail and mem_avail > 0:
+                    continue
+
+                if gpus_req == 0 and gpu_avail > 0:
+                    pending_gpu_cpus = [
+                        int(_get_stage_res(st).get("cpus", 1))
+                        for sw in sweeps.values()
+                        for st in sw.get("stages", [])
+                        if int(_get_stage_res(st).get("gpus", 0)) > 0
+                    ]
+                    if pending_gpu_cpus:
+                        max_gpu_cpus = max(pending_gpu_cpus)
+                        if (cpus_avail - cpus_req) + min_cpu_running_gpu < max_gpu_cpus:
+                            continue
+
+                spoint_vars = stage.get("variables", [])
+                spoint_vals = [sweeps[sweep_name]["values"][v] for v in spoint_vars]
+                spoint_combinations = list(itertools.product(*spoint_vals))
+
+                for spoint_tuple in spoint_combinations:
+                    spoint_dict = create_spoint_dict(spoint_vars, spoint_tuple)
+                    sp_path = get_spoint_path(stage_name, spoint_dict)
+
+                    if not os.path.exists(sp_path):
+                        curr_status = "initialized"
+                    else:
+                        curr_status = status.load_status(sp_path)
+
+                    if curr_status in ("queued", "submitted", "running", "complete", "error"):
+                        continue
+
+                    deps = stage.get("dependencies") if "dependencies" in stage else stage.get("dependent_stages", [])
+                    deps_satisfied = True
+                    for dep_stage in deps:
+                        dep_spoint = self.get_spoint(sweep_name, dep_stage, spoint_dict)
+                        if not dep_spoint or dep_spoint["status"] != "complete":
+                            deps_satisfied = False
+                            break
+
+                    if deps_satisfied:
+                        self.set_status(sweep_name, stage_name, spoint_dict, "submitted", host=host)
+                        return (sweep_name, stage_name, spoint_dict, sp_path)
+
+        return None
+
+    def are_all_complete(self, allowed_stages=None, allowed_sweeps=None,
+                         exclude_stages=None, exclude_sweeps=None):
+        sweeps = sweep_tools.load_sweeps()
+        stages = stage_tools.load_stages()
+
+        has_spoints = False
+        for sweep_name in sweeps.keys():
+            if allowed_sweeps and sweep_name not in allowed_sweeps:
+                continue
+            if exclude_sweeps and sweep_name in exclude_sweeps:
+                continue
+
+            for stage_name in sweeps[sweep_name]["stages"]:
+                if allowed_stages and stage_name not in allowed_stages:
+                    continue
+                if exclude_stages and stage_name in exclude_stages:
+                    continue
+
+                stage = stages.get(stage_name)
+                if not stage:
+                    continue
+
+                spoint_vars = stage.get("variables", [])
+                spoint_vals = [sweeps[sweep_name]["values"][v] for v in spoint_vars]
+                spoint_combinations = list(itertools.product(*spoint_vals))
+
+                for spoint_tuple in spoint_combinations:
+                    spoint_dict = create_spoint_dict(spoint_vars, spoint_tuple)
+                    sp_path = get_spoint_path(stage_name, spoint_dict)
+                    if not os.path.exists(sp_path):
+                        return False
+                    curr_status = status.load_status(sp_path)
+                    if curr_status not in ("complete", "error"):
+                        return False
+
+        return True
+
 # Backward compatibility aliases
 SPoint_Manager = SPointManager
-Combo_Manager = SPointManager
-load_combo = load_spoint

@@ -8,8 +8,7 @@ from snap_workflow.core.domain.variables import (
     deprecated_make_variables,
     cast_values,
     cast,
-    generate_values,
-    cast_combo_dict
+    generate_values
 )
 from snap_workflow.utils.exceptions import VariableAlreadyExistsError, ConversionError
 from snap_workflow.core.domain.sweeps import add_sweep
@@ -66,9 +65,6 @@ def test_casting_rules(sandbox, env_dir):
     # Test get_variable_names
     from snap_workflow.core.domain.variables import get_variable_names
     assert get_variable_names() == ["x"]
-
-    # Test cast_combo_dict
-    assert cast_combo_dict({"x": "5"}) == {"x": 5}
 
     # 1. float casting
     assert cast(5, ["float"]) == 5.0

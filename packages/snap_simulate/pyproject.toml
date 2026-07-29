@@ -10,7 +10,13 @@ dependencies = [
     "snap_analyze",
 ]
 
-#[tool.setuptools.packages.find]
-#where = ["src"]
-#include = ["nyut"]
-#namespaces = false
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.package-data]
+snap_simulate = ["templates/*", "templates/**/*"]
+

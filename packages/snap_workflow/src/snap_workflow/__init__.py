@@ -13,15 +13,14 @@ from snap_workflow.utils.exceptions import (
     ServerNotRunningError
 )
 
+from snap_workflow.utils.version import __version__
+
 SPointManager = SPointManager
 SPoint_Manager = SPointManager
 DataManager = DataManager
 Data_Manager = DataManager
 load_spoint = load_spoint
 
-ComboManager = SPointManager
-Combo_Manager = SPointManager
-load_combo = load_spoint
 JobManager = SPointManager
 Job_Manager = SPointManager
 load_job = load_spoint

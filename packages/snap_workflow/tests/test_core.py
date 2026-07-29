@@ -17,6 +17,8 @@ def test_workflow_lifecycle(sandbox, env_dir):
     initialize(env_dir)
     assert os.path.isdir(".workflow")
     assert os.path.isdir("params")
+    assert os.path.isdir(".agents/skills/snap-workflow")
+    assert os.path.isfile(".agents/skills/snap-workflow/SKILL.md")
     assert os.path.isfile(".workflow/config.json")
     with open(".workflow/config.json") as f:
         cfg = json.load(f)
@@ -73,7 +75,7 @@ def test_workflow_lifecycle(sandbox, env_dir):
         with zipfile.ZipFile(zip_name, 'w') as zf:
             zf.writestr(".workflow/stages.json", "{}")
             zf.writestr("stage1/spoints/x_10/", "")
-        zip_workflow(zip_name, sweep_names="sweep1", stage_names="stage1", include_combos=True)
+        zip_workflow(zip_name, sweep_names="sweep1", stage_names="stage1", include_spoints=True)
         assert mock_run.called
     assert os.path.isfile(zip_name)
     

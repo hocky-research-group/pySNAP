@@ -1,8 +1,8 @@
-from snap_workflow import Combo_Manager
+from snap_workflow import SPoint_Manager
 
 #DO NOT ADD CODE HERE
 
-with Combo_Manager() as cm:
+with SPoint_Manager() as cm:
     params = cm.load_params()
 
     #FIXME: Add code here 

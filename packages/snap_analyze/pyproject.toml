@@ -6,8 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "snap_analyze"
 version = "0.0.1"
 
-#[tool.setuptools.packages.find]
-#where = ["src"]
-#include = ["snap"]
-#namespaces = false
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.package-data]
+snap_analyze = ["templates/*", "templates/**/*"]
+
 

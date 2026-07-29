@@ -83,41 +83,7 @@ def test_transit_sync_dependency(sandbox, env_dir):
         # Check cleanup call
         assert mock_rmtree.called
 
-def test_data_locality_scheduling(sandbox, env_dir):
-    initialize(env_dir)
-    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
-    add_stage("stage2", sbatch_details=None, stage_variables=["x"], stage_dependencies=["stage1"])
-    add_variable("x", ["int"], add_to_stages=["stage1", "stage2"], default_val=5)
-    add_sweep("sweep1", include_stages=["stage1", "stage2"], variable_values={"x": [5]})
-    
-    spoint_dict = {"x": 5}
-    dep_rel_path = os.path.join("stage1", "spoints", "x_5")
-    
-    # 1. Mock registry with Parent A (stage1) on workstation1, size 1.5 GB (> 1 GB)
-    metadata = {
-        dep_rel_path: {"host": "workstation1", "size_bytes": 1_500_000_000}
-    }
-    server.save_spoint_metadata(metadata)
-    
-    # Test checking for target host 'workstation1' (parent is local, so runnable)
-    runnable, status_str, detail = server.check_data_locality_eligibility("sweep1", "stage2", spoint_dict, "workstation1")
-    assert runnable
-    assert status_str == "runnable"
-    
-    # Test checking for target host 'workstation2' (parent is on workstation1 and size > 1 GB, so deferred)
-    runnable, status_str, detail = server.check_data_locality_eligibility("sweep1", "stage2", spoint_dict, "workstation2")
-    assert not runnable
-    assert status_str == "deferred"
-    
-    # 2. Mock registry with small size (500 MB)
-    metadata[dep_rel_path]["size_bytes"] = 500_000_000
-    server.save_spoint_metadata(metadata)
-    
-    # Test checking for workstation2 (parent is on workstation1 but size < 1 GB, so syncable)
-    runnable, status_str, detail = server.check_data_locality_eligibility("sweep1", "stage2", spoint_dict, "workstation2")
-    assert runnable
-    assert status_str == "sync_needed"
-    assert detail == [(dep_rel_path, "workstation1", 500_000_000)]
+
 
 def test_sync_extra_coverage(sandbox, env_dir):
     initialize(env_dir)

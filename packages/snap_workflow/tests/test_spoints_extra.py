@@ -108,7 +108,7 @@ def test_spoint_manager_lifecycle(sandbox, env_dir):
             assert sm.save_func == my_stop
             
             # F. load_params and track_nvidia
-            with patch("snap_workflow.core.params.load_params", return_value={"param": 1}):
+            with patch("snap_workflow.core.domain.spoints.params.load_params", return_value={"param": 1}):
                 assert sm.load_params() == {"param": 1}
             with pytest.raises(NotImplementedError):
                 sm._track_nvidia()
@@ -166,7 +166,7 @@ def test_iter_spoints_mismatches(sandbox, env_dir):
     assert len(results) == 1
     assert results[0][0] == "sweep1"
 
-def test_link_dependent_combo(sandbox, env_dir):
+def test_link_dependent_spoint(sandbox, env_dir):
     initialize(env_dir)
     # Stage variables: parent has x, y. children have x (conv_vars y) or x, y (no conv_vars).
     add_stage("stage_parent", sbatch_details=None, stage_variables=["x", "y"], stage_dependencies=[])
@@ -181,7 +181,7 @@ def test_link_dependent_combo(sandbox, env_dir):
     spoint_path_no_conv = spoints.get_spoint_path("stage_child_no_conv", {"x": 5, "y": 10})
     os.makedirs(spoint_path_no_conv, exist_ok=True)
     dep_info_no_conv = spoints.get_dependent_spoint_info("stage_child_no_conv", "sweep1", {"x": 5, "y": 10})
-    spoints.link_dependent_combo("stage_child_no_conv", {"x": 5, "y": 10}, dep_info_no_conv)
+    spoints.link_dependent_spoint("stage_child_no_conv", {"x": 5, "y": 10}, dep_info_no_conv)
     
     # 2. Test convergent (len(conv_vars) != 0) with existing directory to clear via shutil.rmtree
     spoint_path_conv = spoints.get_spoint_path("stage_child", {"x": 5})
@@ -190,7 +190,7 @@ def test_link_dependent_combo(sandbox, env_dir):
     os.makedirs(os.path.join(spoint_path_conv, "stage_parent"), exist_ok=True)
     
     dep_info_conv = spoints.get_dependent_spoint_info("stage_child", "sweep1", {"x": 5})
-    spoints.link_dependent_combo("stage_child", {"x": 5}, dep_info_conv)
+    spoints.link_dependent_spoint("stage_child", {"x": 5}, dep_info_conv)
     assert os.path.isdir(os.path.join(spoint_path_conv, "stage_parent"))
 
 def test_submit_spoints_logic(sandbox, env_dir, capsys):
@@ -259,7 +259,8 @@ def test_submit_spoints_logic(sandbox, env_dir, capsys):
     # Status is initialized, but if params.set_params raises exception:
     status.write_status("initialized", spoints.get_spoint_path("stage_sbatch", {"x": 5}))
     status.write_status("initialized", spoints.get_spoint_path("stage_sbatch", {"x": 6}))
-    with patch("snap_workflow.core.params.set_params", side_effect=ValueError("Test Param Error")):
+    with patch("snap_workflow.core.domain.spoints.params.set_params", side_effect=ValueError("Test Param Error")), \
+         patch("subprocess.run"):
         spoints.submit_spoints(sweep_names="sweep1", stage_names="stage_sbatch")
         captured = capsys.readouterr()
         assert "Cannot submit spoints for stage stage_sbatch" in captured.out
@@ -315,10 +316,10 @@ def test_check_submittable_dependency_checks(sandbox, env_dir):
     
     # Link dependencies to establish folders/symlinks
     dep_info_no_conv = spoints.get_dependent_spoint_info("stage_child_no_conv", "sweep1", {"x": 5, "y": 10})
-    spoints.link_dependent_combo("stage_child_no_conv", {"x": 5, "y": 10}, dep_info_no_conv)
+    spoints.link_dependent_spoint("stage_child_no_conv", {"x": 5, "y": 10}, dep_info_no_conv)
     
     dep_info_conv = spoints.get_dependent_spoint_info("stage_child_conv", "sweep1", {"x": 5})
-    spoints.link_dependent_combo("stage_child_conv", {"x": 5}, dep_info_conv)
+    spoints.link_dependent_spoint("stage_child_conv", {"x": 5}, dep_info_conv)
 
     # Verify submittable of child is False because parent is initialized, not complete
     status.write_status("initialized", spoints.get_spoint_path("stage_parent", {"x": 5, "y": 10}))

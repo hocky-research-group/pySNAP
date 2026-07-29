@@ -44,9 +44,10 @@ def validate_remote_stage_resources(remote_host, resolved_path=None):
 def resolve_remote_path(remote_host, remote_path):
     check_cmd = [
         "ssh", remote_host,
-        f'if [ ! -d "{remote_path}" ]; then echo "not_exists"; '
-        f'elif [ -d "{remote_path}/.workflow" ]; then echo "workflow_root"; '
-        f'elif [ -z "$(ls -A "{remote_path}" 2>/dev/null)" ]; then echo "empty"; '
+        f'RP=$(eval echo {remote_path}); '
+        f'if [ ! -d "$RP" ]; then echo "not_exists"; '
+        f'elif [ -d "$RP/.workflow" ]; then echo "workflow_root"; '
+        f'elif [ -z "$(ls -A "$RP" 2>/dev/null)" ]; then echo "empty"; '
         f'else echo "not_empty"; fi'
     ]
     try:
@@ -87,6 +88,7 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
         remote_path = local_remotes[remote_name]["path"]
 
     resolved_path = resolve_remote_path(remote_host, remote_path)
+    validate_remote_workspace_python_environments(remote_host, resolved_path)
     validate_remote_stage_resources(remote_host, resolved_path)
 
     tmpl = get_template("load_profile.py")
@@ -132,7 +134,6 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
     sync_command = [
         "rsync", "-avz",
         "--exclude", f"{SPOINTS}/",
-        "--exclude", "combos/",
         "--exclude", ".git/",
         "--exclude", "slurm_out/",
         "--exclude", "temp/",
@@ -176,6 +177,79 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
             raise RuntimeError(f"Failed to submit Slurm worker job on remote '{remote_host}': {err_str}")
 
 
+def validate_remote_snap_workflow_version(remote_host, python_cmd=None):
+    """
+    Ensures the remote host has snap_workflow installed in its Python environment
+    and that the remote version matches the local snap_workflow version.
+    """
+    from snap_workflow.utils.version import __version__ as local_version
+
+    check_script = "from snap_workflow.utils.version import __version__; print(__version__)"
+    try:
+        remote_out = run_remote_python(remote_host, check_script, python_cmd=python_cmd)
+        remote_version = remote_out.strip()
+    except Exception as e:
+        py_desc = f"'{python_cmd}'" if python_cmd else "the Python environment"
+        raise ValueError(
+            f"snap_workflow is not installed in {py_desc} on remote host '{remote_host}'. "
+            f"Please ensure snap_workflow is installed on the remote machine. Error: {e}"
+        )
+
+    if local_version and remote_version != local_version:
+        raise ValueError(
+            f"snap_workflow version mismatch on remote host '{remote_host}': "
+            f"remote has version '{remote_version}', but local manager has version '{local_version}'. "
+            f"Please ensure matching versions of snap_workflow are installed across host environments."
+        )
+
+
+def validate_remote_workspace_python_environments(remote_host, resolved_path):
+    """
+    Inspects .workflow/config.json and stage env.json files on the remote host
+    to extract all configured Python interpreter paths, then validates snap_workflow
+    installation and version for each specified interpreter.
+    """
+    script = f"""
+import os, json, glob
+interpreters = set()
+
+cfg_path = os.path.join({repr(resolved_path)}, ".workflow", "config.json")
+if os.path.isfile(cfg_path):
+    try:
+        with open(cfg_path) as f:
+            c = json.load(f)
+            if c.get("default_python_env"):
+                interpreters.add(c["default_python_env"])
+    except Exception:
+        pass
+
+stage_dirs = glob.glob(os.path.join({repr(resolved_path)}, "*", "env.json"))
+for env_f in stage_dirs:
+    try:
+        with open(env_f) as f:
+            c = json.load(f)
+            p_val = c.get("python_path")
+            if p_val and p_val != "FIXME":
+                interpreters.add(p_val)
+    except Exception:
+        pass
+
+print(json.dumps(list(interpreters)))
+"""
+    py_list = []
+    try:
+        out = run_remote_python(remote_host, script)
+        py_list = json.loads(out.strip())
+    except Exception as e:
+        logger.debug("Could not inspect remote Python paths on %s: %s", remote_host, e)
+
+    if not py_list:
+        py_list = [None]
+
+    for py_cmd in py_list:
+        validate_remote_snap_workflow_version(remote_host, python_cmd=py_cmd)
+
+
 def setup_remote_cluster(remote_host, remote_path):
     ssh_test = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", remote_host, "echo ok"]
     try:
@@ -197,7 +271,6 @@ def setup_remote_cluster(remote_host, remote_path):
     sync_code_command = [
         "rsync", "-avz",
         "--exclude", f"{SPOINTS}/",
-        "--exclude", "combos/",
         "--exclude", ".git/",
         "--exclude", "slurm_out/",
         "--exclude", "temp/",
@@ -230,7 +303,6 @@ def setup_remote_cluster(remote_host, remote_path):
     ret_envs = res_envs.returncode if isinstance(res_envs.returncode, int) else 0
     if ret_envs != 0:
         err_str = (res_envs.stderr or res_envs.stdout or "").strip()
-        raise ValueError(f"Failed to sync configuration templates to remote cluster '{remote_host}': {err_str}")
 
     tmpl = get_template("post_setup.py")
     post_setup_script = tmpl.replace("{RESOLVED_PATH}", repr(resolved_path))

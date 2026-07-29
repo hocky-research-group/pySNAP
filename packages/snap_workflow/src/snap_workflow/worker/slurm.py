@@ -23,7 +23,7 @@ def launch_local_workers(num_workers=1, concurrency=1, stages="", sweeps="", exc
     with open(info_path, "r") as f:
         server_info = json.load(f)
 
-    url = server_info["url"]
+    url = server_info.get("url") or f"http://{server_info.get('host', '127.0.0.1')}:{server_info.get('port')}"
     token = server_info["token"]
 
     for _ in range(num_workers):

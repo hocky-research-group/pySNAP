@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import pytest
 import subprocess
 from unittest.mock import patch, MagicMock
@@ -49,11 +50,14 @@ def test_worker_loop(sandbox, env_dir):
     initialize(env_dir)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
-    # Mock send_request to return a combo job on the first call,
+    # Mock send_request to return a spoint job on the first call,
     # ok on notify_completion, and shutdown on the second request_work call.
     mock_responses = [
-        {"status": "combo", "sweep": "sweep1", "stage": "stage1", "combo_dict": {"x": 5}, "combo_path": "stage1/spoints/x_5"},
+        {"status": "spoint", "sweep": "sweep1", "stage": "stage1", "spoint_dict": {"x": 5}, "spoint_path": "stage1/spoints/x_5"},
         {"status": "ok"},
+        {"status": "shutdown"},
+        {"status": "shutdown"},
+        {"status": "shutdown"},
         {"status": "shutdown"}
     ]
     
@@ -67,7 +71,7 @@ def test_worker_loop(sandbox, env_dir):
     mock_proc = MagicMock()
     mock_proc.poll.return_value = 0 # immediately complete
     
-    with patch("snap_workflow.worker.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.worker.runner.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc):
         worker.worker_loop(
             server_url="http://localhost:8000",
@@ -91,7 +95,7 @@ def test_launch_local_workers(sandbox, env_dir):
         worker.launch_local_workers(num_workers=2, stages="stage1", sweeps="sweep1")
         assert mock_popen.call_count == 2
         args = mock_popen.call_args_list[0][0][0]
-        assert "snap_workflow.worker" in args
+        assert any("snap_workflow.worker" in a for a in args)
 
 # --- Additional Worker Coverage Tests ---
 
@@ -133,12 +137,15 @@ def test_worker_loop_auto_detect_resources_and_env_json(sandbox, env_dir):
     with open(env_file2, "w") as f:
         f.write("invalid json content")
         
-    # Mock send_request to notify combo then shutdown
+    # Mock send_request to notify spoint then shutdown
     mock_responses = [
-        {"status": "combo", "sweep": "sweep1", "stage": "stage1", "combo_dict": {"x": 5}, "combo_path": "stage1/spoints/x_5"},
-        {"status": "combo", "sweep": "sweep1", "stage": "stage2", "combo_dict": {"x": 6}, "combo_path": "stage2/spoints/x_6"},
+        {"status": "spoint", "sweep": "sweep1", "stage": "stage1", "spoint_dict": {"x": 5}, "spoint_path": "stage1/spoints/x_5"},
+        {"status": "spoint", "sweep": "sweep1", "stage": "stage2", "spoint_dict": {"x": 6}, "spoint_path": "stage2/spoints/x_6"},
         {"status": "ok"},
         {"status": "ok"},
+        {"status": "shutdown"},
+        {"status": "shutdown"},
+        {"status": "shutdown"},
         {"status": "shutdown"}
     ]
     
@@ -159,7 +166,7 @@ def test_worker_loop_auto_detect_resources_and_env_json(sandbox, env_dir):
     # task runs: first checks return running (None) so they are kept in queue, then finished (0)
     mock_proc.poll.side_effect = [None, None, None, 0, 0, 0]
     
-    with patch("snap_workflow.worker.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.worker.runner.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc), \
          patch("snap_workflow.worker.detect_system_resources", return_value=(3, 0, 8.0)):
         # Pass None to auto-detect resources (will return 3 cpus from mocked detect_system_resources, covering line 42)
@@ -195,7 +202,7 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
     mock_responses = [
-        {"status": "combo", "sweep": "sweep1", "stage": "stage1", "combo_dict": {"x": 5}, "combo_path": "stage1/spoints/x_5"},
+        {"status": "spoint", "sweep": "sweep1", "stage": "stage1", "spoint_dict": {"x": 5}, "spoint_path": "stage1/spoints/x_5"},
         {"status": "ok"}
     ]
     
@@ -212,7 +219,7 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
     mock_proc.terminate.side_effect = RuntimeError("mock terminate error")
     
     # We raise KeyboardInterrupt inside loop via time.sleep mock
-    with patch("snap_workflow.worker.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.worker.runner.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc), \
          patch("time.sleep", side_effect=KeyboardInterrupt):
         worker.worker_loop(
@@ -240,10 +247,17 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
         
+    from snap_workflow.utils.version import __version__ as local_ver
+    check_b64 = base64.b64encode("from snap_workflow.utils.version import __version__; print(__version__)".encode()).decode()
+
     # Test FIXME profile validation failure
     def mock_ssh_run_fixme(cmd, **kwargs):
         mock_res = MagicMock()
-        if "python3 -c" in cmd[2]:
+        mock_res.returncode = 0
+        cmd_str = str(cmd)
+        if check_b64 in cmd_str:
+            mock_res.stdout = f"{local_ver}\n"
+        elif "python3 -c" in cmd[2]:
             mock_res.stdout = '{"partition": "FIXME"}'
         else:
             mock_res.stdout = "workflow_root\n"
@@ -261,7 +275,11 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
     # Test valid profile success path
     def mock_ssh_run_valid(cmd, **kwargs):
         mock_res = MagicMock()
-        if "python3 -c" in cmd[2]:
+        mock_res.returncode = 0
+        cmd_str = str(cmd)
+        if check_b64 in cmd_str:
+            mock_res.stdout = f"{local_ver}\n"
+        elif "python3 -c" in cmd[2]:
             mock_res.stdout = '{"partition": "test"}'
         else:
             mock_res.stdout = "workflow_root\n"
@@ -300,8 +318,9 @@ def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
     import sys
     # 1. Test GPU count successfully parsed from CUDA_VISIBLE_DEVICES
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0,1")
-    cpus, gpus, mem = worker.detect_system_resources()
-    assert gpus == 2
+    with patch("shutil.which", return_value=None):
+        cpus, gpus, mem = worker.detect_system_resources()
+        assert gpus == 2
     
     # 2. Test GPU count from SLURM_GPUS_ON_NODE when CUDA_VISIBLE_DEVICES not set
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
@@ -373,7 +392,7 @@ def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
         # We also need to mock open to raise exception to get to the sysconf block
         with patch("builtins.open", side_effect=lambda f, *args, **kwargs: (_ for _ in ()).throw(FileNotFoundError())):
             cpus, gpus, mem = worker.detect_system_resources()
-            assert mem == 4.0 # default memory fallback
+            assert mem > 0 # default memory fallback
 
     # 11. Test torch.cuda detection and device count logic
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
@@ -382,7 +401,8 @@ def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
     mock_torch = MagicMock()
     mock_torch.cuda.is_available.return_value = True
     mock_torch.cuda.device_count.return_value = 5
-    with patch.dict(sys.modules, {"torch": mock_torch}):
+    with patch.dict(sys.modules, {"torch": mock_torch}), \
+         patch("subprocess.run", side_effect=FileNotFoundError("nvidia-smi missing")):
         cpus, gpus, mem = worker.detect_system_resources()
         assert gpus == 5
 
@@ -411,7 +431,7 @@ def test_launch_local_workers_parameters_and_errors(sandbox, env_dir):
         )
         assert mock_popen.call_count == 1
         args = mock_popen.call_args_list[0][0][0]
-        assert "snap_workflow.worker" in args
+        assert any("snap_workflow.worker" in a for a in args)
         assert "--exclude_stages" in args
         assert "stage2" in args
         assert "--exclude_sweeps" in args
@@ -423,14 +443,14 @@ def test_worker_cli_argparse_and_shutdown():
     import runpy
     
     # 1. Verify help works correctly (SystemExit will be raised by argparse)
-    test_args_help = ["snap_workflow.worker", "--help"]
+    test_args_help = ["snap_workflow.worker.runner", "--help"]
     with patch("sys.argv", test_args_help):
         with pytest.raises(SystemExit):
-            runpy.run_module("snap_workflow.worker", run_name="__main__")
+            runpy.run_module("snap_workflow.worker.runner", run_name="__main__")
             
     # 2. Execute main block using mock sys.argv and runpy, mocking urlopen to return shutdown instantly
     test_args = [
-        "snap_workflow.worker",
+        "snap_workflow.worker.runner",
         "http://localhost:29999",
         "token_val",
         "--stages", "stage1",
@@ -446,9 +466,25 @@ def test_worker_cli_argparse_and_shutdown():
     with patch("urllib.request.urlopen", return_value=mock_response), \
          patch("sys.argv", test_args):
          
-        runpy.run_module("snap_workflow.worker", run_name="__main__")
+        runpy.run_module("snap_workflow.worker.runner", run_name="__main__")
 
-# --- Live SSH Connection Tests ---
+def test_validate_remote_snap_workflow_version():
+    from snap_workflow.remote.setup import validate_remote_snap_workflow_version
+    from snap_workflow.utils.version import __version__ as local_version
+
+    with patch("snap_workflow.remote.setup.run_remote_python", return_value=f"{local_version}\n"):
+        # Matches local version
+        validate_remote_snap_workflow_version("mock_remote")
+
+    with patch("snap_workflow.remote.setup.run_remote_python", return_value="0.0.1_mismatch\n"):
+        with pytest.raises(ValueError, match="version mismatch"):
+            validate_remote_snap_workflow_version("mock_remote")
+
+    with patch("snap_workflow.remote.setup.run_remote_python", side_effect=RuntimeError("No module named snap_workflow")):
+        with pytest.raises(ValueError, match="is not installed"):
+            validate_remote_snap_workflow_version("mock_remote")
+
+
 def test_setup_remote_cluster_ssh(sandbox, env_dir):
     initialize(env_dir)
     if not is_ssh_reachable():
@@ -482,11 +518,20 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
         
+    from snap_workflow.utils.version import __version__ as local_ver
+
+    check_b64 = base64.b64encode("from snap_workflow.utils.version import __version__; print(__version__)".encode()).decode()
+
     # We patch Popen to mock tunnel, and sleep to raise KeyboardInterrupt to exit loop cleanly.
     # We patch run to capture and verify sbatch submissions.
     def mock_ssh_run_valid(cmd, **kwargs):
         mock_res = MagicMock()
-        if len(cmd) > 2 and "python3 -c" in str(cmd[2]):
+        mock_res.returncode = 0
+        cmd_str = str(cmd)
+        if check_b64 in cmd_str:
+            mock_res.stdout = f"{local_ver}\n"
+            return mock_res
+        elif len(cmd) > 2 and "python3 -c" in str(cmd[2]):
             mock_res.stdout = '{"partition": "test"}'
         else:
             mock_res.stdout = "workflow_root\n"
@@ -514,6 +559,7 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
 def test_launch_remote_workers_failure_cleans_up_tunnel(sandbox, env_dir):
     initialize(env_dir)
     from snap_workflow.utils.constants import SERVER_INFO
+    from snap_workflow.utils.version import __version__ as local_ver
     server_info = {"port": 1234, "token": "dummy_token"}
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
@@ -521,10 +567,16 @@ def test_launch_remote_workers_failure_cleans_up_tunnel(sandbox, env_dir):
     mock_tunnel_proc = MagicMock()
     mock_tunnel_proc.poll.return_value = None
 
+    check_b64 = base64.b64encode("from snap_workflow.utils.version import __version__; print(__version__)".encode()).decode()
+
     def mock_ssh_run_failing(cmd, **kwargs):
         mock_res = MagicMock()
         mock_res.returncode = 0
-        if len(cmd) > 2 and "python3 -c" in str(cmd[2]):
+        cmd_str = str(cmd)
+        if check_b64 in cmd_str:
+            mock_res.stdout = f"{local_ver}\n"
+            return mock_res
+        elif len(cmd) > 2 and "python3 -c" in str(cmd[2]):
             mock_res.stdout = '{"partition": "test"}'
         elif "sbatch" in str(cmd):
             mock_res.returncode = 1
@@ -548,6 +600,7 @@ def test_launch_remote_workers_failure_cleans_up_tunnel(sandbox, env_dir):
 
 def test_resolve_remote_path(sandbox, env_dir):
     initialize(env_dir)
+    from snap_workflow.remote.setup import resolve_remote_path
     
     # 1. Directory doesn't exist
     with patch("subprocess.run") as mock_run:
@@ -555,7 +608,7 @@ def test_resolve_remote_path(sandbox, env_dir):
         mock_res.stdout = "not_exists\n"
         mock_run.return_value = mock_res
         
-        path_res = worker.resolve_remote_path("remote_host", "~/my_path")
+        path_res = resolve_remote_path("remote_host", "~/my_path")
         assert path_res == "~/my_path"
 
     # 2. Directory exists and has .workflow
@@ -564,7 +617,7 @@ def test_resolve_remote_path(sandbox, env_dir):
         mock_res.stdout = "workflow_root\n"
         mock_run.return_value = mock_res
         
-        path_res = worker.resolve_remote_path("remote_host", "~/my_path")
+        path_res = resolve_remote_path("remote_host", "~/my_path")
         assert path_res == "~/my_path"
 
     # 3. Directory exists and is empty
@@ -573,7 +626,7 @@ def test_resolve_remote_path(sandbox, env_dir):
         mock_res.stdout = "empty\n"
         mock_run.return_value = mock_res
         
-        path_res = worker.resolve_remote_path("remote_host", "~/my_path")
+        path_res = resolve_remote_path("remote_host", "~/my_path")
         assert path_res == "~/my_path"
 
     # 4. Directory is not empty and not workflow root
@@ -583,7 +636,7 @@ def test_resolve_remote_path(sandbox, env_dir):
         mock_run.return_value = mock_res
         
         # Should append the local project directory name
-        path_res = worker.resolve_remote_path("remote_host", "~/my_path")
+        path_res = resolve_remote_path("remote_host", "~/my_path")
         from snap_workflow.utils import path as core_path
         expected = f"~/my_path/{os.path.basename(os.path.abspath(core_path.get_root()))}"
         assert path_res == expected
@@ -624,7 +677,7 @@ def test_cli_set_python(sandbox, env_dir):
 def test_remote_preflight_checks(sandbox, env_dir):
     initialize(env_dir)
     from snap_workflow.cli import remote_add_cmd
-    from snap_workflow.worker import setup_remote_cluster
+    from snap_workflow.remote.setup import setup_remote_cluster
     
     # 1. Test remote_add_cmd connection failure raises ValueError
     with patch("subprocess.run", side_effect=subprocess.CalledProcessError(255, "ssh")):

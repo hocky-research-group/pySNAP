@@ -3,6 +3,7 @@ import shutil
 import json
 import sys
 import subprocess
+import importlib.util
 from snap_workflow.utils.constants import *
 from snap_workflow.utils import version as vrs
 from snap_workflow.utils import path, io
@@ -31,6 +32,45 @@ def check_existing_root():
     if root is not None:
         raise ValueError(f"Directory {cwd} is already within workflow setup rooted at \"{root}\".")
     return False
+
+def setup_agent_skills():
+    skills_dir = os.path.join(".agents", "skills")
+    os.makedirs(skills_dir, exist_ok=True)
+
+    # 1. snap_workflow skill
+    wf_skill_src = os.path.join(os.path.dirname(__file__), "templates", "skills", "snap-workflow", "SKILL.md")
+    if os.path.isfile(wf_skill_src):
+        target_dir = os.path.join(skills_dir, "snap-workflow")
+        os.makedirs(target_dir, exist_ok=True)
+        shutil.copy(wf_skill_src, os.path.join(target_dir, "SKILL.md"))
+
+    # 2. snap_simulate skill (if installed)
+    try:
+        spec_sim = importlib.util.find_spec("snap_simulate")
+        if spec_sim and spec_sim.submodule_search_locations:
+            for loc in spec_sim.submodule_search_locations:
+                sim_skill_src = os.path.join(loc, "templates", "skills", "snap-simulate", "SKILL.md")
+                if os.path.isfile(sim_skill_src):
+                    target_dir = os.path.join(skills_dir, "snap-simulate")
+                    os.makedirs(target_dir, exist_ok=True)
+                    shutil.copy(sim_skill_src, os.path.join(target_dir, "SKILL.md"))
+                    break
+    except Exception:
+        pass
+
+    # 3. snap_analyze skill (if installed)
+    try:
+        spec_ana = importlib.util.find_spec("snap_analyze")
+        if spec_ana and spec_ana.submodule_search_locations:
+            for loc in spec_ana.submodule_search_locations:
+                ana_skill_src = os.path.join(loc, "templates", "skills", "snap-analyze", "SKILL.md")
+                if os.path.isfile(ana_skill_src):
+                    target_dir = os.path.join(skills_dir, "snap-analyze")
+                    os.makedirs(target_dir, exist_ok=True)
+                    shutil.copy(ana_skill_src, os.path.join(target_dir, "SKILL.md"))
+                    break
+    except Exception:
+        pass
 
 def setup_blank_workflow():
     os.mkdir(".workflow")
@@ -62,6 +102,9 @@ def setup_blank_workflow():
     run_worker_py = os.path.join(".workflow", "workers", "run_worker.py")
     if not os.path.isfile(run_worker_py):
         shutil.copy(os.path.join(os.path.dirname(__file__), "templates", "run_worker.py"), run_worker_py)
+
+    # setup_agent_skills()
+
         
     spoint_sh = os.path.join(".workflow", "spoint.sh")
     if not os.path.isfile(spoint_sh):
@@ -79,9 +122,7 @@ def setup_blank_workflow():
     io.make_json(LOCAL_CONFIG, obj=config_data)
     return
 
-def zip_workflow(zip_name, sweep_names=None, stage_names=None, include_spoints=False, include_combos=None):
-    if include_combos is not None:
-        include_spoints = include_combos
+def zip_workflow(zip_name, sweep_names=None, stage_names=None, include_spoints=False):
 
     sweeps_dict = sweeps.load_sweeps()
     stages_dict = stages.load_stages()

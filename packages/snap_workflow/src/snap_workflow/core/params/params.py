@@ -2,6 +2,7 @@ import os
 from snap_workflow.utils.constants import *
 from snap_workflow.utils import path
 from snap_workflow.core.params.system_params import System_Params
+from snap_workflow.core.domain import spoints, stages, variables
 
 def compute_params_hash(params_dir):
     import hashlib
@@ -41,13 +42,11 @@ def set_spoint_params(sweep_name, stage_name, spoint_dict):
 
     stages_to_load = stages.get_dependent_stages(stage_name)
     stages_to_load.append(stage_name)
-    spoint_dict = variables.cast_combo_dict(spoint_dict)
+    spoint_dict = variables.cast_spoint_dict(spoint_dict)
     params_dir = os.path.join(root, "params")
     params_obj = System_Params(params_dir, variables=spoint_dict)
     params_obj.source_hash = compute_params_hash(params_dir)
     save_params(params_obj, spoint_path)
-
-set_combo_params = set_spoint_params
 
 def convert_params(sweep_name=None, stage_name=None, spoint_dir=None, format="json"):
     if spoint_dir is not None:

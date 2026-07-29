@@ -96,8 +96,8 @@ def get_sbatch_details(stage_name):
         return None
 
 def get_parallel_submit(stage_name):
-    prompt = f"Enter the number of {stage_name} combos to be run in parallel on one submission: "
-    help_string = "This is the number of combos that workflow will try to submit on a single sbatch submission"
+    prompt = f"Enter the number of {stage_name} spoints to be run in parallel on one submission: "
+    help_string = "This is the number of spoints that workflow will try to submit on a single sbatch submission"
     input_collector = io.InputCollector(prompt, help_string,
                                          add_checks=str.isdigit,
                                          add_errors="Number must be a positive integer")
@@ -133,7 +133,7 @@ def get_stage_dependencies(stages, kwargs):
 
 def get_new_var_val(new_var_name):
     prompt = f"What value has been used for {new_var_name} so far? "
-    help_str = "The value that all combos used before now."
+    help_str = "The value that all spoints used before now."
     input_collector = io.InputCollector(prompt, help_str)
     return input_collector.collect()
 
@@ -349,7 +349,7 @@ def get_completions(args_before, current_token):
         flags_map = {
             "submit": ["--test", "--no_sbatch", "-s", "--stage", "-w", "--sweep"],
             "collect": ["-v", "--verbose", "-s", "--stage"],
-            "zip": ["--include_combos", "-s", "--stage", "-w", "--sweep"],
+            "zip": ["--include_spoints", "-s", "--stage", "-w", "--sweep"],
             "remote": {
                 "add": ["--host"],
                 "setup": ["--path"],
@@ -883,7 +883,7 @@ def main_zip(parsed_command, args):
     if stage_names == "all":
         stage_names = list(load_stages().keys())
 
-    include_spoints = kwargs.pop("include_spoints", False) or kwargs.pop("include_combos", False) or kwargs.pop("C", False)
+    include_spoints = kwargs.pop("include_spoints", False) or kwargs.pop("C", False)
 
     zip_workflow(zip_name, sweep_names, stage_names, include_spoints)
 

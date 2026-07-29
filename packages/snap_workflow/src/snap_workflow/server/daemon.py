@@ -4,6 +4,7 @@ import json
 import time
 import secrets
 import logging
+import subprocess
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -20,6 +21,9 @@ active_schedulers = {}
 def register_auto_scheduler(server, remote_name, stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
     if not hasattr(server, "schedulers"):
         server.schedulers = {}
+    if not hasattr(server, "auto_schedulers"):
+        server.auto_schedulers = server.schedulers
+
     if remote_name in server.schedulers:
         old_sched = server.schedulers[remote_name]
         old_sched.shutdown_event.set()
@@ -33,6 +37,7 @@ def register_auto_scheduler(server, remote_name, stages="", sweeps="", exclude_s
         server=server
     )
     server.schedulers[remote_name] = sched
+    server.auto_schedulers[remote_name] = sched
     sched.daemon = True
     sched.start()
 
@@ -68,6 +73,7 @@ class WorkflowServer(HTTPServer):
         self.token = token or secrets.token_hex(16)
         self.spoint_manager = spoint_tools.SPointStatusManager()
         self.schedulers = {}
+        self.auto_schedulers = self.schedulers
         self.active_tunnels = {}
 
 
@@ -86,7 +92,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
 
         token = auth_header.split(" ", 1)[1]
         if token != self.server.token:
-            self.send_response(403)
+            self.send_response(401)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Forbidden"}).encode())
@@ -104,14 +110,41 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"status": "running"}).encode())
             return
 
+        if parsed.path == "/shutdown":
+            if not self._check_auth():
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "shutdown"}).encode())
+            import threading
+            threading.Thread(target=self.server.shutdown).start()
+            return
+
         if parsed.path == "/request_work":
             if not self._check_auth():
                 return
 
-            cpus_avail = int(params.get("cpus_avail", [1])[0])
-            gpu_avail = int(params.get("gpu_avail", [-1])[0])
-            mem_avail = float(params.get("mem_avail", [0.0])[0])
-            min_cpu_running_gpu = int(params.get("min_cpu_running_gpu", [0])[0])
+            try:
+                cpus_avail = int(params.get("cpus_avail", [1])[0])
+            except Exception:
+                cpus_avail = 1
+
+            try:
+                gpu_avail = int(params.get("gpu_avail", [-1])[0])
+            except Exception:
+                gpu_avail = -1
+
+            try:
+                mem_avail = float(params.get("mem_avail", [0.0])[0])
+            except Exception:
+                mem_avail = 0.0
+
+            try:
+                min_cpu_running_gpu = int(params.get("min_cpu_running_gpu", [0])[0])
+            except Exception:
+                min_cpu_running_gpu = 0
+
             host = params.get("host", ["local"])[0]
 
             stages_str = params.get("stages", [""])[0]
@@ -136,24 +169,61 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 host=host
             )
 
+            if candidate:
+                sweep_name, stage_name, spoint_dict, spoint_path = candidate
+                resp_data = {
+                    "status": "spoint",
+                    "sweep": sweep_name,
+                    "stage": stage_name,
+                    "spoint_dict": spoint_dict,
+                    "spoint_path": spoint_path
+                }
+                if host != "local":
+                    try:
+                        from snap_workflow.cli import load_global_remotes, load_local_remotes
+                        from snap_workflow.server.sync import push_dependency_data
+                        local_remotes = load_local_remotes()
+                        if host in local_remotes:
+                            r_path = local_remotes[host]["path"]
+                            g_remotes = load_global_remotes()
+                            r_host = g_remotes[host]["host"] if host in g_remotes else host
+                            rel_sp = os.path.relpath(spoint_path, path.get_root())
+
+                            # Push target spoint directory (containing params.pkl)
+                            push_dependency_data(host, r_host, r_path, rel_sp)
+
+                            # Push dependent stage spoints if present
+                            st_cfg = self.server.spoint_manager.stages_dict.get(stage_name, {})
+                            deps = st_cfg.get("dependencies") if "dependencies" in st_cfg else st_cfg.get("dependent_stages", [])
+                            for dep in deps:
+                                dep_sp = self.server.spoint_manager.get_spoint(sweep_name, dep, spoint_dict)
+                                if dep_sp and os.path.exists(dep_sp["path"]):
+                                    dep_rel_sp = os.path.relpath(dep_sp["path"], path.get_root())
+                                    push_dependency_data(host, r_host, r_path, dep_rel_sp)
+                    except Exception as sync_e:
+                        logger.warning("Failed to push spoint and dependency data for %s to %s: %s", stage_name, host, sync_e)
+            else:
+                all_complete = self.server.spoint_manager.are_all_complete(
+                    allowed_stages=allowed_stages,
+                    allowed_sweeps=allowed_sweeps,
+                    exclude_stages=exclude_stages,
+                    exclude_sweeps=exclude_sweeps
+                )
+                if all_complete:
+                    resp_data = {"status": "shutdown"}
+                else:
+                    resp_data = {"status": "none"}
+
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-
-            if candidate:
-                sweep_name, stage_name, combo_dict, spoint_path = candidate
-                resp_data = {
-                    "status": "combo",
-                    "sweep": sweep_name,
-                    "stage": stage_name,
-                    "combo_dict": combo_dict,
-                    "combo_path": spoint_path
-                }
-            else:
-                resp_data = {"status": "none"}
-
             self.wfile.write(json.dumps(resp_data).encode())
             return
+
+        self.send_response(404)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"error": "Not Found"}).encode())
 
     def do_POST(self):
         if self.path == "/notify_completion":
@@ -166,13 +236,29 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
 
             sweep_name = data["sweep"]
             stage_name = data["stage"]
-            combo_dict = data["combo_dict"]
+            spoint_dict = data["spoint_dict"]
             status_val = data["status"]
             host = data.get("host", "local")
 
             try:
-                self.server.spoint_manager.set_status(sweep_name, stage_name, combo_dict, status_val, host=host)
-                logger.info("Manager updated status of spoint %s %s to '%s' (reported by %s)", stage_name, combo_dict, status_val, host)
+                self.server.spoint_manager.set_status(sweep_name, stage_name, spoint_dict, status_val, host=host)
+                logger.info("Manager updated status of spoint %s %s to '%s' (reported by %s)", stage_name, spoint_dict, status_val, host)
+                if host != "local":
+                    try:
+                        from snap_workflow.cli import load_global_remotes, load_local_remotes
+                        local_remotes = load_local_remotes()
+                        if host in local_remotes:
+                            r_path = local_remotes[host]["path"]
+                            g_remotes = load_global_remotes()
+                            r_host = g_remotes[host]["host"] if host in g_remotes else host
+                            rel_sp = spoint_tools.get_spoint_path(stage_name, spoint_dict)
+                            local_sp = rel_sp
+                            r_path_clean = r_path.rstrip('/')
+                            remote_sp = f"{r_path_clean}/{os.path.relpath(rel_sp, path.get_root())}"
+                            sync_cmd = ["rsync", "-avz", f"{r_host}:{remote_sp}/", f"{local_sp}/"]
+                            subprocess.run(sync_cmd, capture_output=True)
+                    except Exception as sync_e:
+                        logger.warning("Failed to sync back outputs on completion for %s: %s", stage_name, sync_e)
             except Exception as e:
                 logger.error("Failed to update status on completion notification: %s", e)
 
@@ -302,6 +388,11 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"status": "success"}).encode())
             return
+
+        self.send_response(404)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"error": "Not Found"}).encode())
 
 
 def run_server_foreground(host="127.0.0.1", port=0):

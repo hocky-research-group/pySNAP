@@ -3,10 +3,10 @@
 
 #---- Note to User ----
 #Within the workflow setup this script is run using sbatch for 
-#submitted combos and bash for none submitted combos.
+#submitted spoints and bash for none submitted spoints.
 #It's executed from the workflow root directory with at least one argument
-#and each argument specifies a combo directory path, so each subprocess is
-#called from the actual combo directory.
+#and each argument specifies a spoint directory path, so each subprocess is
+#called from the actual spoint directory.
 #**This script should be left where it is and always be named spoint.sh**#
 
 #---- Load cuda if available ----
@@ -20,17 +20,21 @@ else
     echo "Cuda not loaded"
 fi
 
-#---- Loop through combo directories supplied ----
-#Changes the directory to the combo directory and runs combo.py with both std
-#output and err output redirected to combo.log. Loops to the next combo and runs in parallel.
+export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
+
+#---- Loop through spoint directories supplied ----
+#Changes the directory to the spoint directory and runs stage scripts with both std
+#output and err output redirected to spoint.log. Loops to the next spoint and runs in parallel.
 #Non python scripts should be run from within python using subprocess.run([list,of,commands,and,args])
 #to take advantage of the status manager
 
 count=0
-for combo in "$@"; do
-    echo $combo
-    mkdir -p "$combo"
-    cd "$combo"
+for spoint in "$@"; do
+    echo $spoint
+    mkdir -p "$spoint"
+    cd "$spoint"
+    WF_ROOT="$(cd ../../.. 2>/dev/null && pwd)"
+    export PYTHONPATH="$WF_ROOT/.workflow:$WF_ROOT/packages/snap_workflow/src:$WF_ROOT/src:$WF_ROOT:$PYTHONPATH"
     # Detect default python interpreter (prefer python3, fallback to python)
     python_cmd="python3"
     if ! command -v python3 &> /dev/null; then
@@ -122,8 +126,7 @@ for k, v in cfg.get('env_vars', {}).items():
     print(f'export {k}=\"{v}\"')
 " 2>/dev/null)
 
-    stage_dir="${combo%%/spoints/*}"
-    stage_dir="${stage_dir%%/combos/*}"
+    stage_dir="${spoint%%/spoints/*}"
     stage_name=$(basename "$stage_dir")
     $python_path "../../$stage_name.py" $count >> spoint.log 2>&1 &
     count=$((count+1))

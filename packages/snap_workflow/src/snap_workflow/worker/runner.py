@@ -38,14 +38,45 @@ def send_request(url, token, data=None, retries=3, backoff=2):
 
 def detect_system_resources():
     cpus = os.cpu_count() or 1
+    slurm_cpus = os.getenv("SLURM_CPUS_ON_NODE")
+    if slurm_cpus is not None:
+        try:
+            cpus = int(slurm_cpus)
+        except ValueError:
+            pass
     gpus = 0
     try:
-        res = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True)
-        if res.returncode == 0:
-            lines = [line for line in res.stdout.strip().split("\n") if line.strip()]
-            gpus = len(lines)
+        cuda_vis_env = os.getenv("CUDA_VISIBLE_DEVICES")
+        slurm_gpus_env = os.getenv("SLURM_GPUS_ON_NODE")
+        if cuda_vis_env is not None:
+            cuda_vis = str(cuda_vis_env).strip()
+            if cuda_vis.lower() in ("none", "void", "-1"):
+                gpus = -1
+            elif cuda_vis:
+                gpus = len([x for x in cuda_vis.split(",") if x.strip()])
+        elif slurm_gpus_env is not None:
+            try:
+                gpus = int(slurm_gpus_env)
+            except ValueError:
+                gpus = 1
+        else:
+            try:
+                res = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True)
+                if res.returncode == 0:
+                    lines = [line for line in res.stdout.strip().split("\n") if line.strip()]
+                    gpus = len(lines)
+            except Exception:
+                gpus = 0
+
+            if gpus == 0:
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        gpus = torch.cuda.device_count()
+                except Exception:
+                    pass
     except Exception:
-        gpus = 0
+        gpus = 1
 
     mem_gb = 16.0
     try:
@@ -63,24 +94,7 @@ def detect_system_resources():
     return cpus, gpus, mem_gb
 
 
-def parse_memory_to_gb(mem_str):
-    if not mem_str:
-        return 0.0
-    mem_str = str(mem_str).strip().upper()
-    try:
-        if mem_str.endswith("G") or mem_str.endswith("GB"):
-            val = float(mem_str.rstrip("GB").rstrip("G"))
-            return val
-        elif mem_str.endswith("M") or mem_str.endswith("MB"):
-            val = float(mem_str.rstrip("MB").rstrip("M"))
-            return val / 1024.0
-        elif mem_str.endswith("K") or mem_str.endswith("KB"):
-            val = float(mem_str.rstrip("KB").rstrip("K"))
-            return val / (1024.0 * 1024.0)
-        else:
-            return float(mem_str)
-    except ValueError:
-        return 0.0
+from snap_workflow.utils.io import parse_memory_to_gb
 
 
 def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=None, idle_delay=5,
@@ -136,7 +150,7 @@ def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=N
                     payload = {
                         "sweep": spoint["sweep"],
                         "stage": spoint["stage"],
-                        "combo_dict": spoint["spoint_dict"],
+                        "spoint_dict": spoint["spoint_dict"],
                         "status": status_val,
                         "host": host
                     }
@@ -195,27 +209,27 @@ def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=N
                         logger.info("Worker received shutdown signal from manager. Draining %s active tasks...", len(active_spoints))
                         print("[Server Instruction] Shutdown")
                         should_shutdown = True
-                    elif status_resp == "combo":
+                    elif status_resp == "spoint":
                         sweep = resp["sweep"]
                         stage = resp["stage"]
-                        spoint_dict = resp["combo_dict"]
-                        spoint_path = resp["combo_path"]
+                        spoint_dict = resp["spoint_dict"]
+                        spoint_path = resp["spoint_path"]
 
                         logger.info("Acquired spoint: %s %s", stage, spoint_dict)
                         print(f"[Server Instruction] Execute stage {stage} with sweep variables {spoint_dict}")
                         print(f"[Worker Action] Start executing spoint {stage} with variables {spoint_dict}")
 
-                        combo_sh_script = os.path.join(".workflow", "spoint.sh")
+                        spoint_sh_script = os.path.join(".workflow", "spoint.sh")
                         if log_file is not None:
-                            proc = subprocess.Popen(["bash", combo_sh_script, spoint_path], stdout=log_file, stderr=log_file)
+                            proc = subprocess.Popen(["bash", spoint_sh_script, spoint_path], stdout=log_file, stderr=log_file)
                         else:
-                            proc = subprocess.Popen(["bash", combo_sh_script, spoint_path])
+                            proc = subprocess.Popen(["bash", spoint_sh_script, spoint_path])
                         active_spoints.append({
                             "proc": proc,
                             "sweep": sweep,
                             "stage": stage,
                             "spoint_dict": spoint_dict,
-                            "combo_path": spoint_path
+                            "spoint_path": spoint_path
                         })
                         continue
 
@@ -250,3 +264,43 @@ def notify_worker_shutdown(server_url, token, worker_id, host="local"):
         send_request(f"{server_url}/notify_shutdown", token, data=payload, retries=1)
     except Exception as e:
         logger.warning("Failed to notify manager of worker shutdown: %s", e)
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="SNAP Workflow Worker Node")
+    parser.add_argument("server_url", type=str, help="Server URL")
+    parser.add_argument("token", type=str, help="Authentication token")
+    parser.add_argument("--cpus", type=int, default=None, help="Number of CPU cores")
+    parser.add_argument("--gpus", type=int, default=None, help="Number of GPUs")
+    parser.add_argument("--mem", type=float, default=None, help="RAM memory in GB")
+    parser.add_argument("--stages", type=str, default="", help="Stages filter")
+    parser.add_argument("--sweeps", type=str, default="", help="Sweeps filter")
+    parser.add_argument("--exclude_stages", type=str, default="", help="Exclude stages filter")
+    parser.add_argument("--exclude_sweeps", type=str, default="", help="Exclude sweeps filter")
+    parser.add_argument("--host", type=str, default="local", help="Host identifier")
+    parser.add_argument("--worker_id", type=str, default=None, help="Worker ID")
+
+    args = parser.parse_args()
+
+    try:
+        worker_loop(
+            server_url=args.server_url,
+            token=args.token,
+            cpus_total=args.cpus,
+            gpus_total=args.gpus,
+            mem_total=args.mem,
+            stages=args.stages,
+            sweeps=args.sweeps,
+            exclude_stages=args.exclude_stages,
+            exclude_sweeps=args.exclude_sweeps,
+            host=args.host,
+            worker_id=args.worker_id
+        )
+    finally:
+        notify_worker_shutdown(args.server_url, args.token, args.worker_id or args.host, host=args.host)
+
+
+if __name__ == "__main__":
+    main()
+

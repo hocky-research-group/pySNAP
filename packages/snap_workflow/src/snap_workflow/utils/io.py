@@ -3,6 +3,28 @@ import os,sys
 import json
 from snap_workflow.utils.constants import GLOBAL_CONFIG_DIR
 
+def parse_memory_to_gb(mem_str):
+    if not mem_str:
+        return 0.0
+    mem_str = str(mem_str).strip().upper()
+    try:
+        if mem_str.endswith("G") or mem_str.endswith("GB"):
+            val = float(mem_str.rstrip("GB").rstrip("G"))
+            return val
+        elif mem_str.endswith("M") or mem_str.endswith("MB"):
+            val = float(mem_str.rstrip("MB").rstrip("M"))
+            return val / 1024.0
+        elif mem_str.endswith("K") or mem_str.endswith("KB"):
+            val = float(mem_str.rstrip("KB").rstrip("K"))
+            return val / (1024.0 * 1024.0)
+        elif mem_str.endswith("T") or mem_str.endswith("TB"):
+            val = float(mem_str.rstrip("TB").rstrip("T"))
+            return val * 1024.0
+        else:
+            return float(mem_str)
+    except ValueError:
+        return 0.0
+
 def extract(kwargs,allowable_keys):# {{{
     extracted = None
     extracted_key = None

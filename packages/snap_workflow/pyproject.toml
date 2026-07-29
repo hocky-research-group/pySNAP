@@ -53,7 +53,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-snap_workflow = ["remote/templates/*", "core/templates/*"]
+snap_workflow = ["remote/templates/*", "core/templates/*", "core/templates/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

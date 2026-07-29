@@ -78,7 +78,7 @@ def create_sweep(sweep_name, clear=False):
 def link_sweep(sweep_name):
     for sname, stage_name, spoint_dict in spoints.iter_spoints(sweep_names=sweep_name):
         dep_info = spoints.get_dependent_spoint_info(stage_name, sname, spoint_dict)
-        spoints.link_dependent_combo(stage_name, spoint_dict, dep_info)
+        spoints.link_dependent_spoint(stage_name, spoint_dict, dep_info)
     return True
 
 def rename_and_unlink_spoints(sweep_name, add_to_stages, new_var_name, new_val):
@@ -104,7 +104,7 @@ def rename_and_unlink_spoints(sweep_name, add_to_stages, new_var_name, new_val):
                 os.unlink(dep_path)
             else:
                 conv_vars = dep_stage["conv_vars"]
-                for conv_spoint in dep_stage["conv_combos"]:
+                for conv_spoint in dep_stage["conv_spoints"]:
                     conv_dict = {var: val for var, val in zip(conv_vars, conv_spoint)}
                     conv_path = os.path.join(dep_path, spoints.get_spoint_string(conv_dict))
                     os.unlink(conv_path)

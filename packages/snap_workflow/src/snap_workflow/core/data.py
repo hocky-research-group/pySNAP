@@ -58,7 +58,7 @@ def _collect_data(stage_name, collect_module, verbose):
             if verbose:
                 print(f"    {spoint_string}")
 
-            spoint_dict = variables.cast_combo_dict(spoint_dict)
+            spoint_dict = variables.cast_spoint_dict(spoint_dict)
             spoint_dict["sweep"] = sweep_name
 
             with path.FromDir(spoint_path):

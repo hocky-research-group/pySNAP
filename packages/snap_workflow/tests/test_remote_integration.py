@@ -28,11 +28,10 @@ def is_ssh_reachable():
 
 import tempfile
 
-# Gate these integration tests: skip by default unless RUN_REMOTE_TESTS is set
-# and Lab_Main is reachable.
+# Gate these integration tests: skip if Lab_Main is not reachable.
 pytestmark = pytest.mark.skipif(
-    os.environ.get("RUN_REMOTE_TESTS") != "1" or not is_ssh_reachable(),
-    reason="RUN_REMOTE_TESTS=1 is not set or Lab_Main is not reachable via SSH"
+    not is_ssh_reachable(),
+    reason="Lab_Main is not reachable via SSH"
 )
 
 @pytest.fixture
@@ -51,12 +50,13 @@ def sandbox():
 def setup_remote_test_env(remote_path):
     """Utility to sync workflow structure and configure env on Lab_Main."""
     # Sync workflow metadata/structure to remote_path
-    resolved_path = worker.setup_remote_cluster(remote_host="Lab_Main", remote_path=remote_path)
+    from snap_workflow.remote.setup import setup_remote_cluster
+    resolved_path = setup_remote_cluster(remote_host="Lab_Main", remote_path=remote_path)
 
     # Configure env.json to use the correct remote python paths
     modify_cmd = [
         "ssh", "Lab_Main",
-        f"python3 -c \"import json, os; p=os.path.expanduser('{resolved_path}/stage1/env.json'); data=json.load(open(p)) if os.path.exists(p) else {{}}; data['python_path']='/home/tanner/miniforge3/envs/test_nyut/bin/python'; json.dump(data, open(p, 'w'))\""
+        f"python3 -c \"import json, os; p=os.path.expanduser('{resolved_path}/stage1/env.json'); data=json.load(open(p)) if os.path.exists(p) else {{}}; data['python_path']='python3'; json.dump(data, open(p, 'w'))\""
     ]
     subprocess.run(modify_cmd, check=True)
     return resolved_path
@@ -103,7 +103,7 @@ def test_remote_autosubmit_workstation(sandbox, env_dir, workflow_server):
             print("Registering auto-scheduler...")
             register_auto_scheduler(
                 server=srv,
-                remote="Lab_Main_Test",
+                remote_name="Lab_Main_Test",
                 stages="stage1",
                 sweeps="sweep1"
             )
@@ -118,7 +118,8 @@ def test_remote_autosubmit_workstation(sandbox, env_dir, workflow_server):
                     completed = True
                     break
                 if st1 == status.ERROR or st2 == status.ERROR:
-                    pytest.fail("A remote auto-submitted task encountered an error status.")
+                    res = subprocess.run(["ssh", "Lab_Main", f"cat {resolved_path}/stage1/spoints/x_15/spoint.log"], capture_output=True, text=True)
+                    pytest.fail(f"A remote auto-submitted task encountered an error status. SPOINT LOG:\n{res.stdout}")
             
             assert completed, f"Remote auto-submit tasks did not complete. Statuses: x_15={st1}, x_25={st2}"
 
@@ -174,18 +175,13 @@ def test_remote_worker_tunnel(sandbox, env_dir, workflow_server):
             # to connect back to the local manager server.
             print("Launching remote background worker client via SSH tunnel...")
             worker_cmd = [
-                "ssh", "-o", "StrictHostKeyChecking=no",
+                "ssh", "-o", "StrictHostKeyChecking=no", "-o", "ExitOnForwardFailure=yes",
                 "-R", f"{port}:127.0.0.1:{port}",
                 "Lab_Main",
                 (
                     f"cd {resolved_path} && "
-                    f"export SERVER_PORT={port} && "
-                    f"export SERVER_TOKEN={token} && "
-                    f"export WORKER_HOST=Lab_Main_Test && "
-                    f"export WORKER_STAGES=stage1 && "
-                    f"export WORKER_SWEEPS=sweep1 && "
-                    f"/home/tanner/miniforge3/envs/test_nyut/bin/python "
-                    f".workflow/workers/run_worker.py"
+                    f"PYTHONPATH=/home/tanner/pySNAP/packages/snap_workflow/src:$PYTHONPATH python3 -u -m snap_workflow.worker.runner http://127.0.0.1:{port} {token} "
+                    f"--stages stage1 --sweeps sweep1 --host Lab_Main_Test"
                 )
             ]
             
@@ -204,6 +200,9 @@ def test_remote_worker_tunnel(sandbox, env_dir, workflow_server):
                 if st1 == status.ERROR or st2 == status.ERROR:
                     pytest.fail("A remote worker-processed task encountered an error status.")
             
+            if not completed and worker_proc:
+                out, err = worker_proc.communicate(timeout=2)
+                pytest.fail(f"Remote worker tasks did not complete. Statuses: x_30={st1}, x_40={st2}\nWorker STDOUT:\n{out.decode()}\nWorker STDERR:\n{err.decode()}")
             assert completed, f"Remote worker tasks did not complete. Statuses: x_30={st1}, x_40={st2}"
 
             # Verify that outputs were registered and synced back locally

@@ -26,9 +26,6 @@ SPoint_Manager = SPoint_Manager
 load_spoint = load_spoint
 submit_spoints = submit_spoints
 
-Combo_Manager = SPoint_Manager
-load_combo = load_spoint
-submit_combos = submit_spoints
 Job_Manager = SPoint_Manager
 load_job = load_spoint
 

@@ -193,6 +193,24 @@ def test_link_dependent_spoint(sandbox, env_dir):
     spoints.link_dependent_spoint("stage_child", {"x": 5}, dep_info_conv)
     assert os.path.isdir(os.path.join(spoint_path_conv, "stage_parent"))
 
+def test_get_spoint_parent_variable_filtering(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("shrink", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    add_stage("bonding", sbatch_details=None, stage_variables=["x", "ncheck"], stage_dependencies=["shrink"])
+    
+    add_variable("x", ["int"], add_to_stages=["shrink", "bonding"], default_val=5)
+    add_variable("ncheck", ["int"], add_to_stages=["bonding"], default_val=10)
+    add_sweep("sweep1", include_stages=["shrink", "bonding"], variable_values={"x": [5], "ncheck": [10, 100]})
+    
+    spoints.create_spoint("shrink", {"x": 5}, clear=True)
+    status.write_status("complete", spoints.get_spoint_path("shrink", {"x": 5}))
+    
+    manager = spoints.SPointStatusManager()
+    res = manager.get_spoint("sweep1", "shrink", {"x": 5, "ncheck": 10})
+    assert res is not None
+    assert res["status"] == "complete"
+    assert res["variables"] == {"x": 5}
+
 def test_submit_spoints_logic(sandbox, env_dir, capsys):
     initialize(env_dir)
     # Stage with sbatch

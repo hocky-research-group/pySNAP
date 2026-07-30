@@ -569,12 +569,18 @@ class SPointStatusManager:
         return result
 
     def get_spoint(self, sweep_name, stage_name, spoint_dict):
-        sp_path = get_spoint_path(stage_name, spoint_dict)
+        stage = self.stages_dict.get(stage_name, {})
+        stage_vars = stage.get("variables")
+        if stage_vars is not None:
+            filtered_dict = {k: v for k, v in spoint_dict.items() if k in stage_vars}
+        else:
+            filtered_dict = spoint_dict
+        sp_path = get_spoint_path(stage_name, filtered_dict)
         if not os.path.exists(sp_path):
             return None
         stat_val = status.load_status(sp_path)
         return {
-            "variables": spoint_dict,
+            "variables": filtered_dict,
             "status": stat_val,
             "path": sp_path
         }

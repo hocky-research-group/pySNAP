@@ -4,6 +4,7 @@
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
 #SBATCH -t 02:00:00
+#SBATCH -o slurm_out/%j.out
 
 #---- Establish Local Forwarding Tunnel back to Login Node ----
 # Compute nodes connect back to the login node loopback port where the workstation's

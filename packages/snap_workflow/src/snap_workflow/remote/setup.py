@@ -174,7 +174,7 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
         export_vars += f",WORKER_EXCLUDE_SWEEPS={exclude_sweeps}"
 
     sbatch_cmd = (
-        f"cd {resolved_path} && sbatch --export={export_vars} "
+        f"cd {resolved_path} && mkdir -p slurm_out && sbatch -o slurm_out/%j.out --export={export_vars} "
         f"{sbatch_args} {run_worker_sh}"
     )
 
@@ -273,7 +273,7 @@ def setup_remote_cluster(remote_host, remote_path):
     logger.info("Setting up workflow structure on remote cluster %s:%s...", remote_host, resolved_path)
 
     try:
-        ssh_mkdir = ["ssh", remote_host, f"mkdir -p {resolved_path}/workers && test -w {resolved_path}"]
+        ssh_mkdir = ["ssh", remote_host, f"mkdir -p {resolved_path}/workers {resolved_path}/slurm_out && test -w {resolved_path}"]
         subprocess.run(ssh_mkdir, check=True)
     except Exception as e:
         raise ValueError(f"Failed to create or access remote directory '{resolved_path}' on '{remote_host}': {e}")

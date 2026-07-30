@@ -137,8 +137,9 @@ for ext in ['.json', '.yaml', '.yml']:
         break
 for cmd in cfg.get('activate_cmd', []):
     print(cmd)
+q = '"'
 for k, v in cfg.get('env_vars', {}).items():
-    print(f'export {k}=\"{v}\"')
+    print(f'export {k}={q}{v}{q}')
 " 2>/dev/null)
 
     $python_path "$WF_ROOT/$stage_name/$stage_name.py" $count >> spoint.log 2>&1 &

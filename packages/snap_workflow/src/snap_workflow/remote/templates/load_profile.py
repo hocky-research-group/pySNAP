@@ -7,20 +7,32 @@ data = {}
 
 
 def load_prof(p_base):
-    for ext in ["", ".json", ".yaml", ".yml"]:
+    if p_base.endswith(".json") or p_base.endswith(".yml") or p_base.endswith(".yaml"):
+        exts = [""]
+    else:
+        exts = [".json", ".yml", ".yaml", ""]
+
+    for ext in exts:
         fn = p_base + ext
         if os.path.isfile(fn):
-            with open(fn) as f:
-                if fn.endswith(".json") or not (fn.endswith(".yaml") or fn.endswith(".yml")):
-                    data.update(json.load(f))
+            with open(fn, "r") as f:
+                content = f.read()
+                try:
+                    data.update(json.loads(content))
                     return
-                else:
-                    import yaml
+                except Exception:
+                    try:
+                        import yaml
 
-                    data.update(yaml.safe_load(f))
-                    return
+                        loaded = yaml.safe_load(content)
+                        if isinstance(loaded, dict):
+                            data.update(loaded)
+                            return
+                    except Exception:
+                        pass
 
 
 load_prof(os.path.expanduser(f"~/.config/snap_workflow/workers/{prof}"))
-load_prof(os.path.join(r_path, "workers", prof))
+if not data:
+    load_prof(os.path.join(r_path, "workers", prof))
 print(json.dumps(data))

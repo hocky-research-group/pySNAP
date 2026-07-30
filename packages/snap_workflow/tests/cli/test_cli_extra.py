@@ -98,6 +98,21 @@ def test_cli_plot(sandbox):
     # Plot should just pass and do nothing/not raise exception
     main_plot("workflow plot", [])
 
+def test_get_completions_noun_verb():
+    from snap_workflow.cli import get_completions
+    assert "stage" in get_completions([], "")
+    assert "sweep" in get_completions([], "")
+    assert "variable" in get_completions([], "")
+    assert "status" in get_completions([], "")
+    assert "spoint" in get_completions([], "")
+
+    assert get_completions(["stage"], "") == ["add", "print", "list"]
+    assert get_completions(["sweep"], "") == ["add", "print", "list", "reset", "remove"]
+    assert get_completions(["variable"], "") == ["add"]
+    assert get_completions(["status"], "") == ["print", "set"]
+    assert get_completions(["spoint"], "") == ["reset", "submit"]
+
+
 @patch('builtins.input')
 def test_cli_init_declined(mock_input, sandbox, env_dir):
     mock_input.side_effect = ["n"]

@@ -95,19 +95,29 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
     profile_script = tmpl.replace("{PROFILE_NAME}", repr(profile)).replace("{RESOLVED_PATH}", repr(resolved_path))
     try:
         out = run_remote_python(remote_host, profile_script)
-        profile_data = json.loads(out.strip())
+        try:
+            profile_data = json.loads(out.strip())
+        except Exception:
+            import yaml
+
+            profile_data = yaml.safe_load(out.strip()) or {}
     except Exception as e:
         try:
             tmpl_sh = get_template("load_profile.sh")
             bash_script = tmpl_sh.replace("{PROFILE_NAME}", profile).replace("{RESOLVED_PATH}", resolved_path)
             out = run_remote_bash(remote_host, bash_script)
-            profile_data = json.loads(out.strip())
+            try:
+                profile_data = json.loads(out.strip())
+            except Exception:
+                import yaml
+
+                profile_data = yaml.safe_load(out.strip()) or {}
         except Exception as be:
             profile_data = {}
             logger.warning("Failed to load worker profile '%s' from remote %s: %s", profile, remote_host, be)
 
     if not profile_data:
-        raise ValueError(f"Worker profile '{profile}' was not found on remote '{remote_host}' at '{resolved_path}/workers/{profile}' or '~/.config/snap_workflow/workers/{profile}'.")
+        raise ValueError(f"Worker profile '{profile}' was not found on remote '{remote_host}' at '{resolved_path}/workers/{profile}' (.json or .yml) or '~/.config/snap_workflow/workers/{profile}'.")
 
     for k, v in profile_data.items():
         if "FIXME" in str(v).upper():

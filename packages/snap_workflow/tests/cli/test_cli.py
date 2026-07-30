@@ -70,3 +70,36 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
     
     sweeps = load_sweeps()
     assert "sweepA" not in sweeps
+
+@patch('builtins.input')
+def test_cli_noun_verb_lifecycle(mock_input, sandbox, env_dir):
+    from snap_workflow.cli import main_stage, main_sweep, main_variable, main_status
+    mock_input.side_effect = ["y", "json", env_dir]
+    try:
+        main_init("workflow init", [])
+    except SystemExit:
+        pass
+
+    # Noun-first stage add: workflow stage add -n stageA
+    mock_input.side_effect = ["n", ""]
+    main_stage("workflow stage", ["add", "-n", "stageA"])
+    assert "stageA" in load_stages()
+
+    # Noun-first variable add: workflow variable add -n x -t int
+    mock_input.side_effect = ["y"]
+    main_variable("workflow variable", ["add", "-n", "x", "-t", "int"])
+
+    # Noun-first sweep add: workflow sweep add -n sweepA
+    mock_input.side_effect = ["y", "10 20"]
+    main_sweep("workflow sweep", ["add", "-n", "sweepA"])
+    sweeps = load_sweeps()
+    assert "sweepA" in sweeps
+
+    # Noun-first status print: workflow status print
+    main_status("workflow status", ["print", "sweepA"])
+
+    # Noun-first sweep remove: workflow sweep remove -w sweepA
+    mock_input.side_effect = ["y"]
+    main_sweep("workflow sweep", ["remove", "-w", "sweepA"])
+    assert "sweepA" not in load_sweeps()
+

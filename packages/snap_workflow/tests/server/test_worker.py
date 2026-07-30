@@ -310,6 +310,33 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
         assert "WORKER_HOST=my_remote_node" in cmd_str
         assert "--partition=test" in cmd_str
 
+    # Test YAML profile parsing fallback success path
+    def mock_ssh_run_yaml_profile(cmd, **kwargs):
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        cmd_str = str(cmd)
+        if check_b64 in cmd_str:
+            mock_res.stdout = f"{local_ver}\n"
+        elif "python3 -c" in cmd[2]:
+            mock_res.stdout = "partition: gpu_test\ncpus-per-task: 4\n"
+        else:
+            mock_res.stdout = "workflow_root\n"
+        return mock_res
+
+    with patch("time.sleep", side_effect=KeyboardInterrupt), \
+         patch("subprocess.Popen") as mock_popen, \
+         patch("subprocess.run", side_effect=mock_ssh_run_yaml_profile) as mock_run:
+        worker.launch_remote_workers(
+            remote_host="Lab_Main",
+            remote_path="~/test_snap_setup",
+            profile="yaml_prof",
+            remote_name="my_remote_node"
+        )
+        sbatch_call = next(c for c in mock_run.call_args_list if "sbatch" in c[0][0][2])
+        cmd_str = sbatch_call[0][0][2]
+        assert "--partition=gpu_test" in cmd_str
+        assert "--cpus-per-task=4" in cmd_str
+
 def test_parse_memory_tb_units():
     assert worker.parse_memory_to_gb("1T") == 1024.0
     assert worker.parse_memory_to_gb("1TB") == 1024.0

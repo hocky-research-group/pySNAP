@@ -112,32 +112,33 @@ def is_ssh_reachable():
     except Exception:
         return False
 
-def test_orchestrator_scheduler_live_ssh(sandbox, env_dir):
+def test_orchestrator_scheduler_live_ssh(sandbox, env_dir, tmp_path):
     initialize(env_dir)
     if not is_ssh_reachable():
         pytest.skip("Lab_Main SSH connection not reachable (set RUN_LIVE_SSH_TESTS=1 to run)")
 
-    from snap_workflow.utils.constants import GLOBAL_REMOTES_FILE, LOCAL_REMOTES_FILE, GLOBAL_CONFIG_DIR
-    if not os.path.exists(GLOBAL_CONFIG_DIR):
-        os.makedirs(GLOBAL_CONFIG_DIR, exist_ok=True)
-        
+    from snap_workflow.utils.constants import LOCAL_REMOTES_FILE
+    global_config_dir = os.path.join(tmp_path, ".snap_workflow")
+    os.makedirs(global_config_dir, exist_ok=True)
+    global_remotes_file = os.path.join(global_config_dir, "remotes.json")
+
     global_remotes = {"Lab_Main": {"host": "Lab_Main"}}
-    with open(GLOBAL_REMOTES_FILE, "w") as f:
+    with open(global_remotes_file, "w") as f:
         json.dump(global_remotes, f)
-        
+
     local_remotes = {"Lab_Main": {"path": "~/test_snap_setup"}}
     with open(f".workflow/{LOCAL_REMOTES_FILE}", "w") as f:
         json.dump(local_remotes, f)
 
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
-    
+
     env_file = os.path.join("stage1", "env.json")
     with open(env_file, "r") as f:
         env_data = json.load(f)
     env_data["resources"] = {"cpus": 1, "gpus": 0, "mem": "2G"}
     with open(env_file, "w") as f:
         json.dump(env_data, f, indent=4)
-        
+
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
@@ -148,15 +149,19 @@ def test_orchestrator_scheduler_live_ssh(sandbox, env_dir):
         stages="stage1",
         sweeps="sweep1"
     )
-    
+
     # Mock time.sleep to terminate the thread loop immediately on first wait check
     def mock_sleep(seconds=None):
         scheduler.shutdown_event.set()
-        
-    with patch("time.sleep", side_effect=mock_sleep), \
+
+    with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_config_dir), \
+         patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file), \
+         patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", global_config_dir), \
+         patch("snap_workflow.cli.GLOBAL_REMOTES_FILE", global_remotes_file), \
+         patch("time.sleep", side_effect=mock_sleep), \
          patch("threading.Event.wait", side_effect=mock_sleep):
         scheduler.run()
-        
+
     # Verify the scheduler completed its loop iteration successfully
     assert scheduler.shutdown_event.is_set()
 

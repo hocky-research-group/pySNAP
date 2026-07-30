@@ -78,7 +78,7 @@ my_experiment/
 
 While params are static for the whole workflow, variables represent parameters whose values you want to sweep/vary over during computational experiments. Add them via:
 ```bash
-workflow add variable
+workflow variable add
 ```
 
 Follow the interactive prompts to register variable names and types (e.g., `mesh_size: int`, `reynolds_number: float`).
@@ -87,7 +87,7 @@ Follow the interactive prompts to register variable names and types (e.g., `mesh
 
 A stage is a distinct step or task in your computational pipeline (e.g. mesh generation, numerical solving, rendering, etc.). Add a stage via:
 ```bash
-workflow add stage
+workflow stage add
 ```
 
 During stage creation, the system prompts you to declare any upstream dependencies. snap_workflow automatically creates soft links to the appropriate dependent SPoint directory inside your stage runner directory, letting you reference parent outputs easily. Each stage creates a directory with flat template files:
@@ -133,7 +133,7 @@ with SPointManager() as sm:
 
 A sweep defines the values you want your variables to take across your registered stages. Add a sweep via:
 ```bash
-workflow add sweep
+workflow sweep add
 ```
 
 Define which stages to include and what variable values to sweep over. snap_workflow generates all SPoints as subdirectories under each stage's `spoints/` folder.
@@ -143,10 +143,18 @@ Define which stages to include and what variable values to sweep over. snap_work
 You can run/submit Slurm jobs on the current system, or set up the coordination server on your local machine and submit workers or SPoints on remote systems.
 
 #### Option A: Direct Submission (on the current system)
-Submits the next round of available SPoints (those whose status is `initialized` or `incomplete` and whose parent dependencies are all `complete`):
+
+Submit SPoints directly to Slurm:
 ```bash
 workflow submit
 ```
+
+Or view status and manage sweeps using standardized Noun-Verb syntax:
+```bash
+workflow status print
+workflow sweep reset -w sweepA
+```
+*(Note: Legacy verb-first commands like `workflow add stage` and `workflow print status` remain fully supported as aliases).*
 
 #### Option B: Remote Cluster / Server Model
 Set up the manager server and submit worker/SPoint allocations on remote systems:

@@ -292,17 +292,22 @@ def confirm_hard_sweep_removal(type_str, name):
 
 
 def get_completions(args_before, current_token):
-    top_options = ["init", "update", "submit", "add", "print", "set", "reset", "convert", "plot", "collect", "zip", "remove", "server", "remote", "autocomplete"]
+    top_options = ["init", "update", "submit", "add", "print", "set", "reset", "convert", "plot", "collect", "zip", "remove", "server", "remote", "stage", "sweep", "variable", "status", "spoint", "autocomplete"]
 
     sub_options = {
         "add": ["stage", "sweep", "variable"],
         "print": ["status", "stages", "sweeps"],
-        "set": ["status"],
+        "set": ["status", "python"],
         "reset": ["errors", "params", "spoint", "sweep"],
         "convert": ["params"],
         "remove": ["sweep"],
         "server": ["start", "submit"],
         "remote": ["add", "setup"],
+        "stage": ["add", "print", "list"],
+        "sweep": ["add", "print", "list", "reset", "remove"],
+        "variable": ["add"],
+        "status": ["print", "set"],
+        "spoint": ["reset", "submit"],
         "autocomplete": ["bash", "zsh"],
     }
 
@@ -334,7 +339,13 @@ def get_completions(args_before, current_token):
     def get_profiles():
         try:
             if os.path.isdir("workers"):
-                return [f.split(".")[0] for f in os.listdir("workers") if f.endswith(".json")]
+                profiles = set()
+                for f in os.listdir("workers"):
+                    if f.endswith(".json") or f.endswith(".yml") or f.endswith(".yaml"):
+                        profiles.add(f.rsplit(".", 1)[0])
+                    elif os.path.isfile(os.path.join("workers", f)):
+                        profiles.add(f)
+                return sorted(list(profiles))
         except Exception:
             pass
         return ["cpu", "gpu"]
@@ -357,7 +368,19 @@ def get_completions(args_before, current_token):
             "server": {
                 "start": ["--host", "--port"],
                 "submit": ["--profile", "--num-workers", "--sbatch-args", "-s", "--stage", "-w", "--sweep", "-xs", "--exclude-stage", "-xw", "--exclude-sweep"],
-            }
+            },
+            "sweep": {
+                "reset": ["-w", "--sweep"],
+                "remove": ["-w", "--sweep", "-f", "--force", "--hard"],
+            },
+            "status": {
+                "print": ["-s", "--stage", "-w", "--sweep"],
+                "set": ["-s", "--stage", "-w", "--sweep"],
+            },
+            "spoint": {
+                "reset": ["-s", "--stage", "-w", "--sweep"],
+                "submit": ["--test", "--no_sbatch", "-s", "--stage", "-w", "--sweep"],
+            },
         }
         if first_cmd in flags_map:
             opts = flags_map[first_cmd]
@@ -399,10 +422,10 @@ def get_completions(args_before, current_token):
                     return [opt for opt in ["worker", "auto"] if opt.startswith(current_token)]
                 elif len(args_before) == 3 and args_before[2] in ["worker", "auto"]:
                     return [r for r in get_remotes() if r.startswith(current_token)]
-        elif first_cmd == "print" and sub_cmd == "status":
+        elif (first_cmd == "print" and sub_cmd == "status") or (first_cmd == "status" and sub_cmd == "print"):
             if len(args_before) == 2:
                 return [s for s in get_sweeps() + ["all"] if s.startswith(current_token)]
-        elif first_cmd == "reset" and sub_cmd == "sweep":
+        elif (first_cmd == "reset" and sub_cmd == "sweep") or (first_cmd == "sweep" and sub_cmd == "reset"):
             if len(args_before) == 2:
                 return [s for s in get_sweeps() if s.startswith(current_token)]
 
@@ -499,9 +522,10 @@ def workflow_command():
     from snap_workflow.utils.version import check_version
     check_version()
     
-    main_options = ["submit", "add", "print", "set", "reset", "convert", "plot", "collect", "zip", "remove", "server", "remote"]
+    main_options = ["submit", "add", "print", "set", "reset", "convert", "plot", "collect", "zip", "remove", "server", "remote", "stage", "sweep", "variable", "status", "spoint"]
     main_functions = [main_submit, main_add, main_print, main_set, main_reset, main_convert, main_plot, 
-                      main_collect, main_zip, main_remove, main_server, main_remote]
+                      main_collect, main_zip, main_remove, main_server, main_remote,
+                      main_stage, main_sweep, main_variable, main_status, main_spoint]
     main_options = {main_options[i]: main_functions[i] for i in range(len(main_options))}
     execute_option("main_option", main_options, parsed_command="workflow")
 
@@ -1231,3 +1255,34 @@ def remote_setup_cmd(parsed_command, args):
         local_remotes[name] = {"path": resolved_path}
         save_local_remotes(local_remotes)
         print(f"Automatically updated saved path config to: {resolved_path}")
+
+def main_stage(parsed_command, args):
+    stage_options = ["add", "print", "list"]
+    stage_functions = [add_stage_cmd, print_stages_cmd, print_stages_cmd]
+    stage_options = {stage_options[i]: stage_functions[i] for i in range(len(stage_options))}
+    execute_option("stage_option", stage_options, parsed_command=parsed_command, args=args)
+
+def main_sweep(parsed_command, args):
+    sweep_options = ["add", "print", "list", "reset", "remove"]
+    sweep_functions = [add_sweep_cmd, print_sweeps_cmd, print_sweeps_cmd, reset_sweep_cmd, remove_sweep_cmd]
+    sweep_options = {sweep_options[i]: sweep_functions[i] for i in range(len(sweep_options))}
+    execute_option("sweep_option", sweep_options, parsed_command=parsed_command, args=args)
+
+def main_variable(parsed_command, args):
+    variable_options = ["add"]
+    variable_functions = [add_variable_cmd]
+    variable_options = {variable_options[i]: variable_functions[i] for i in range(len(variable_options))}
+    execute_option("variable_option", variable_options, parsed_command=parsed_command, args=args)
+
+def main_status(parsed_command, args):
+    status_options = ["print", "set"]
+    status_functions = [print_status_cmd, set_status_cmd]
+    status_options = {status_options[i]: status_functions[i] for i in range(len(status_options))}
+    execute_option("status_option", status_options, parsed_command=parsed_command, args=args)
+
+def main_spoint(parsed_command, args):
+    spoint_options = ["reset", "submit"]
+    spoint_functions = [reset_spoint_cmd, main_submit]
+    spoint_options = {spoint_options[i]: spoint_functions[i] for i in range(len(spoint_options))}
+    execute_option("spoint_option", spoint_options, parsed_command=parsed_command, args=args)
+

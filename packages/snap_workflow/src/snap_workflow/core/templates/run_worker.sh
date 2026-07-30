@@ -35,6 +35,8 @@ try:
         print(f'export {k}=\"{v}\"')
 except Exception:
     pass
+" 2>/dev/null)
+
 if [ ! -z "$SLURM_JOB_ID" ]; then
     export WORKER_ID="remote_slurm_${SLURM_JOB_ID}"
 fi

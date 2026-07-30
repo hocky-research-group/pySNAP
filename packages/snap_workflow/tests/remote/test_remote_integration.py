@@ -53,10 +53,14 @@ def setup_remote_test_env(remote_path):
     from snap_workflow.remote.setup import setup_remote_cluster
     resolved_path = setup_remote_cluster(remote_host="Lab_Main", remote_path=remote_path)
 
-    # Configure env.json to use the correct remote python paths
+    # Configure env.json and .workflow/config.json to use python3 on remote host
     modify_cmd = [
         "ssh", "Lab_Main",
-        f"python3 -c \"import json, os; p=os.path.expanduser('{resolved_path}/stage1/env.json'); data=json.load(open(p)) if os.path.exists(p) else {{}}; data['python_path']='python3'; json.dump(data, open(p, 'w'))\""
+        f"python3 -c \"import json, os; "
+        f"p1=os.path.expanduser('{resolved_path}/stage1/env.json'); "
+        f"data1=json.load(open(p1)) if os.path.exists(p1) else {{}}; data1['python_path']='python3'; json.dump(data1, open(p1, 'w')); "
+        f"p2=os.path.expanduser('{resolved_path}/.workflow/config.json'); "
+        f"data2=json.load(open(p2)) if os.path.exists(p2) else {{}}; data2['python_path']='python3'; json.dump(data2, open(p2, 'w'))\""
     ]
     subprocess.run(modify_cmd, check=True)
     return resolved_path

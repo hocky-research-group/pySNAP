@@ -1,0 +1,7 @@
+{
+    "partition": "gpu-a100-dev",
+    "nodes": 1,
+    "ntasks-per-node": 1,
+    "cpus-per-task": 10,
+    "time": "00:15:00"
+}

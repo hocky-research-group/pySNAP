@@ -452,9 +452,17 @@ def link_dependent_spoint(stage_name, spoint_dict, dep_info):
                 path.make_sym(dep_target, conv_link, overwrite=True)
 
 class SPointManager():
-    def __init__(self, save_func=None, stop_func=None):
+    def __init__(self, save_func=None, stop_func=None, report_to=None):
         self.main_dir = os.getcwd()
         self.save_func = save_func or stop_func
+        if report_to is None:
+            report_to = os.environ.get("REPORT_TO")
+            if not report_to:
+                for i, arg in enumerate(sys.argv):
+                    if arg == "--report-to" and i + 1 < len(sys.argv):
+                        report_to = sys.argv[i + 1]
+                        break
+        self.report_to = report_to
         return
 
     @property
@@ -485,14 +493,44 @@ class SPointManager():
     def __exit__(self, exc_type, exc_val, traceback):
         self.time.append(time.time()-self.start_time)
         write_time(self.time, self.main_dir)
+        final_status = COMPLETE
+        exit_code = 0
         if exc_type is None:
             self._set_complete()
+            final_status = COMPLETE
+            exit_code = 0
         elif exc_type == KeyboardInterrupt:
             self._set_incomplete()
             self._run_stop_func()
+            final_status = INCOMPLETE
+            exit_code = 1
         else:
             self._set_error()
             self._run_stop_func()
+            final_status = ERROR
+            exit_code = 2
+
+        if self.report_to and isinstance(self.report_to, str) and (self.report_to.startswith("http://") or self.report_to.startswith("https://")):
+            self._notify_server(final_status, exit_code)
+
+    def _notify_server(self, final_status, exit_code):
+        try:
+            import urllib.request, json
+            url = f"{self.report_to.rstrip('/')}/notify_completion"
+            payload = json.dumps({
+                "spoint_path": self.main_dir,
+                "status": final_status,
+                "exit_code": exit_code
+            }).encode("utf-8")
+            headers = {"Content-Type": "application/json"}
+            token = os.environ.get("SERVER_TOKEN")
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+            req = urllib.request.Request(url, data=payload, headers=headers)
+            with urllib.request.urlopen(req, timeout=5) as response:
+                pass
+        except Exception as e:
+            print(f"Warning: Failed to report status to server '{self.report_to}': {e}")
 
     def _run_stop_func(self):
         if self.save_func is None:

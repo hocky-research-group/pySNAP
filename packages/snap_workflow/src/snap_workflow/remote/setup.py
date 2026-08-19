@@ -116,7 +116,7 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
             profile_data = {}
             logger.warning("Failed to load worker profile '%s' from remote %s: %s", profile, remote_host, be)
 
-    if not profile_data:
+    if not profile_data or not isinstance(profile_data, dict):
         raise ValueError(f"Worker profile '{profile}' was not found on remote '{remote_host}' at '{resolved_path}/workers/{profile}' (.json or .yml) or '~/.config/snap_workflow/workers/{profile}'.")
 
     for k, v in profile_data.items():
@@ -140,7 +140,7 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
         else:
             sbatch_args = profile_sbatch_args
 
-    logger.info("Syncing codebase to remote cluster %s:%s...", remote_host, resolved_path)
+    logger.info("[REMOTE:WORKER] Syncing codebase to remote cluster %s:%s...", remote_host, resolved_path)
     sync_command = [
         "rsync", "-avz",
         "--exclude", f"{SPOINTS}/",
@@ -161,7 +161,14 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
         raise RuntimeError(f"Failed to sync codebase to remote host '{remote_host}': {err_str}")
 
     run_worker_sh = os.path.join(".workflow", "workers", "run_worker.sh")
+    try:
+        login_node = run_remote_bash(remote_host, "hostname -f").strip()
+    except Exception:
+        login_node = None
+
     export_vars = f"ALL,SERVER_PORT={server_port},SERVER_TOKEN={token}"
+    if login_node:
+        export_vars += f",TUNNEL_HOST={login_node}" 
     if remote_name:
         export_vars += f",WORKER_HOST={remote_name}"
     if stages:
@@ -261,7 +268,18 @@ print(json.dumps(list(interpreters)))
 
 
 def setup_remote_cluster(remote_host, remote_path):
-    ssh_test = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", remote_host, "echo ok"]
+    ssh_dir = os.path.expanduser("~/.config/snap_workflow/ssh")
+    os.makedirs(ssh_dir, exist_ok=True)
+    control_path = os.path.join(ssh_dir, "mux_%h_%p_%r")
+
+    ssh_test = [
+        "ssh",
+        "-o", "ConnectTimeout=10",
+        "-o", "ControlMaster=auto",
+        "-o", f"ControlPath={control_path}",
+        "-o", "ControlPersist=1h",
+        remote_host, "echo ok"
+    ]
     try:
         res = subprocess.run(ssh_test, capture_output=True, text=True, check=True)
         if res.stdout.strip() != "ok":
@@ -270,7 +288,7 @@ def setup_remote_cluster(remote_host, remote_path):
         raise ValueError(f"Cannot connect to remote host '{remote_host}' via SSH: {e}. Please verify hostname and credentials.")
 
     resolved_path = resolve_remote_path(remote_host, remote_path)
-    logger.info("Setting up workflow structure on remote cluster %s:%s...", remote_host, resolved_path)
+    logger.info("[REMOTE:WORKER] Setting up workflow structure on remote cluster %s:%s...", remote_host, resolved_path)
 
     try:
         ssh_mkdir = ["ssh", remote_host, f"mkdir -p {resolved_path}/workers {resolved_path}/slurm_out && test -w {resolved_path}"]
@@ -326,5 +344,5 @@ def setup_remote_cluster(remote_host, remote_path):
         except Exception as be:
             logger.warning("Post-setup configuration check encountered a warning: %s", be)
 
-    logger.info("Remote cluster setup complete. You can now edit configuration environment templates/workers profiles on the cluster at '%s:%s'.", remote_host, resolved_path)
+    logger.info("[REMOTE:WORKER] Remote cluster setup complete. You can now edit configuration environment templates/workers profiles on the cluster at '%s:%s'.", remote_host, resolved_path)
     return resolved_path

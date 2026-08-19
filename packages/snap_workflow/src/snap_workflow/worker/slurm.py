@@ -59,9 +59,21 @@ def launch_remote_workers(remote_host, remote_path, profile, num_workers=1, conc
     token = server_info["token"]
 
     r_name = remote_name or remote_host
+    ssh_dir = os.path.expanduser("~/.config/snap_workflow/ssh")
+    os.makedirs(ssh_dir, exist_ok=True)
+    control_path = os.path.join(ssh_dir, "mux_%h_%p_%r")
+
     tunnel_cmd = [
         "ssh", "-N",
+        "-o", "BatchMode=yes",
+        "-o", "ConnectTimeout=10",
+        "-o", "ServerAliveInterval=30",
+        "-o", "ServerAliveCountMax=3",
+        "-o", "TCPKeepAlive=yes",
         "-o", "ExitOnForwardFailure=yes",
+        "-o", "ControlMaster=auto",
+        "-o", f"ControlPath={control_path}",
+        "-o", "ControlPersist=1h",
         "-R", f"{port}:127.0.0.1:{port}",
         remote_host
     ]

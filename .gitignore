@@ -148,3 +148,7 @@ Thumbs.db
 *.npy
 *.gsd
 *.npz
+
+# Research directory
+research/
+

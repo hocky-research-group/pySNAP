@@ -44,8 +44,11 @@ def set_spoint_params(sweep_name, stage_name, spoint_dict):
     stages_to_load.append(stage_name)
     spoint_dict = variables.cast_spoint_dict(spoint_dict)
     params_dir = os.path.join(root, "params")
-    params_obj = System_Params(params_dir, variables=spoint_dict)
-    params_obj.source_hash = compute_params_hash(params_dir)
+    if not os.path.exists(params_dir):
+        params_obj = System_Params({}, variables=spoint_dict)
+    else:
+        params_obj = System_Params(params_dir, variables=spoint_dict)
+        params_obj.source_hash = compute_params_hash(params_dir)
     save_params(params_obj, spoint_path)
 
 def convert_params(sweep_name=None, stage_name=None, spoint_dir=None, format="json"):

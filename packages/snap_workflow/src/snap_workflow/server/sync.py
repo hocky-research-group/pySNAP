@@ -59,7 +59,7 @@ def pull_spoint_data(remote, host, remote_path, spoint_rel_path, stage_name):
 
     patterns = get_auto_sync_patterns(stage_name)
     if not patterns:
-        logger.info("No AUTO_SYNC patterns defined for stage '%s'. Skipping pull.", stage_name)
+        logger.info("[SYNC] No AUTO_SYNC patterns defined for stage '%s'. Skipping pull.", stage_name)
         return
 
     root = path.get_root()
@@ -79,7 +79,7 @@ def pull_spoint_data(remote, host, remote_path, spoint_rel_path, stage_name):
     source_uri = f"{host}:{remote_path}/{spoint_rel_path}/"
     rsync_cmd.extend([source_uri, f"{local_dest}/"])
 
-    logger.info("Pulling AUTO_SYNC files for %s: %s", spoint_rel_path, " ".join(rsync_cmd))
+    logger.info("[SYNC] Pulling AUTO_SYNC files for %s: %s", spoint_rel_path, " ".join(rsync_cmd))
     try:
         subprocess.run(rsync_cmd, check=True)
     except subprocess.CalledProcessError as e:
@@ -106,7 +106,7 @@ def push_dependency_data(remote, host, remote_path, dep_spoint_rel_path):
 
     dest_uri = f"{host}:{remote_path}/{dep_spoint_rel_path}/"
     rsync_cmd = ["rsync", "-avz", f"{local_src}/", dest_uri]
-    logger.info("Pushing dependency data for %s: %s", dep_spoint_rel_path, " ".join(rsync_cmd))
+    logger.info("[SYNC] Pushing dependency data for %s: %s", dep_spoint_rel_path, " ".join(rsync_cmd))
     try:
         subprocess.run(rsync_cmd, check=True)
     except subprocess.CalledProcessError as e:
@@ -125,7 +125,7 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
         os.makedirs(local_temp, exist_ok=True)
         source_uri = f"{source_host}:{source_path}/{dep_rel_path}/"
         pull_cmd = ["rsync", "-avz", source_uri, f"{local_temp}/"]
-        logger.info("Transit pull: %s", " ".join(pull_cmd))
+        logger.info("[SYNC] Transit pull: %s", " ".join(pull_cmd))
         try:
             subprocess.run(pull_cmd, check=True)
         except subprocess.CalledProcessError as e:
@@ -144,7 +144,7 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
 
         dest_uri = f"{dest_host}:{dest_path}/{dep_rel_path}/"
         push_cmd = ["rsync", "-avz", f"{local_temp}/", dest_uri]
-        logger.info("Transit push: %s", " ".join(push_cmd))
+        logger.info("[SYNC] Transit push: %s", " ".join(push_cmd))
         try:
             subprocess.run(push_cmd, check=True)
         except subprocess.CalledProcessError as e:
@@ -154,7 +154,7 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
     # Step 3: Clean up full folder from local Hub (if either end was remote)
     # Note: If destination was local, we keep it because the user explicitly ran it locally.
     if source_remote != "local" and dest_remote != "local":
-        logger.info("Cleaning up transient local directory: %s", local_temp)
+        logger.info("[SYNC] Cleaning up transient local directory: %s", local_temp)
         shutil.rmtree(local_temp, ignore_errors=True)
 
         # Step 4: Restore only the AUTO_SYNC subset to local Hub
@@ -170,7 +170,7 @@ def pull_worker_logs(remote_type, host, remote_path):
     os.makedirs(local_dest, exist_ok=True)
 
     rsync_cmd = ["rsync", "-avz", f"{host}:{remote_path}/worker_logs/", f"{local_dest}/"]
-    logger.info("Pulling worker logs: %s", " ".join(rsync_cmd))
+    logger.info("[SYNC] Pulling worker logs: %s", " ".join(rsync_cmd))
     try:
         subprocess.run(rsync_cmd, check=True)
     except Exception as e:

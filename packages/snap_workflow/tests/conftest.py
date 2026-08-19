@@ -38,6 +38,8 @@ def workflow_server():
     
     for srv in servers:
         try:
+            from snap_workflow.server.tunnels import stop_remote_tunnels
+            stop_remote_tunnels(srv)
             if hasattr(srv, "auto_schedulers"):
                 for remote, scheduler in srv.auto_schedulers.items():
                     scheduler.shutdown_event.set()

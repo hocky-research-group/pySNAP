@@ -18,7 +18,7 @@ from snap_workflow.server.scheduler import OrchestratorScheduler
 active_schedulers = {}
 
 
-def register_auto_scheduler(server, remote_name, stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
+def register_auto_scheduler(server, remote_name, stages="", sweeps="", exclude_stages="", exclude_sweeps="", profile="worker_profile"):
     if not hasattr(server, "schedulers"):
         server.schedulers = {}
     if not hasattr(server, "auto_schedulers"):
@@ -34,7 +34,8 @@ def register_auto_scheduler(server, remote_name, stages="", sweeps="", exclude_s
         sweeps=sweeps,
         exclude_stages=exclude_stages,
         exclude_sweeps=exclude_sweeps,
-        server=server
+        server=server,
+        profile=profile
     )
     server.schedulers[remote_name] = sched
     server.auto_schedulers[remote_name] = sched
@@ -157,17 +158,25 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             exclude_stages = {x.strip() for x in exclude_stages_str.split(",") if x.strip()} if exclude_stages_str else None
             exclude_sweeps = {x.strip() for x in exclude_sweeps_str.split(",") if x.strip()} if exclude_sweeps_str else None
 
-            candidate = self.server.spoint_manager.acquire_next_available(
-                cpus_avail=cpus_avail,
-                gpu_avail=gpu_avail,
-                mem_avail=mem_avail,
-                min_cpu_running_gpu=min_cpu_running_gpu,
-                allowed_stages=allowed_stages,
-                allowed_sweeps=allowed_sweeps,
-                exclude_stages=exclude_stages,
-                exclude_sweeps=exclude_sweeps,
-                host=host
-            )
+            try:
+                candidate = self.server.spoint_manager.acquire_next_available(
+                    cpus_avail=cpus_avail,
+                    gpu_avail=gpu_avail,
+                    mem_avail=mem_avail,
+                    min_cpu_running_gpu=min_cpu_running_gpu,
+                    allowed_stages=allowed_stages,
+                    allowed_sweeps=allowed_sweeps,
+                    exclude_stages=exclude_stages,
+                    exclude_sweeps=exclude_sweeps,
+                    host=host
+                )
+            except Exception as e:
+                logger.error("Error acquiring next available task: %s", e, exc_info=True)
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+                return
 
             if candidate:
                 sweep_name, stage_name, spoint_dict, spoint_path = candidate
@@ -182,11 +191,11 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                     try:
                         from snap_workflow.cli import load_global_remotes, load_local_remotes
                         from snap_workflow.server.sync import push_dependency_data
-                        local_remotes = load_local_remotes()
-                        if host in local_remotes:
-                            r_path = local_remotes[host]["path"]
-                            g_remotes = load_global_remotes()
-                            r_host = g_remotes[host]["host"] if host in g_remotes else host
+                        g_remotes = load_global_remotes()
+                        l_remotes = load_local_remotes()
+                        r_path = l_remotes.get(host, {}).get("path") or g_remotes.get(host, {}).get("path")
+                        if r_path:
+                            r_host = g_remotes.get(host, {}).get("host", host)
                             rel_sp = os.path.relpath(spoint_path, path.get_root())
 
                             # Push target spoint directory (containing params.pkl)
@@ -234,23 +243,51 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode())
 
-            sweep_name = data["sweep"]
-            stage_name = data["stage"]
-            spoint_dict = data["spoint_dict"]
-            status_val = data["status"]
+            if "spoint_path" in data and "sweep" not in data:
+                sp_path = data["spoint_path"]
+                parts = os.path.normpath(sp_path).split(os.sep)
+                if SPOINTS in parts:
+                    idx = parts.index(SPOINTS)
+                    stage_name = parts[idx - 1]
+                    spoint_string = parts[idx + 1]
+                    spoint_dict = spoint_tools.parse_spoint_string(spoint_string)
+                    sweeps = sweep_tools.load_sweeps()
+                    sweep_name = None
+                    for sw_n, sw in sweeps.items():
+                        if stage_name in sw.get("stages", []):
+                            sweep_name = sw_n
+                            break
+                    data["stage"] = stage_name
+                    data["spoint_dict"] = spoint_dict
+                    if sweep_name:
+                        data["sweep"] = sweep_name
+            sweep_name = data.get("sweep")
+            stage_name = data.get("stage")
+            spoint_dict = data.get("spoint_dict")
+            status_val = data.get("status", "complete")
             host = data.get("host", "local")
 
             try:
-                self.server.spoint_manager.set_status(sweep_name, stage_name, spoint_dict, status_val, host=host)
-                logger.info("Manager updated status of spoint %s %s to '%s' (reported by %s)", stage_name, spoint_dict, status_val, host)
-                if host != "local":
+                from snap_workflow.core.domain import status as status_module
+                if stage_name and spoint_dict:
+                    sp_path = spoint_tools.get_spoint_path(stage_name, spoint_dict)
+                    try:
+                        status_module.write_status(status_val, sp_path)
+                    except Exception as st_e:
+                        logger.warning("Failed to write local status file for %s %s: %s", stage_name, spoint_dict, st_e)
+
+                if sweep_name and stage_name and spoint_dict:
+                    self.server.spoint_manager.set_status(sweep_name, stage_name, spoint_dict, status_val, host=host)
+                    logger.info("Manager updated status of spoint %s %s to '%s' (reported by %s)", stage_name, spoint_dict, status_val, host)
+
+                if host != "local" and stage_name and spoint_dict:
                     try:
                         from snap_workflow.cli import load_global_remotes, load_local_remotes
-                        local_remotes = load_local_remotes()
-                        if host in local_remotes:
-                            r_path = local_remotes[host]["path"]
-                            g_remotes = load_global_remotes()
-                            r_host = g_remotes[host]["host"] if host in g_remotes else host
+                        g_remotes = load_global_remotes()
+                        l_remotes = load_local_remotes()
+                        r_path = l_remotes.get(host, {}).get("path") or g_remotes.get(host, {}).get("path")
+                        if r_path:
+                            r_host = g_remotes.get(host, {}).get("host", host)
                             rel_sp = spoint_tools.get_spoint_path(stage_name, spoint_dict)
                             local_sp = rel_sp
                             r_path_clean = r_path.rstrip('/')
@@ -277,7 +314,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             data = json.loads(post_data.decode())
             worker_id = data.get("worker_id", "unknown")
             host = data.get("host", "local")
-            logger.info("Worker '%s' on host '%s' notified server of shutdown.", worker_id, host)
+            logger.info("[WORKER] Worker '%s' on host '%s' notified server of shutdown.", worker_id, host)
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -414,23 +451,23 @@ def run_server_foreground(host="127.0.0.1", port=0):
     with open(info_path, "w") as f:
         json.dump(server_info, f, indent=4)
 
-    logger.info("Manager server started on %s. Token: %s", url, server.token)
+    logger.info("[STARTUP] Manager server started on %s. Token: %s", url, server.token)
     print(f"Manager server is running on {url}")
     print("Press Ctrl+C to stop the manager server.")
 
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        logger.info("Manager server stopping...")
+        logger.info("[STARTUP] Manager server stopping...")
     finally:
         if hasattr(server, "schedulers"):
             for name, sched in server.schedulers.items():
-                logger.info("Stopping auto-scheduler thread for remote '%s'...", name)
+                logger.info("[SCHEDULER] Stopping auto-scheduler thread for remote '%s'...", name)
                 sched.shutdown_event.set()
         if hasattr(server, "active_tunnels"):
             for name, proc in server.active_tunnels.items():
                 if proc and proc.poll() is None:
-                    logger.info("Terminating active SSH reverse tunnel for remote '%s'...", name)
+                    logger.info("[TUNNEL] Terminating active SSH reverse tunnel for remote '%s'...", name)
                     proc.terminate()
         server.server_close()
         if os.path.isfile(info_path):
@@ -438,4 +475,4 @@ def run_server_foreground(host="127.0.0.1", port=0):
                 os.remove(info_path)
             except Exception:
                 pass
-        logger.info("Manager server stopped.")
+        logger.info("[STARTUP] Manager server stopped.")

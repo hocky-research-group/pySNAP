@@ -29,7 +29,12 @@ class SystemParams:  # {{{
             self._load_directory(param_path, stages, variables)
             return
         else:
-            raise Exception(f"{param_path} is neither a file nor directory")
+            self.param_path = param_path
+            self.params = {}
+            self.variables = variables if variables is not None else {}
+            if stages is not None:
+                self.set_stages(stages)
+            return
             # }}}
 
     def _load_pickle(self, param_path):  # {{{

@@ -131,8 +131,8 @@ def test_pickling_parameters(sandbox):
     assert sp_loaded["variables", "x"] == 10
 
 def test_invalid_param_path():
-    with pytest.raises(Exception, match="neither a file nor directory"):
-        System_Params("invalid_path_to_params")
+    sp = System_Params("invalid_path_to_params")
+    assert sp.params == {}
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_system_params_corner_cases(sandbox):

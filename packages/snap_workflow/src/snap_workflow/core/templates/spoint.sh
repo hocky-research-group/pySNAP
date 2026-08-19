@@ -76,20 +76,20 @@ for spoint in "$@"; do
     eval $($python_path -c "
 import os, json, re
 cfg = {}
-wf_root = '''$WF_ROOT'''
-stg_name = '''$stage_name'''
-stg_dir = '''$stage_dir'''
+wf_root = \"\"\"$WF_ROOT\"\"\"
+stg_name = \"\"\"$stage_name\"\"\"
+stg_dir = \"\"\"$stage_dir\"\"\"
 
-for ext in ['.json', '.yaml', '.yml']:
+for ext in [\".json\", \".yaml\", \".yml\"]:
     paths = [
-        os.path.join(wf_root, stg_name, 'env' + ext),
-        os.path.join(stg_dir, 'env' + ext),
-        os.path.join('../../..', 'env' + ext)
+        os.path.join(wf_root, stg_name, \"env\" + ext),
+        os.path.join(stg_dir, \"env\" + ext),
+        os.path.join(\"../../..\", \"env\" + ext)
     ]
     for p in paths:
         if os.path.isfile(p):
             try:
-                if ext == '.json':
+                if ext == \".json\":
                     with open(p) as f: cfg = json.load(f)
                 else:
                     try:
@@ -97,52 +97,56 @@ for ext in ['.json', '.yaml', '.yml']:
                         with open(p) as f: cfg = yaml.safe_load(f)
                     except ImportError:
                         with open(p) as f: content = f.read()
-                        lines = content.split('\n')
+                        lines = content.split(chr(10))
                         in_activate = False
                         activate_cmd = []
                         env_vars = {}
                         for line in lines:
-                            if line.strip().startswith('activate_cmd:'):
+                            if line.strip().startswith(\"activate_cmd:\"):
                                 in_activate = True
                                 continue
-                            elif line.strip().startswith('env_vars:'):
+                            elif line.strip().startswith(\"env_vars:\"):
                                 in_activate = False
                                 continue
                             elif in_activate:
-                                if line.strip().startswith('-'):
-                                    cmd = line.strip().lstrip('-').strip().strip('\"').strip('\'')
+                                if line.strip().startswith(\"-\"):
+                                    cmd = line.strip().lstrip(\"-\").strip().strip('\"').strip(chr(39))
                                     activate_cmd.append(cmd)
-                                elif ':' in line and not line.strip().startswith('-'):
+                                elif \":\" in line and not line.strip().startswith(\"-\"):
                                     in_activate = False
-                        cfg['activate_cmd'] = activate_cmd
+                        cfg[\"activate_cmd\"] = activate_cmd
                         in_env = False
                         for line in lines:
-                            if line.strip().startswith('env_vars:'):
+                            if line.strip().startswith(\"env_vars:\"):
                                 in_env = True
                                 continue
                             elif in_env:
-                                if line.strip() and not line.startswith(' ') and not line.startswith('\t'):
-                                    if not line.strip().startswith('#'):
+                                if line.strip() and not line.startswith(\" \") and not line.startswith(\"\t\"):
+                                    if not line.strip().startswith(\"#\"):
                                         in_env = False
-                                elif in_env and ':' in line:
-                                    parts = line.strip().split(':', 1)
-                                    k = parts[0].strip().strip('\"').strip('\'')
-                                    v = parts[1].strip().split('#', 1)[0].strip().strip('\"').strip('\'')
+                                elif in_env and \":\" in line:
+                                    parts = line.strip().split(\":\", 1)
+                                    k = parts[0].strip().strip('\"').strip(chr(39))
+                                    v = parts[1].strip().split(\"#\", 1)[0].strip().strip('\"').strip(chr(39))
                                     env_vars[k] = v
-                        cfg['env_vars'] = env_vars
+                        cfg[\"env_vars\"] = env_vars
                 break
             except Exception:
                 pass
     if cfg:
         break
-for cmd in cfg.get('activate_cmd', []):
+for cmd in cfg.get(\"activate_cmd\", []):
     print(cmd)
-q = '"'
-for k, v in cfg.get('env_vars', {}).items():
-    print(f'export {k}={q}{v}{q}')
+q = '\"'
+for k, v in cfg.get(\"env_vars\", {}).items():
+    print(f\"export {k}={q}{v}{q}\")
 " 2>/dev/null)
 
-    $python_path "$WF_ROOT/$stage_name/$stage_name.py" $count >> spoint.log 2>&1 &
+    if [ -n "$REPORT_TO" ]; then
+        $python_path "$WF_ROOT/$stage_name/$stage_name.py" "$spoint" --report-to "$REPORT_TO" >> spoint.log 2>&1 &
+    else
+        $python_path "$WF_ROOT/$stage_name/$stage_name.py" "$spoint" >> spoint.log 2>&1 &
+    fi
     count=$((count+1))
     cd -
 done

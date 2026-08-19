@@ -1,3 +1,4 @@
+import time
 import os
 import json
 import base64
@@ -257,7 +258,7 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
         cmd_str = str(cmd)
         if check_b64 in cmd_str:
             mock_res.stdout = f"{local_ver}\n"
-        elif "python3 -c" in cmd[2]:
+        elif any("python3 -c" in str(arg) for arg in cmd):
             mock_res.stdout = '{"partition": "FIXME"}'
         else:
             mock_res.stdout = "workflow_root\n"
@@ -279,7 +280,7 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
         cmd_str = str(cmd)
         if check_b64 in cmd_str:
             mock_res.stdout = f"{local_ver}\n"
-        elif "python3 -c" in cmd[2]:
+        elif any("python3 -c" in str(arg) for arg in cmd):
             mock_res.stdout = '{"partition": "test"}'
         else:
             mock_res.stdout = "workflow_root\n"
@@ -317,7 +318,7 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
         cmd_str = str(cmd)
         if check_b64 in cmd_str:
             mock_res.stdout = f"{local_ver}\n"
-        elif "python3 -c" in cmd[2]:
+        elif any("python3 -c" in str(arg) for arg in cmd):
             mock_res.stdout = "partition: gpu_test\ncpus-per-task: 4\n"
         else:
             mock_res.stdout = "workflow_root\n"
@@ -558,7 +559,7 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
         if check_b64 in cmd_str:
             mock_res.stdout = f"{local_ver}\n"
             return mock_res
-        elif len(cmd) > 2 and "python3 -c" in str(cmd[2]):
+        elif any("python3 -c" in str(arg) for arg in cmd):
             mock_res.stdout = '{"partition": "test"}'
         else:
             mock_res.stdout = "workflow_root\n"
@@ -603,7 +604,7 @@ def test_launch_remote_workers_failure_cleans_up_tunnel(sandbox, env_dir):
         if check_b64 in cmd_str:
             mock_res.stdout = f"{local_ver}\n"
             return mock_res
-        elif len(cmd) > 2 and "python3 -c" in str(cmd[2]):
+        elif any("python3 -c" in str(arg) for arg in cmd):
             mock_res.stdout = '{"partition": "test"}'
         elif "sbatch" in str(cmd):
             mock_res.returncode = 1
@@ -720,3 +721,11 @@ def test_remote_preflight_checks(sandbox, env_dir):
 
 
 
+
+
+def test_worker_loop_connect_timeout():
+    with patch("snap_workflow.worker.runner.send_request", return_value=None):
+        start = time.time()
+        worker.worker_loop("http://invalid_server:9999", "fake_token", connect_timeout=1.0)
+        duration = time.time() - start
+        assert duration >= 0.9

@@ -10,8 +10,9 @@
 # Compute nodes connect back to the login node loopback port where the workstation's
 # reverse tunnel is listening. $SLURM_SUBMIT_HOST is set by Slurm automatically.
 
-echo "Establishing local port forward back to $SLURM_SUBMIT_HOST on port $SERVER_PORT..."
-ssh -o StrictHostKeyChecking=no -L $SERVER_PORT:127.0.0.1:$SERVER_PORT $SLURM_SUBMIT_HOST -N -f
+TARGET_HOST="${TUNNEL_HOST:-$SLURM_SUBMIT_HOST}"
+echo "Establishing local port forward back to $TARGET_HOST on port $SERVER_PORT..."
+ssh -i ~/.ssh/id_rsa -o BatchMode=yes -o StrictHostKeyChecking=no -L $SERVER_PORT:127.0.0.1:$SERVER_PORT $TARGET_HOST -N -f 2>/dev/null || ssh -o BatchMode=yes -o StrictHostKeyChecking=no -L $SERVER_PORT:127.0.0.1:$SERVER_PORT $TARGET_HOST -N -f 2>/dev/null
 
 #---- Start Worker Client ----
 # Parse python interpreter path from .workflow/config.json

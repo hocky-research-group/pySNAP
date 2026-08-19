@@ -1020,6 +1020,9 @@ def server_submit_cmd(parsed_command, args):
     server_submit_options = {server_submit_options[i]: server_submit_functions[i] for i in range(len(server_submit_options))}
     execute_option("server_submit_option", server_submit_options, parsed_command=parsed_command, args=args)
 
+
+
+
 def server_submit_auto_cmd(parsed_command, args):
     import json
     from snap_workflow.utils import io
@@ -1028,155 +1031,163 @@ def server_submit_auto_cmd(parsed_command, args):
     from snap_workflow.worker import send_request
     args, kwargs = parse_remaining(args)
     
-    def get_csv_arg(kwargs, keys):
-        for k in keys:
-            val = kwargs.pop(k, None)
-            if val is not None:
-                if isinstance(val, list):
-                    return ",".join(str(x) for x in val)
-                return str(val)
-        return ""
+    with path.FromRoot():
+        def get_csv_arg(kwargs, keys):
+            for k in keys:
+                val = kwargs.pop(k, None)
+                if val is not None:
+                    if isinstance(val, list):
+                        return ",".join(str(x) for x in val)
+                    return str(val)
+            return ""
 
-    stages = get_csv_arg(kwargs, ["stage", "s"])
-    sweeps = get_csv_arg(kwargs, ["sweep", "w", "matrix", "m"])
-    exclude_stages = get_csv_arg(kwargs, ["exclude-stage", "exclude_stage", "xs"])
-    exclude_sweeps = get_csv_arg(kwargs, ["exclude-sweep", "exclude_sweep", "exclude-matrix", "exclude_matrix", "xw", "xm"])
+        stages = get_csv_arg(kwargs, ["stage", "s"])
+        sweeps = get_csv_arg(kwargs, ["sweep", "w", "matrix", "m"])
+        exclude_stages = get_csv_arg(kwargs, ["exclude-stage", "exclude_stage", "xs"])
+        exclude_sweeps = get_csv_arg(kwargs, ["exclude-sweep", "exclude_sweep", "exclude-matrix", "exclude_matrix", "xw", "xm"])
 
-    if len(args) != 1:
-        raise ValueError("Usage: 'workflow server submit auto remote_name [--stage S] [--sweep W] [--exclude-stage XS] [--exclude-sweep XW]'")
-    name = args[0]
-    
-    # 1. Enforce manager server pre-flight check
-    if not os.path.isfile(SERVER_INFO):
-        raise ValueError("Manager server is not running. Please start it using 'workflow server start'.")
+        if len(args) != 1:
+            raise ValueError("Usage: 'workflow server submit auto remote_name [--stage S] [--sweep W] [--exclude-stage XS] [--exclude-sweep XW]'")
+        name = args[0]
+        from snap_workflow.remote.ssh import ensure_remote_ssh_master
+        ensure_remote_ssh_master(name)
         
-    with open(SERVER_INFO, "r") as f:
-        server_info = json.load(f)
+        # 1. Enforce manager server pre-flight check
+        if not os.path.isfile(SERVER_INFO):
+            raise ValueError("Manager server is not running. Please start it using 'workflow server start'.")
+            
+        with open(SERVER_INFO, "r") as f:
+            server_info = json.load(f)
+            
+        port = server_info["port"]
+        token = server_info["token"]
         
-    port = server_info["port"]
-    token = server_info["token"]
-    
-    io.warn_unused_kwargs(kwargs)
-    
-    # 2. Make REST request to server POST /submit_auto
-    url = f"http://127.0.0.1:{port}/submit_auto"
-    payload = {
-        "remote": name,
-        "stages": stages,
-        "sweeps": sweeps,
-        "exclude_stages": exclude_stages,
-        "exclude_sweeps": exclude_sweeps
-    }
-    
-    resp = send_request(url, token, data=payload)
-    if resp and resp.get("status") == "success":
-        print(f"Successfully registered server-side auto-scheduler for remote '{name}'.")
-        print("Server logs are written to '.workflow/server.log' and individual spoint output is captured in '<spoint_dir>/spoint.log'.")
-    else:
-        err = resp.get("message") if resp else "Connection error"
-        print(f"Error: Failed to register auto-scheduler: {err}")
+        io.warn_unused_kwargs(kwargs)
+        
+        # 2. Make REST request to server POST /submit_auto
+        url = f"http://127.0.0.1:{port}/submit_auto"
+        payload = {
+            "remote": name,
+            "stages": stages,
+            "sweeps": sweeps,
+            "exclude_stages": exclude_stages,
+            "exclude_sweeps": exclude_sweeps
+        }
+        
+        resp = send_request(url, token, data=payload)
+        if resp and resp.get("status") == "success":
+            print(f"Successfully registered server-side auto-scheduler for remote '{name}'.")
+            print("Server logs are written to '.workflow/server.log' and individual spoint output is captured in '<spoint_dir>/spoint.log'.")
+        else:
+            err = resp.get("message") if resp else "Connection error"
+            print(f"Error: Failed to register auto-scheduler: {err}")
 
 def server_submit_worker_cmd(parsed_command, args):
+    from snap_workflow.utils import path
     from snap_workflow.utils.constants import SERVER_INFO
     from snap_workflow.worker import send_request
     from snap_workflow.worker import launch_remote_workers, launch_local_workers
     args, kwargs = parse_remaining(args)
     
-    def get_csv_arg(kwargs, keys):
-        for k in keys:
-            val = kwargs.pop(k, None)
-            if val is not None:
-                if isinstance(val, list):
-                    return ",".join(str(x) for x in val)
-                return str(val)
-        return ""
+    with path.FromRoot():
+        def get_csv_arg(kwargs, keys):
+            for k in keys:
+                val = kwargs.pop(k, None)
+                if val is not None:
+                    if isinstance(val, list):
+                        return ",".join(str(x) for x in val)
+                    return str(val)
+            return ""
 
-    stages = get_csv_arg(kwargs, ["stage", "s"])
-    sweeps = get_csv_arg(kwargs, ["sweep", "w", "matrix", "m"])
-    exclude_stages = get_csv_arg(kwargs, ["exclude-stage", "exclude_stage", "xs"])
-    exclude_sweeps = get_csv_arg(kwargs, ["exclude-sweep", "exclude_sweep", "exclude-matrix", "exclude_matrix", "xw", "xm"])
+        stages = get_csv_arg(kwargs, ["stage", "s"])
+        sweeps = get_csv_arg(kwargs, ["sweep", "w", "matrix", "m"])
+        exclude_stages = get_csv_arg(kwargs, ["exclude-stage", "exclude_stage", "xs"])
+        exclude_sweeps = get_csv_arg(kwargs, ["exclude-sweep", "exclude_sweep", "exclude-matrix", "exclude_matrix", "xw", "xm"])
 
-    if len(args) != 2:
-        raise ValueError("Usage: 'workflow server submit worker remote_name profile_name [--num-workers N] [--sbatch-args S] [--stage S] [--sweep W] [--exclude-stage XS] [--exclude-sweep XW]'")
-    name = args[0]
-    profile = args[1]
-    
-    # 1. Enforce manager server pre-flight check
-    if not os.path.isfile(SERVER_INFO):
-        raise ValueError("Manager server is not running. Please start it using 'workflow server start'.")
+        if len(args) != 2:
+            raise ValueError("Usage: 'workflow server submit worker remote_name profile_name [--num-workers N] [--sbatch-args S] [--stage S] [--sweep W] [--exclude-stage XS] [--exclude-sweep XW]'")
+        name = args[0]
+        profile = args[1]
         
-    # 2. Check the server queue for pending compatible tasks
-    from snap_workflow.core.domain.sweeps import load_sweeps
-    from snap_workflow.core.domain.stages import load_stages
-    from snap_workflow.core.domain import status
-    from snap_workflow.core.domain import spoints
-    
-    try:
-        sweeps_dict = load_sweeps()
-        stages_dict = load_stages()
+        from snap_workflow.remote.ssh import ensure_remote_ssh_master
+        ensure_remote_ssh_master(name)
         
-        allowed_stages = {x.strip() for x in stages.split(",") if x.strip()}
-        allowed_sweeps = {x.strip() for x in sweeps.split(",") if x.strip()}
-        ex_stages = {x.strip() for x in exclude_stages.split(",") if x.strip()}
-        ex_sweeps = {x.strip() for x in exclude_sweeps.split(",") if x.strip()}
-        
-        target_sweeps = list(sweeps_dict.keys())
-        if allowed_sweeps:
-            target_sweeps = [s for s in target_sweeps if s in allowed_sweeps]
-        if ex_sweeps:
-            target_sweeps = [s for s in target_sweeps if s not in ex_sweeps]
+        # 1. Enforce manager server pre-flight check
+        if not os.path.isfile(SERVER_INFO):
+            raise ValueError("Manager server is not running. Please start it using 'workflow server start'.")
             
-        target_stages = list(stages_dict.keys())
-        if allowed_stages:
-            target_stages = [s for s in target_stages if s in allowed_stages]
-        if ex_stages:
-            target_stages = [s for s in target_stages if s not in ex_stages]
+        # 2. Check the server queue for pending compatible tasks
+        from snap_workflow.core.domain.sweeps import load_sweeps
+        from snap_workflow.core.domain.stages import load_stages
+        from snap_workflow.core.domain import status
+        from snap_workflow.core.domain import spoints
+        
+        try:
+            sweeps_dict = load_sweeps()
+            stages_dict = load_stages()
             
-        pending_count = 0
-        for sweep_name, stage_name, spoint_dict in spoints.iter_spoints(sweep_names=target_sweeps, stage_names=target_stages):
-            spoint_path = spoints.get_spoint_path(stage_name, spoint_dict)
-            st = status.load_status(spoint_path)
-            if st not in [status.COMPLETE, status.ERROR]:
-                pending_count += 1
+            allowed_stages = {x.strip() for x in stages.split(",") if x.strip()}
+            allowed_sweeps = {x.strip() for x in sweeps.split(",") if x.strip()}
+            ex_stages = {x.strip() for x in exclude_stages.split(",") if x.strip()}
+            ex_sweeps = {x.strip() for x in exclude_sweeps.split(",") if x.strip()}
+            
+            target_sweeps = list(sweeps_dict.keys())
+            if allowed_sweeps:
+                target_sweeps = [s for s in target_sweeps if s in allowed_sweeps]
+            if ex_sweeps:
+                target_sweeps = [s for s in target_sweeps if s not in ex_sweeps]
                 
-        if pending_count == 0:
-            print("Warning: There are no pending/running compatible tasks left in the workflow.")
-            print("Submitting this worker may result in immediate shutdown upon connecting.")
-    except Exception as e:
-        print(f"Warning: Pre-flight task queue check failed: {e}")
+            target_stages = list(stages_dict.keys())
+            if allowed_stages:
+                target_stages = [s for s in target_stages if s in allowed_stages]
+            if ex_stages:
+                target_stages = [s for s in target_stages if s not in ex_stages]
+                
+            pending_count = 0
+            for sweep_name, stage_name, spoint_dict in spoints.iter_spoints(sweep_names=target_sweeps, stage_names=target_stages):
+                spoint_path = spoints.get_spoint_path(stage_name, spoint_dict)
+                st = status.load_status(spoint_path)
+                if st not in [status.COMPLETE, status.ERROR]:
+                    pending_count += 1
+                    
+            if pending_count == 0:
+                print("Warning: There are no pending/running compatible tasks left in the workflow.")
+                print("Submitting this worker may result in immediate shutdown upon connecting.")
+        except Exception as e:
+            print(f"Warning: Pre-flight task queue check failed: {e}")
 
-    num_workers = int(kwargs.pop("num-workers", kwargs.pop("num_workers", "1")))
-    sbatch_args = kwargs.pop("sbatch-args", kwargs.pop("sbatch_args", ""))
-    kwargs.pop("concurrency", None)
-    kwargs.pop("profile", None)
-    
-    io.warn_unused_kwargs(kwargs)
-    
-    # 3. Make REST request to server POST /submit_worker
-    from snap_workflow.worker import send_request
-    with open(SERVER_INFO, "r") as f:
-        server_info = json.load(f)
-    port = server_info["port"]
-    token = server_info["token"]
-    
-    url = f"http://127.0.0.1:{port}/submit_worker"
-    payload = {
-        "name": name,
-        "profile": profile,
-        "num_workers": num_workers,
-        "sbatch_args": sbatch_args,
-        "stages": stages,
-        "sweeps": sweeps,
-        "exclude_stages": exclude_stages,
-        "exclude_sweeps": exclude_sweeps
-    }
-    
-    resp = send_request(url, token, data=payload)
-    if resp and resp.get("status") == "success":
-        print(resp.get("message", f"Worker allocation for '{name}' submitted successfully."))
-    else:
-        err = resp.get("message") if resp else "Connection error"
-        print(f"Error: Failed to submit worker: {err}")
+        num_workers = int(kwargs.pop("num-workers", kwargs.pop("num_workers", "1")))
+        sbatch_args = kwargs.pop("sbatch-args", kwargs.pop("sbatch_args", ""))
+        kwargs.pop("concurrency", None)
+        kwargs.pop("profile", None)
+        
+        io.warn_unused_kwargs(kwargs)
+        
+        # 3. Make REST request to server POST /submit_worker
+        from snap_workflow.worker import send_request
+        with open(SERVER_INFO, "r") as f:
+            server_info = json.load(f)
+        port = server_info["port"]
+        token = server_info["token"]
+        
+        url = f"http://127.0.0.1:{port}/submit_worker"
+        payload = {
+            "name": name,
+            "profile": profile,
+            "num_workers": num_workers,
+            "sbatch_args": sbatch_args,
+            "stages": stages,
+            "sweeps": sweeps,
+            "exclude_stages": exclude_stages,
+            "exclude_sweeps": exclude_sweeps
+        }
+        
+        resp = send_request(url, token, data=payload)
+        if resp and resp.get("status") == "success":
+            print(resp.get("message", f"Worker allocation for '{name}' submitted successfully."))
+        else:
+            err = resp.get("message") if resp else "Connection error"
+            print(f"Error: Failed to submit worker: {err}")
 
 def main_remote(parsed_command, args):
     remote_options = ["add", "setup"]

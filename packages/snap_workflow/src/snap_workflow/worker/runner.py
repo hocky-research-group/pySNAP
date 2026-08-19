@@ -11,7 +11,7 @@ from snap_workflow.utils import path, io
 from snap_workflow.utils.logging import logger
 
 
-def send_request(url, token, data=None, retries=3, backoff=2):
+def send_request(url, token, data=None, retries=1, backoff=2, timeout=60):
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -24,7 +24,7 @@ def send_request(url, token, data=None, retries=3, backoff=2):
 
     for attempt in range(retries):
         try:
-            with urllib.request.urlopen(req, timeout=15) as response:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
                 return json.loads(response.read().decode())
         except Exception as e:
             if attempt < retries - 1:
@@ -94,11 +94,12 @@ def detect_system_resources():
     return cpus, gpus, mem_gb
 
 
+from snap_workflow.utils.resource_allocator import ResourcePool
 from snap_workflow.utils.io import parse_memory_to_gb
 
 
 def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=None, idle_delay=5,
-                stages="", sweeps="", exclude_stages="", exclude_sweeps="", host="local", worker_id=None):
+                stages="", sweeps="", exclude_stages="", exclude_sweeps="", host="local", worker_id=None, connect_timeout=120.0):
     if not worker_id:
         import uuid
         worker_id = f"{host}_{int(time.time())}_{uuid.uuid4().hex[:6]}"
@@ -131,20 +132,23 @@ def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=N
             if mem_total is None:
                 mem_total = detected_mem
 
-        logger.info("Worker started. Connecting to manager at %s. Resources: cpus_total=%s, gpus_total=%s, mem_total=%.2f GB",
+        logger.info("[STARTUP] Worker started. Connecting to manager at %s. Resources: cpus_total=%s, gpus_total=%s, mem_total=%.2f GB",
                     server_url, cpus_total, gpus_total, mem_total)
 
+        resource_pool = ResourcePool(cpus_total=cpus_total, gpus_total=gpus_total)
         active_spoints = []
         should_shutdown = False
+        first_failed_time = None
 
         while True:
+            resp = None
             finished = []
             for spoint in active_spoints:
                 poll = spoint["proc"].poll()
                 if poll is not None:
                     finished.append(spoint)
                     status_val = "complete" if poll == 0 else "error"
-                    logger.info("Spoint finished: %s %s with status %s", spoint['stage'], spoint['spoint_dict'], status_val)
+                    logger.info("[SPOINT] Finished: %s %s with status %s", spoint['stage'], spoint['spoint_dict'], status_val)
                     print(f"[Worker Action] Stop executing spoint {spoint['stage']} with variables {spoint['spoint_dict']} (exit status: {status_val})")
 
                     payload = {
@@ -157,6 +161,8 @@ def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=N
                     send_request(f"{server_url}/notify_completion", token, data=payload)
 
             for spoint in finished:
+                if "assigned_cpus" in spoint and "assigned_gpus" in spoint:
+                    resource_pool.release(spoint["assigned_cpus"], spoint["assigned_gpus"])
                 active_spoints.remove(spoint)
 
             cpus_running = 0
@@ -203,10 +209,11 @@ def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=N
                 if exclude_sweeps:
                     url += f"&exclude_sweeps={exclude_sweeps}"
                 resp = send_request(url, token)
-                if resp:
+                if resp is not None:
+                    first_failed_time = None
                     status_resp = resp.get("status")
                     if status_resp == "shutdown":
-                        logger.info("Worker received shutdown signal from manager. Draining %s active tasks...", len(active_spoints))
+                        logger.info("[WORKER] Received shutdown signal from manager. Draining %s active tasks...", len(active_spoints))
                         print("[Server Instruction] Shutdown")
                         should_shutdown = True
                     elif status_resp == "spoint":
@@ -215,34 +222,81 @@ def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=N
                         spoint_dict = resp["spoint_dict"]
                         spoint_path = resp["spoint_path"]
 
-                        logger.info("Acquired spoint: %s %s", stage, spoint_dict)
+                        logger.info("[WORKER] Acquired spoint: %s %s", stage, spoint_dict)
                         print(f"[Server Instruction] Execute stage {stage} with sweep variables {spoint_dict}")
                         print(f"[Worker Action] Start executing spoint {stage} with variables {spoint_dict}")
 
                         spoint_sh_script = os.path.join(".workflow", "spoint.sh")
+                        stage_name = stage
+                        env_base = os.path.join(root if root is not None else ".", stage_name, "env")
+                        req_cpus = 1
+                        req_gpus = 0
+                        try:
+                            env_data = io.load_config(env_base, full_path=True)
+                            res = env_data.get("resources", {})
+                            req_cpus = int(res.get("cpus", 1))
+                            req_gpus = int(res.get("gpus", 0))
+                        except Exception:
+                            pass
+
+                        try:
+                            assigned_cpus, assigned_gpus = resource_pool.acquire(req_cpus, req_gpus)
+                        except Exception as acq_err:
+                            logger.warning("ResourcePool checkout failed for %s: %s. Using fallback baseline.", stage_name, acq_err)
+                            assigned_cpus, assigned_gpus = list(range(req_cpus)), list(range(req_gpus)) if req_gpus > 0 else []
+
+                        proc_env = os.environ.copy()
+                        if req_gpus > 0 and assigned_gpus:
+                            proc_env["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, assigned_gpus))
+                        proc_env["OMP_NUM_THREADS"] = str(req_cpus)
+                        proc_env["MKL_NUM_THREADS"] = str(req_cpus)
+                        proc_env["OPENBLAS_NUM_THREADS"] = str(req_cpus)
+                        proc_env["VECLIB_MAXIMUM_THREADS"] = str(req_cpus)
+                        proc_env["NUMEXPR_NUM_THREADS"] = str(req_cpus)
+
+                        import shutil
+                        cmd = ["bash", spoint_sh_script, spoint_path]
+                        if sys.platform != "win32" and shutil.which("taskset") and assigned_cpus:
+                            if len(assigned_cpus) > 1 and assigned_cpus == list(range(assigned_cpus[0], assigned_cpus[-1] + 1)):
+                                core_str = f"{assigned_cpus[0]}-{assigned_cpus[-1]}"
+                            else:
+                                core_str = ",".join(map(str, assigned_cpus))
+                            cmd = ["taskset", "-c", core_str] + cmd
+
                         if log_file is not None:
-                            proc = subprocess.Popen(["bash", spoint_sh_script, spoint_path], stdout=log_file, stderr=log_file)
+                            proc = subprocess.Popen(cmd, env=proc_env, stdout=log_file, stderr=log_file)
                         else:
-                            proc = subprocess.Popen(["bash", spoint_sh_script, spoint_path])
+                            proc = subprocess.Popen(cmd, env=proc_env)
+
                         active_spoints.append({
                             "proc": proc,
                             "sweep": sweep,
                             "stage": stage,
                             "spoint_dict": spoint_dict,
-                            "spoint_path": spoint_path
+                            "spoint_path": spoint_path,
+                            "assigned_cpus": assigned_cpus,
+                            "assigned_gpus": assigned_gpus
                         })
                         continue
 
             if should_shutdown and len(active_spoints) == 0:
-                logger.info("Draining complete. Exiting worker loop cleanly.")
+                logger.info("[WORKER] Draining complete. Exiting worker loop cleanly.")
                 break
+
+            if resp is None and not should_shutdown:
+                if first_failed_time is None:
+                    first_failed_time = time.time()
+                elif connect_timeout and connect_timeout > 0 and (time.time() - first_failed_time >= connect_timeout):
+                    logger.error("[STARTUP] Could not connect to manager at %s within %.0f seconds. Exiting worker.", server_url, connect_timeout)
+                    print(f"[Worker Error] Connection to manager at {server_url} timed out after {connect_timeout}s")
+                    return
 
             if len(active_spoints) == 0:
                 time.sleep(idle_delay)
             else:
                 time.sleep(0.5)
     except KeyboardInterrupt:
-        logger.info("Stopping worker. Terminating active spoints...")
+        logger.info("[WORKER] Stopping worker. Terminating active spoints...")
         for spoint in active_spoints:
             try:
                 spoint["proc"].terminate()
@@ -280,6 +334,7 @@ def main():
     parser.add_argument("--exclude_sweeps", type=str, default="", help="Exclude sweeps filter")
     parser.add_argument("--host", type=str, default="local", help="Host identifier")
     parser.add_argument("--worker_id", type=str, default=None, help="Worker ID")
+    parser.add_argument("--connect-timeout", type=float, default=120.0, help="Connection timeout in seconds")
 
     args = parser.parse_args()
 
@@ -295,7 +350,8 @@ def main():
             exclude_stages=args.exclude_stages,
             exclude_sweeps=args.exclude_sweeps,
             host=args.host,
-            worker_id=args.worker_id
+            worker_id=args.worker_id,
+            connect_timeout=args.connect_timeout
         )
     finally:
         notify_worker_shutdown(args.server_url, args.token, args.worker_id or args.host, host=args.host)

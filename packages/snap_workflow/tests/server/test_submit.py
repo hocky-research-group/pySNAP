@@ -75,3 +75,27 @@ def test_submit_worker_unregistered_remote_fails(wf_init):
          patch("snap_workflow.utils.io.load_local_remotes", return_value={}):
         with pytest.raises(ValueError, match="Remote 'unknown_remote' is not registered"):
             server.submit_worker("unknown_remote", "profile1")
+
+        with pytest.raises(ValueError, match="Remote 'unknown_remote' is not registered"):
+            server.submit_auto("unknown_remote")
+
+
+def test_submit_remote_registered_success(wf_init):
+    info_data = {"port": 8080, "token": "test_token"}
+    with open(SERVER_INFO, "w") as f:
+        json.dump(info_data, f)
+
+    remotes = {"my_cluster": {"host": "cluster.edu"}}
+    mock_res = {"status": "ok"}
+
+    with patch("snap_workflow.utils.io.load_global_remotes", return_value=remotes), \
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={}), \
+         patch("snap_workflow.remote.setup.validate_remote_stage_resources"), \
+         patch("snap_workflow.server.submit.ensure_remote_tunnel"), \
+         patch("snap_workflow.worker.send_request", return_value=mock_res):
+        
+        res1 = server.submit_worker("my_cluster", profile="lonestar")
+        assert res1 == mock_res
+
+        res2 = server.submit_auto("my_cluster")
+        assert res2 == mock_res

@@ -1,5 +1,6 @@
 import os
 import pytest
+from unittest.mock import patch
 from snap_workflow.worker.resource_allocator import ResourcePool
 
 
@@ -50,7 +51,41 @@ def test_resource_pool_cuda_visible_devices_parsing(monkeypatch):
     assert len(pool.avail_gpus) == 0
 
 
+def test_resource_pool_cuda_visible_devices_none_and_invalid(monkeypatch):
+    for val in ["none", "void", "-1", "", "   "]:
+        monkeypatch.setenv("CUDA_VISIBLE_DEVICES", val)
+        pool = ResourcePool(cpus_total=2)
+        assert pool.all_gpus == []
+
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "invalid,abc")
+    pool = ResourcePool(cpus_total=2)
+    assert pool.all_gpus == []
+
+
 def test_resource_pool_gpus_total_zero(monkeypatch):
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0,1")
     pool = ResourcePool(cpus_total=2, gpus_total=0)
     assert pool.all_gpus == []
+
+    pool_neg = ResourcePool(cpus_total=2, gpus_total=-1)
+    assert pool_neg.all_gpus == []
+
+
+def test_resource_pool_sched_affinity_exception(monkeypatch):
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    
+    def bad_affinity(pid):
+        raise OSError("Permission denied")
+        
+    if hasattr(os, "sched_getaffinity"):
+        monkeypatch.setattr(os, "sched_getaffinity", bad_affinity)
+        
+    pool = ResourcePool(cpus_total=2)
+    assert len(pool.all_cpus) == 2
+
+
+def test_resource_pool_gpu_detect_exception(monkeypatch):
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    with patch("snap_workflow.worker.runner.detect_system_resources", side_effect=Exception("GPU detect failed")):
+        pool = ResourcePool()
+        assert pool.all_gpus == []

@@ -48,3 +48,9 @@ def test_update_routine(sandbox, env_dir):
     os.remove(os.path.join(".workflow", "version.json"))
     version.update()
     assert version.load_version() == "1.0.0"
+
+def test_make_version(sandbox, env_dir):
+    initialize(env_dir)
+    os.remove(os.path.join(".workflow", "version.json"))
+    version.make_version()
+    assert os.path.isfile(os.path.join(".workflow", "version.json"))

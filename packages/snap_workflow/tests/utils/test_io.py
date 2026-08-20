@@ -1,7 +1,7 @@
 import os
 import json
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from snap_workflow.core.workflow import initialize
 from snap_workflow.utils import io
 
@@ -49,26 +49,21 @@ def test_input_collector_setters_and_delimiters():
     assert ic.delimiters == [";", "|"]
 
 def test_input_collector_conversions():
-    # No conversions
     ic_none = io.InputCollector("prompt")
     assert ic_none.convert("Hello") == "Hello"
     
-    # Single conversion coerced to list
     ic_single = io.InputCollector("prompt", conversions=str.upper)
     assert ic_single.convert("hello") == "HELLO"
     
-    # Multiple conversions
     ic_multi = io.InputCollector("prompt", conversions=[str.strip, str.upper])
     assert ic_multi.convert("  hello  ") == "HELLO"
 
 def test_input_collector_validation(capsys):
-    # 1. Help option
     ic = io.InputCollector("prompt", help_string="My help instructions")
     assert ic.is_valid("help") is None
     captured = capsys.readouterr()
     assert "My help instructions" in captured.out
     
-    # 2. Defaults when default exists vs does not exist
     ic_no_default = io.InputCollector("prompt")
     assert ic_no_default.is_valid("None") is None
     captured = capsys.readouterr()
@@ -77,31 +72,26 @@ def test_input_collector_validation(capsys):
     ic_with_default = io.InputCollector("prompt", default="my_default")
     assert ic_with_default.is_valid("") == "my_default"
     
-    # 3. Valid options
     ic_opts = io.InputCollector("prompt", valid_options=["opt1", "opt2"])
     assert ic_opts.is_valid("opt3") is None
     captured = capsys.readouterr()
     assert "is not a valid option" in captured.out
     
-    # 4. Used exclusions
     ic_used = io.InputCollector("prompt", used_exclusions=["ex1", "ex2"])
     assert ic_used.is_valid("ex1") is None
     captured = capsys.readouterr()
     assert "is already in use" in captured.out
     
-    # 5. Exclusions
     ic_ex = io.InputCollector("prompt", exclusions=["bad1"])
     assert ic_ex.is_valid("bad1") is None
     captured = capsys.readouterr()
     assert "is not allowed due to potential ambiguity" in captured.out
     
-    # 6. Character exclusions
     ic_chars = io.InputCollector("prompt", char_exclusions=["@", "#"])
     assert ic_chars.is_valid("user@domain") is None
     captured = capsys.readouterr()
     assert "has invalid characters" in captured.out
     
-    # 7. Additional checks (scalar and list formats)
     ic_checks = io.InputCollector("prompt", add_checks=lambda x: x.startswith("a"), add_errors="Must start with a")
     assert ic_checks.is_valid("bad") is None
     captured = capsys.readouterr()
@@ -111,17 +101,14 @@ def test_input_collector_validation(capsys):
     assert ic_checks.is_valid("abc") == "abc"
 
 def test_input_collector_collect_methods():
-    # Single collect (empty input returns default value)
     ic_default = io.InputCollector("prompt", default="def")
     with patch("builtins.input", return_value=""):
         assert ic_default.collect() == "def"
         
-    # Single collect (invalid input forces retry loop)
     ic_single = io.InputCollector("prompt", valid_options=["val"])
     with patch("builtins.input", side_effect=["bad_val", "val"]):
         assert ic_single.collect() == "val"
         
-    # List collect (None input is skipped, loops until valid list is entered)
     ic_list = io.InputCollector("prompt", is_list=True)
     with patch("builtins.input", side_effect=["None", "val1,val2"]):
         assert ic_list.collect() == ["val1", "val2"]
@@ -129,39 +116,28 @@ def test_input_collector_collect_methods():
 def test_list_input_handling(capsys):
     ic = io.InputCollector("prompt", is_list=True, valid_options=["a", "b"], conversions=str.lower)
     
-    # Invalid list entry (key is None)
     res = ic.check_list_input("a c")
     assert res is None
     captured = capsys.readouterr()
     assert "List contains the above errors" in captured.out
     
-    # Invalid list entry (key is specified)
     with pytest.raises(Exception, match="is an invalid argument for key my_key"):
         ic.check_list_input("a c", key="my_key")
         
-    # Custom list conversion
     ic_custom = io.InputCollector("prompt", is_list=True, list_conversion=lambda l: [x + "!" for x in l])
     assert ic_custom.check_list_input("a b") == ["a!", "b!"]
 
 def test_parse_kwargs():
-    # Single argument parsing
     ic_single = io.InputCollector("prompt", keys=["my_arg"], conversions=int)
-    # Missing key returns None
     assert ic_single.parse_kwargs({}) is None
-    # Valid parse
     assert ic_single.parse_kwargs({"my_arg": "42"}) == 42
-    # Invalid parse throws exception
     ic_err = io.InputCollector("prompt", keys=["my_arg"], valid_options=["yes"])
     with pytest.raises(Exception, match="is in invalid argument for key my_arg"):
         ic_err.parse_kwargs({"my_arg": "no"})
         
-    # List argument parsing
     ic_list = io.InputCollector("prompt", is_list=True, keys=["my_list"], conversions=int)
-    # Missing key returns None
     assert ic_list.parse_kwargs({}) is None
-    # List provided as Python list
     assert ic_list.parse_kwargs({"my_list": ["1", "2"]}) == [1, 2]
-    # String provided
     assert ic_list.parse_kwargs({"my_list": "1,2"}) == [1, 2]
 
 def test_yes_no_collectors():
@@ -176,14 +152,12 @@ def test_yes_no_collectors():
     assert io.is_no("yes") is False
 
 def test_print_helpers(capsys):
-    # warn_unused_kwargs
-    io.warn_unused_kwargs({}) # No output
+    io.warn_unused_kwargs({})
     io.warn_unused_kwargs({"extra": 1})
     captured = capsys.readouterr()
     assert "WARNING" in captured.out
     assert "extra : 1" in captured.out
     
-    # recursive_print
     dict_to_print = {"a": 1, "b": {"c": 2}}
     io.recursive_print(dict_to_print)
     captured2 = capsys.readouterr()
@@ -193,21 +167,53 @@ def test_print_helpers(capsys):
 def test_json_file_helpers(sandbox, env_dir):
     initialize(env_dir)
     
-    # save_json and load_json (not full path)
     data = {"hello": "world"}
     io.save_json("test.json", data)
     assert io.load_json("test.json") == data
     
-    # load_json nonexistent file error
     with pytest.raises(Exception, match="File does not exist"):
         io.load_json("nonexistent.json")
         
-    # make_json logic
     obj = io.make_json("new.json")
     assert obj == {}
-    # verify file exists
     assert io.load_json("new.json") == {}
     
-    # make_json when file already exists exception
     with pytest.raises(Exception, match="File already exists"):
         io.make_json("new.json")
+
+
+def test_remotes_io_and_config(sandbox, tmp_path):
+    global_dir = str(tmp_path / "global_config")
+    g_remotes_file = os.path.join(global_dir, "remotes.json")
+
+    with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_dir), \
+         patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", g_remotes_file):
+        
+        # Test remotes when missing
+        assert io.load_global_remotes() == {}
+        assert io.load_local_remotes() == {}
+
+        # Save and load global remotes
+        remotes_data = {"cluster1": {"host": "user@cluster1", "path": "/home/cluster1"}}
+        io.save_global_remotes(remotes_data)
+        assert io.load_global_remotes() == remotes_data
+
+        # Save and load local remotes
+        initialize(str(tmp_path / "env"))
+        local_remotes = {"cluster1": {"path": "/local/override/path"}}
+        io.save_local_remotes(local_remotes)
+        assert io.load_local_remotes() == local_remotes
+
+        # Test get_remotes_info with SSH check mocked
+        with patch("snap_workflow.remote.ssh.is_remote_ssh_connected", return_value=True):
+            info = io.get_remotes_info()
+            assert len(info) == 1
+            assert info[0]["name"] == "cluster1"
+            assert info[0]["host"] == "user@cluster1"
+            assert info[0]["path"] == "/local/override/path"
+            assert info[0]["connected"] is True
+
+        # Test save_global_config
+        cfg = {"setting": "val"}
+        io.save_global_config(cfg)
+        assert os.path.exists(os.path.join(global_dir, "config.json"))

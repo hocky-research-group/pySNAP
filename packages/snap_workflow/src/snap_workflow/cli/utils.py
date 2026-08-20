@@ -72,7 +72,10 @@ def get_data_format(kwargs):
                                          valid_options=["yaml", "yml", "json"],
                                          keys=["format", "f", "Format", "F"])
 
-    return input_collector.parse_kwargs(kwargs)
+    res = input_collector.parse_kwargs(kwargs)
+    if res is not None:
+        return res
+    return input_collector.collect()
 
 
 def get_script_path(kwargs):

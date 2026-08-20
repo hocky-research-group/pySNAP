@@ -13,8 +13,16 @@ def initialize(env_path=None, force=False):
     if not force:
         check_existing_root()
 
+    if env_path:
+        path.ensure_default_python_path(env_path, overwrite=True)
+
     # Setup all necessary directories/files
     setup_blank_workflow()
+
+    if env_path:
+        cfg = io.load_json(LOCAL_CONFIG) if os.path.exists(LOCAL_CONFIG) else {}
+        cfg["default_python_env"] = env_path
+        io.save_json(LOCAL_CONFIG, obj=cfg)
 
     # Write Version
     version = vrs.__version__

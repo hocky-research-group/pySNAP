@@ -1,58 +1,117 @@
 import os
+import sys
 import json
-import pytest
 import pickle
+import warnings
+import pytest
+from unittest.mock import patch
+
+from snap_workflow.core.workflow import initialize
+from snap_workflow.core.domain import stages, sweeps, variables, spoints, params, status
 from snap_workflow.core.params.system_params import System_Params
+from snap_workflow.core.params.tools import dict_defines, decode, get_options, recursive_print
+from snap_workflow.cli.verbs import main_reset
+from snap_workflow.cli.params import main_convert
+
+# --- Params Tools Tests ---
+
+def test_dict_defines():
+    assert dict_defines({"a": 1}, "a") is True
+    assert dict_defines({"a": None}, "a") is False
+    assert dict_defines({"b": 1}, "a") is False
+
+def test_decode_basic():
+    assert decode("5", "int") == 5
+    assert decode("3.14", "float") == 3.14
+    assert decode("hello", "direct") == "hello"
+    assert decode(5, "negative") == -5
+
+def test_decode_list_and_tuple():
+    assert decode([1, 2], "tuple") == (1, 2)
+    assert decode(["5", "3.14"], ["int", "float"]) == [5, 3.14]
+
+def test_decode_dict():
+    val = {"a": "5", "b": "direct_val"}
+    enc = {"a": "int"}
+    assert decode(val, enc) == {"a": 5, "b": "direct_val"}
+
+def test_decode_nested_encodings():
+    assert decode("5", ["int", "negative"]) == -5
+
+def test_decode_json_file(sandbox):
+    json_path = "test.json"
+    with open(json_path, "w") as f:
+        json.dump({"x": 10}, f)
+    
+    assert decode(json_path, "json") == {"x": 10}
+
+def test_decode_invalid():
+    with pytest.raises(ValueError, match="Can't decode encoding type"):
+        decode(5, "unsupported_encoding")
+
+def test_get_options():
+    assert get_options({}) == {}
+    info = {
+        "options": {"val": "10"},
+        "options_encoding": {"val": "int"}
+    }
+    assert get_options(info) == {"val": 10}
+
+def test_recursive_print():
+    data = {
+        "stage1": {
+            "substage": {
+                "leaf": 1
+            }
+        }
+    }
+    with patch('sys.stdout') as mock_stdout:
+        recursive_print(data)
+        assert mock_stdout.write.called
+
+# --- System Params Tests ---
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_system_params_dir_loading(sandbox):
-    # 1. Create a mock parameters directory
     param_dir = "mock_params"
     os.makedirs(param_dir, exist_ok=True)
     
-    # Write json files
     with open(os.path.join(param_dir, "variables.json"), "w") as f:
         json.dump({"x": 10, "y": 20}, f)
         
     with open(os.path.join(param_dir, "stage1.json"), "w") as f:
-        # stage1 overrides a stage key
         json.dump({
             "stage1": {
-                "val": "!vi_x", # reference x, cast as integer
-                "negative_val": "!vn_y", # reference y, cast as negative float
-                "float_val": "!vf_y" # reference y, cast as float
+                "val": "!vi_x",
+                "negative_val": "!vn_y",
+                "float_val": "!vf_y"
             }
         }, f)
         
     with open(os.path.join(param_dir, "stage2.json"), "w") as f:
         json.dump({
             "stage2": {
-                "math_val": "!m_x + 5" # math parsing
+                "math_val": "!m_x + 5"
             },
             "run": {
                 "var1": {"var_path": ["stage1", "stage1", "val"], "encode": "int"}
             }
         }, f)
         
-    # Load parameters
     sp = System_Params(param_dir, stages=["stage1", "stage2"], variables={"x": 10, "y": 20})
     
-    # Assert values parsed by directives
     assert sp["stage1", "stage1", "val"] == 10
     assert sp["stage1", "stage1", "negative_val"] == -20.0
     assert sp["stage1", "stage1", "float_val"] == 20.0
     assert sp["stage2", "stage2", "math_val"] == 15
     assert "variables" in sp
     
-    # Test __setitem__ / __getitem__ / __contains__
     sp["stage1", "custom_key"] = "hello"
     assert sp["stage1", "custom_key"] == "hello"
     assert "stage1" in sp
     
-    # Test set_stages updating values
     sp.set_stages(["stage2"])
     
-    # Test run dict getters and decoders
     run_dict = sp.get_run_dict(["var1"])
     assert run_dict == {"var1": 10}
     
@@ -67,15 +126,12 @@ def test_directive_exceptions(sandbox):
         
     sp = System_Params(param_dir)
     
-    # Math conflict: math must be the only directive
     with pytest.raises(Exception, match="Conflicting directives: math"):
         sp._parse_directives(["!", "m", "f"], "5")
         
-    # Float/Int conflict
     with pytest.raises(Exception, match="Conflicting directives: float and int"):
         sp._parse_directives(["!", "f", "i"], "5")
         
-    # Missing variable reference returns raw string
     raw_str = sp._parse_directives(["!", "v"], "nonexistent_var")
     assert raw_str == "!!v_nonexistent_var"
 
@@ -97,7 +153,6 @@ def test_update_parameters(sandbox):
     sp.update()
     assert sp["stage1", "stage1", "val"] == 3.14
     
-    # Test dictionary-based updates
     with open(os.path.join(param_dir, "stage1.json"), "w") as f:
         json.dump({
             "stage1": {"val": 5},
@@ -117,16 +172,13 @@ def test_pickling_parameters(sandbox):
         
     sp = System_Params(param_dir)
     
-    # Test single key access/setting
     sp["top_key"] = 500
     assert sp["top_key"] == 500
     
-    # Test pickle auto-extension (without .pkl extension)
     pkl_file = "test_params_no_ext"
     sp.pickle(pkl_file)
     assert os.path.isfile(pkl_file + ".pkl")
     
-    # Load pickle auto-extension
     sp_loaded = System_Params(pkl_file + ".pkl")
     assert sp_loaded["variables", "x"] == 10
 
@@ -139,37 +191,30 @@ def test_system_params_corner_cases(sandbox):
     param_dir = "mock_params"
     os.makedirs(param_dir, exist_ok=True)
     
-    # 1. Test missing variables key load
     with open(os.path.join(param_dir, "stage1.json"), "w") as f:
-        json.dump({"stage1": {"val": ""}}, f) # empty string check
+        json.dump({"stage1": {"val": ""}}, f)
     sp = System_Params(param_dir)
     assert not hasattr(sp, "variables") or len(sp.variables) == 0
     
-    # 2. Test empty parts string directives
     with open(os.path.join(param_dir, "stage1.json"), "w") as f:
         json.dump({"stage1": {"val": "!_empty_part"}}, f)
     sp = System_Params(param_dir)
     
-    # 3. Test unexpected collection exception in find_directives
     with pytest.raises(Exception, match="Unexpected collection of items"):
         sp._find_directives({1, 2, 3})
         
-    # 4. Test JSON parsing failure build error
     with open(os.path.join(param_dir, "bad.json"), "w") as f:
         f.write("invalid json contents")
     with pytest.raises(Exception, match="Failed parsing bad.json"):
         System_Params(param_dir)
         
-    # 5. Test set_stages single stage string conversion & nonexistent stage continue
     os.remove(os.path.join(param_dir, "bad.json"))
     sp = System_Params(param_dir)
     sp.set_stages("stage1")
     sp.set_stages("nonexistent_stage")
     
-    # 6. Test set_directives method
     sp.set_directives()
     
-    # 7. Test string starting with underscore split logic in find_directives (line 98 continue)
     with open(os.path.join(param_dir, "stage1.json"), "w") as f:
         json.dump({"stage1": {"val": "_starts_with_underscore"}}, f)
     sp = System_Params(param_dir)
@@ -183,24 +228,19 @@ def test_system_params_direct_pickle_no_ext(sandbox):
     sp = System_Params(param_dir)
     sp.pickle("test_direct_no_ext")
     
-    # Call _load_pickle directly with a path lacking .pkl to hit line 18
     sp2 = System_Params("test_direct_no_ext.pkl")
     sp2._load_pickle("test_direct_no_ext")
 
 def test_system_params_yaml_cases(sandbox):
-    import sys
-    from unittest.mock import patch
     param_dir = "mock_params"
     os.makedirs(param_dir, exist_ok=True)
     
-    # 1. Test successful YAML build
     with open(os.path.join(param_dir, "stage_yaml.yaml"), "w") as f:
         f.write("stage_yaml:\n  val: 200\n")
         
     sp = System_Params(param_dir)
     assert sp["stage_yaml", "stage_yaml", "val"] == 200
     
-    # 2. Test YAML parsing error
     with open(os.path.join(param_dir, "bad.yaml"), "w") as f:
         f.write("stage_yaml:\n  val: [invalid yaml")
     with pytest.raises(Exception, match="Failed parsing bad.yaml"):
@@ -208,7 +248,6 @@ def test_system_params_yaml_cases(sandbox):
         
     os.remove(os.path.join(param_dir, "bad.yaml"))
     
-    # 3. Test pyyaml missing ImportError
     with patch.dict(sys.modules, {"yaml": None}):
         with pytest.raises(ImportError, match="The 'pyyaml' package is required"):
             System_Params(param_dir)
@@ -217,7 +256,6 @@ def test_system_params_recursive_and_missing_keys(sandbox):
     param_dir = "mock_params"
     os.makedirs(param_dir, exist_ok=True)
     
-    # Nested directory parameter building
     subdir = os.path.join(param_dir, "subdir")
     os.makedirs(subdir, exist_ok=True)
     with open(os.path.join(subdir, "nested.json"), "w") as f:
@@ -226,15 +264,12 @@ def test_system_params_recursive_and_missing_keys(sandbox):
     sp = System_Params(param_dir)
     assert sp["subdir", "nested", "nested", "val"] == 300
     
-    # update_variables when variables key is empty/missing
     assert len(sp.params["variables"]) == 0
     del sp.params["variables"]
     sp.update_variables({"x": 100})
     assert sp.params["variables"]["x"] == 100
     
-    # update() when update key is missing
-    sp.update() # returns early cleanly
-
+    sp.update()
 
 def test_system_params_init_from_dict_and_list():
     data = {
@@ -246,20 +281,16 @@ def test_system_params_init_from_dict_and_list():
         ],
     }
 
-    # Direct System_Params construction from dict (zero copy)
     sp = System_Params(data)
     assert id(sp.params) == id(data)
 
-    # __getitem__ returns raw dict/list
     assert isinstance(sp["box"], dict)
     assert isinstance(sp["box", "shrink"], dict)
     assert sp["box", "shrink", "method"] == "linear"
 
-    # Explicit System_Params sub-object wrapping without copying
     shrink_sp = System_Params(sp["box", "shrink"])
     assert shrink_sp["method"] == "linear"
     assert id(shrink_sp.params) == id(data["box"]["shrink"])
-
 
 def test_system_params_pop():
     data = {
@@ -276,44 +307,36 @@ def test_system_params_pop():
 
     sp = System_Params(data)
 
-    # 1. Pop nested key pair: params.pop("box", "shrink")
     shrink_dict = sp.pop("box", "shrink")
     assert isinstance(shrink_dict, dict)
     assert shrink_dict["method"] == "linear"
     assert "shrink" not in data["box"]
     assert "shrink" not in sp["box"]
 
-    # Wrap popped dict in System_Params in-place
     shrink_sp = System_Params(shrink_dict)
     assert shrink_sp["method"] == "linear"
 
-    # 2. Pop list element: params.pop("polymers", 0)
     poly0 = sp.pop("polymers", 0)
     assert isinstance(poly0, dict)
     assert poly0["type"] == "A"
     assert len(data["polymers"]) == 1
 
-    # 3. Pop with tuple key path: params.pop(("box", "status"))
-    status = sp.pop(("box", "status"))
-    assert status == "active"
+    status_val = sp.pop(("box", "status"))
+    assert status_val == "active"
     assert "status" not in data["box"]
 
-    # 4. Pop single key: params.pop("simple_key")
     simple = sp.pop("simple_key")
     assert simple == 42
     assert "simple_key" not in sp
 
-    # 5. Pop with default fallback
     fallback = sp.pop("nonexistent", default="fallback_val")
     assert fallback == "fallback_val"
 
     fallback_nested = sp.pop("box", "nonexistent", default=999)
     assert fallback_nested == 999
 
-    # 6. Pop error without default
     with pytest.raises(KeyError):
         sp.pop("nonexistent_key")
-
 
 def test_set_stages_deprecation_warning(sandbox):
     param_dir = "mock_params"
@@ -325,6 +348,140 @@ def test_set_stages_deprecation_warning(sandbox):
     with pytest.deprecated_call():
         sp.set_stages("stage1")
 
+# --- Convert & Reset Params Tests ---
 
+def test_params_hashing_and_drift_warning(sandbox):
+    initialize(sandbox)
 
+    with open("params/solver.json", "w") as f:
+        json.dump({"tolerance": 1e-5}, f)
 
+    stages.add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    variables.add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
+    sweeps.add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [10, 20]})
+
+    sp_path = spoints.get_spoint_path("stage1", {"x": 10})
+    params_obj = params.load_params(sp_path)
+
+    assert hasattr(params_obj, "source_hash")
+    assert params_obj.source_hash is not None
+
+    with open("params/solver.json", "w") as f:
+        json.dump({"tolerance": 1e-9}, f)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        params.load_params(sp_path)
+        assert any("source hash mismatch" in str(item.message) for item in w)
+
+def test_export_and_convert_params(sandbox):
+    initialize(sandbox)
+
+    with open("params/config.json", "w") as f:
+        json.dump({"steps": 100}, f)
+
+    stages.add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    variables.add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
+    sweeps.add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+
+    sp_path = spoints.get_spoint_path("stage1", {"x": 5})
+
+    params_obj = params.load_params(sp_path)
+    json_path = params_obj.export_readable(os.path.join(sp_path, "params.json"), format="json")
+    yaml_path = params_obj.export_readable(os.path.join(sp_path, "params.yaml"), format="yaml")
+
+    assert os.path.isfile(json_path)
+    assert os.path.isfile(yaml_path)
+
+    with open(json_path, "r") as f:
+        data = json.load(f)
+        assert data["params"]["config"]["steps"] == 100
+        assert data["variables"]["x"] == 5
+
+    res = params.convert_params(sweep_name="sweep1", stage_name="stage1", format="json")
+    assert len(res) == 1
+    assert os.path.isfile(res[0])
+
+def test_reset_spoint_cwd(sandbox):
+    initialize(sandbox)
+
+    stages.add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    variables.add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
+    sweeps.add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [10]})
+
+    sp_path = spoints.get_spoint_path("stage1", {"x": 10})
+
+    with pytest.raises(ValueError, match="is not an SPoint directory"):
+        spoints.reset_spoint(sandbox)
+
+    start_dir = os.getcwd()
+    os.chdir(sp_path)
+    try:
+        with open("output.txt", "w") as f:
+            f.write("simulation result")
+        status.write_status("complete", ".")
+
+        spoints.reset_spoint(".", hard=False)
+        assert status.load_status(".") == "initialized"
+        assert os.path.isfile("output.txt")
+
+        spoints.reset_spoint(".", hard=True)
+        assert status.load_status(".") == "initialized"
+        assert not os.path.exists("output.txt")
+        assert os.path.exists(".spoint_info/var.dat")
+    finally:
+        os.chdir(start_dir)
+
+def test_reset_spoint_cli(sandbox):
+    initialize(sandbox)
+
+    stages.add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    variables.add_variable("x", ["int"], add_to_stages=["stage1"], default_val=15)
+    sweeps.add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [15]})
+
+    sp_path = spoints.get_spoint_path("stage1", {"x": 15})
+
+    with pytest.raises(SystemExit) as exc_info:
+        main_reset("workflow reset", ["spoint"])
+    assert exc_info.value.code == 1
+
+    start_dir = os.getcwd()
+    os.chdir(sp_path)
+    try:
+        with open("result.dat", "w") as f:
+            f.write("12345")
+
+        main_reset("workflow reset", ["spoint"])
+        assert status.load_status(".") == "initialized"
+        assert os.path.isfile("result.dat")
+
+        main_reset("workflow reset", ["spoint", "--hard", "--force"])
+        assert status.load_status(".") == "initialized"
+        assert not os.path.exists("result.dat")
+    finally:
+        os.chdir(start_dir)
+
+def test_reset_spoint_relinks_dependencies(sandbox):
+    initialize(sandbox)
+
+    stages.add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    stages.add_stage("stage2", sbatch_details=None, stage_variables=["x"], stage_dependencies=["stage1"])
+    variables.add_variable("x", ["int"], add_to_stages=["stage1", "stage2"], default_val=10)
+    sweeps.add_sweep("sweep1", include_stages=["stage1", "stage2"], variable_values={"x": [10]})
+
+    sp2_path = spoints.get_spoint_path("stage2", {"x": 10})
+    start_dir = os.getcwd()
+    os.chdir(sp2_path)
+    try:
+        dep_link = os.path.join(".", "stage1")
+        assert os.path.exists(dep_link) or os.path.islink(dep_link)
+
+        spoints.reset_spoint(".", hard=True)
+
+        assert status.load_status(".") == "initialized"
+        assert os.path.islink(dep_link) or os.path.exists(dep_link)
+
+        main_convert("workflow convert", ["params", "--format", "json"])
+        assert os.path.isfile("params.json")
+    finally:
+        os.chdir(start_dir)

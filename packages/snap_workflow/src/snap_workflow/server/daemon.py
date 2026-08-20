@@ -10,7 +10,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from snap_workflow.utils.constants import *
 from snap_workflow.utils import path, io
-from snap_workflow.core.domain import spoints as spoint_tools, stages as stage_tools
+from snap_workflow.core.domain import spoints as spoint_tools, stages as stage_tools, sweeps as sweep_tools
 from snap_workflow.utils.logging import logger
 from snap_workflow.server.tunnels import ensure_remote_tunnel
 from snap_workflow.server.scheduler import OrchestratorScheduler
@@ -285,7 +285,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                         from snap_workflow.utils.io import load_global_remotes, load_local_remotes
                         g_remotes = load_global_remotes()
                         l_remotes = load_local_remotes()
-                        r_path = l_remotes.get(host, {}).get("path") or g_remotes.get(host, {}).get("path")
+                        r_path = (l_remotes.get(host) or {}).get("path") or (g_remotes.get(host) or {}).get("path")
                         if r_path:
                             r_host = g_remotes.get(host, {}).get("host", host)
                             rel_sp = spoint_tools.get_spoint_path(stage_name, spoint_dict)

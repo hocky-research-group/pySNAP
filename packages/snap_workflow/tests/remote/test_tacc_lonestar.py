@@ -84,7 +84,7 @@ def prepare_lonestar_remote(sandbox_dir, remote_path_override=None):
     local_workers_dir = os.path.join(sandbox_dir, "workers")
     os.makedirs(local_workers_dir, exist_ok=True)
 
-    src_profile = os.path.join(os.path.dirname(__file__), "worker_profile.json")
+    src_profile = os.path.join(os.path.dirname(__file__), "fixtures", "worker_profile.json")
     if os.path.isfile(src_profile):
         shutil.copy(src_profile, os.path.join(local_workers_dir, f"{WORKER_PROFILE}.json"))
         shutil.copy(src_profile, os.path.join(local_workers_dir, "worker_profile.json"))
@@ -189,7 +189,7 @@ def test_tacc_lonestar_slurm_worker_execution(sandbox, workflow_server):
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [100, 200]})
 
     # Set stage environment & explicit sbatch requirements from tests/remote/env.json template
-    src_env = os.path.join(os.path.dirname(__file__), "env.json")
+    src_env = os.path.join(os.path.dirname(__file__), "fixtures", "env.json")
     env_file = os.path.join(sandbox, "stage1", "env.json")
     if os.path.isfile(src_env):
         shutil.copy(src_env, env_file)
@@ -267,7 +267,7 @@ def test_tacc_lonestar_autosubmit_orchestrator(sandbox, workflow_server):
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [500, 600]})
 
-    src_env = os.path.join(os.path.dirname(__file__), "env.json")
+    src_env = os.path.join(os.path.dirname(__file__), "fixtures", "env.json")
     env_file = os.path.join(sandbox, "stage1", "env.json")
     if os.path.isfile(src_env):
         shutil.copy(src_env, env_file)

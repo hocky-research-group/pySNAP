@@ -58,5 +58,11 @@ snap_workflow = ["remote/templates/*", "core/templates/*", "core/templates/**/*"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=snap_workflow --cov-report=term-missing"
+markers = [
+    "unit: Quick standalone unit tests",
+    "integration: Integration tests",
+    "slow: Tests requiring longer execution time",
+    "remote: Tests interacting with remote SSH clusters",
+]
 
 

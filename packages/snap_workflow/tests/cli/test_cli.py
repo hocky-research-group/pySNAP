@@ -2,17 +2,19 @@ import os
 import pytest
 from unittest.mock import patch
 
-from snap_workflow.cli.workflow import main_init
-from snap_workflow.cli.verbs import main_add, main_print, main_set, main_remove, main_reset
-from snap_workflow.core import load_stages
+from snap_workflow.core import initialize, load_stages, add_stage, add_variable, add_sweep
 from snap_workflow.core.domain.sweeps import load_sweeps
+from snap_workflow.cli.workflow import main_init, main_update, main_zip, main_autocomplete, main_variable
+from snap_workflow.cli.verbs import main_add, main_print, main_set, main_remove, main_reset
+from snap_workflow.cli.stage import main_stage
+from snap_workflow.cli.sweep import main_sweep
+from snap_workflow.cli.spoint import main_status
+from snap_workflow.cli.utils import get_completions
+
 
 @patch('builtins.input')
 def test_cli_lifecycle(mock_input, sandbox, env_dir):
     # 1. Test CLI initialization
-    # Prompts: 
-    # - Confirm initialization: 'y'
-    # - Env path: env_dir
     mock_input.side_effect = ["y", "json", env_dir]
     try:
         main_init("workflow init", [])
@@ -22,10 +24,6 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
     assert os.path.isdir(".workflow")
     
     # 2. Test CLI add stage
-    # Subcommand: workflow add stage -n stageA
-    # Prompts:
-    # - Sbatch submission (y/n)? -> 'n'
-    # - Stage dependencies -> '' (none)
     mock_input.side_effect = ["n", ""]
     main_add("workflow add", ["stage", "-n", "stageA"])
     
@@ -33,17 +31,10 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
     assert "stageA" in stages
     
     # 3. Test CLI add variable
-    # Subcommand: workflow add variable -n x -t int
-    # Prompts:
-    # - Include in stageA (y/n)? -> 'y'
     mock_input.side_effect = ["y"]
     main_add("workflow add", ["variable", "-n", "x", "-t", "int"])
     
     # 4. Test CLI add sweep
-    # Subcommand: workflow add sweep -n sweepA
-    # Prompts:
-    # - Include stageA in sweep (y/n)? -> 'y'
-    # - Values for variable x -> '10 20'
     mock_input.side_effect = ["y", "10 20"]
     main_add("workflow add", ["sweep", "-n", "sweepA"])
     
@@ -52,30 +43,22 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
     assert sweeps["sweepA"]["values"]["x"] == ["10", "20"]
     
     # 5. Test CLI print sweeps
-    # Subcommand: workflow print sweeps
-    with patch('sys.stdout') as mock_stdout:
+    with patch('sys.stdout'):
         main_print("workflow print", ["sweeps"])
         
     # 6. Test CLI set status
-    # Subcommand: workflow set status submitted -w sweepA -s stageA
     main_set("workflow set", ["status", "submitted", "-w", "sweepA", "-s", "stageA"])
     
     # 7. Test CLI remove sweep
-    # Subcommand: workflow remove sweep -w sweepA
-    # Prompts:
-    # - Confirm removal (y/n)? -> 'y'
     mock_input.side_effect = ["y"]
     main_remove("workflow remove", ["sweep", "-w", "sweepA"])
     
     sweeps = load_sweeps()
     assert "sweepA" not in sweeps
 
+
 @patch('builtins.input')
 def test_cli_noun_verb_lifecycle(mock_input, sandbox, env_dir):
-    from snap_workflow.cli.stage import main_stage
-    from snap_workflow.cli.sweep import main_sweep
-    from snap_workflow.cli.workflow import main_variable
-    from snap_workflow.cli.spoint import main_status
     mock_input.side_effect = ["y", "json", env_dir]
     try:
         main_init("workflow init", [])
@@ -105,3 +88,100 @@ def test_cli_noun_verb_lifecycle(mock_input, sandbox, env_dir):
     main_sweep("workflow sweep", ["remove", "-w", "sweepA"])
     assert "sweepA" not in load_sweeps()
 
+
+def test_cli_autocomplete(sandbox):
+    with pytest.raises(SystemExit):
+        main_autocomplete("workflow autocomplete", ["bash"])
+        
+    with pytest.raises(SystemExit):
+        main_autocomplete("workflow autocomplete", ["zsh"])
+        
+    with pytest.raises(ValueError, match="Supported shells"):
+        main_autocomplete("workflow autocomplete", ["fish"])
+
+
+def test_cli_update(sandbox, env_dir):
+    initialize(env_dir)
+    with pytest.raises(SystemExit):
+        main_update("workflow update", [])
+
+
+def test_cli_zip(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+    
+    with patch('subprocess.run') as mock_sub:
+        main_zip("workflow zip", ["test_archive", "-w", "sweep1", "-s", "stage1"])
+        assert mock_sub.called
+    
+    with pytest.raises(ValueError, match="Usage"):
+        main_zip("workflow zip", [])
+    with pytest.raises(ValueError, match="Usage"):
+        main_zip("workflow zip", ["a", "b"])
+
+
+def test_cli_reset(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+    
+    with patch('builtins.input', side_effect=["sweep1", "stage1"]):
+        main_reset("workflow reset", ["errors"])
+        
+    with patch('builtins.input', side_effect=["sweep1", "stage1"]):
+        main_reset("workflow reset", ["params"])
+        
+    with patch('builtins.input', side_effect=["sweep1"]):
+        main_reset("workflow reset", ["sweep"])
+
+    with patch('builtins.input', side_effect=["sweep1", "y"]):
+        main_reset("workflow reset", ["sweep", "--hard"])
+
+    with patch('builtins.input', side_effect=["sweep1", "n"]):
+        with pytest.raises(SystemExit):
+            main_reset("workflow reset", ["sweep", "--hard"])
+
+    main_reset("workflow reset", ["sweep", "-w", "sweep1", "--hard", "--force"])
+    main_reset("workflow reset", ["sweep", "-w", "sweep1", "--hard", "-f"])
+
+    main_reset("workflow reset", ["sweep", "sweep1"])
+    main_reset("workflow reset", ["sweep", "sweep1", "--hard", "--force"])
+
+
+def test_cli_remove_force(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
+    
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+
+    main_remove("workflow remove", ["sweep", "-w", "sweep1", "--force"])
+    assert "sweep1" not in load_sweeps()
+
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+    main_remove("workflow remove", ["sweep", "-w", "sweep1", "-f"])
+    assert "sweep1" not in load_sweeps()
+
+
+def test_get_completions_noun_verb():
+    assert "stage" in get_completions([], "")
+    assert "sweep" in get_completions([], "")
+    assert "variable" in get_completions([], "")
+    assert "status" in get_completions([], "")
+    assert "spoint" in get_completions([], "")
+
+    assert get_completions(["stage"], "") == ["add", "print", "list"]
+    assert get_completions(["sweep"], "") == ["add", "print", "list", "reset", "remove"]
+    assert get_completions(["variable"], "") == ["add"]
+    assert get_completions(["status"], "") == ["print", "set"]
+    assert get_completions(["spoint"], "") == ["reset", "submit"]
+
+
+@patch('builtins.input')
+def test_cli_init_declined(mock_input, sandbox, env_dir):
+    mock_input.side_effect = ["n"]
+    with pytest.raises(SystemExit):
+        main_init("workflow init", [])

@@ -121,9 +121,9 @@ def get_dependent_stages(stage_name, stages=None, deps=None):
         deps.append(dep_name)
     return np.unique(deps).tolist()
 
-def validate_stage_resources():
+def validate_stage_resources(root_dir=None):
     stages = load_stages()
-    root = path.get_root()
+    root = root_dir if root_dir else path.get_root()
     for stage_name in stages:
         env_base = os.path.join(root, stage_name, "env")
         try:

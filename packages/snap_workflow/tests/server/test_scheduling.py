@@ -1,11 +1,12 @@
 import os
 import json
 import pytest
+import time
 from unittest.mock import patch, MagicMock
 
 from snap_workflow.core import initialize, add_stage, add_variable, add_sweep
 from snap_workflow.core.domain.stages import validate_stage_resources
-from snap_workflow.server import start_server, parse_memory_to_gb, get_stage_depth
+from snap_workflow.server import start_server, parse_memory_to_gb, get_stage_depth, OrchestratorScheduler
 from snap_workflow.worker import detect_system_resources, worker_loop, send_request
 from snap_workflow.core.domain import status
 
@@ -13,12 +14,10 @@ def test_stage_resource_validation(sandbox, env_dir):
     initialize(env_dir)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
-    # By default, cpus/gpus/mem are initialized to -1, which should raise a ValueError
     with pytest.raises(ValueError) as exc:
         validate_stage_resources()
     assert "unconfigured resources" in str(exc.value)
 
-    # Configure stage resources explicitly
     env_file = os.path.join("stage1", "env.json")
     with open(env_file, "r") as f:
         env_data = json.load(f)
@@ -26,7 +25,6 @@ def test_stage_resource_validation(sandbox, env_dir):
     with open(env_file, "w") as f:
         json.dump(env_data, f, indent=4)
         
-    # Now it should validate cleanly without errors
     validate_stage_resources()
 
 def test_parse_memory_to_gb():
@@ -67,7 +65,6 @@ def workflow_server():
 def test_dynamic_resource_scheduling(sandbox, env_dir, workflow_server):
     initialize(env_dir)
     
-    # Define a pipeline: stage1 (CPU only) -> stage2 (GPU required)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     env_file1 = os.path.join("stage1", "env.json")
     with open(env_file1, "r") as f:
@@ -87,37 +84,25 @@ def test_dynamic_resource_scheduling(sandbox, env_dir, workflow_server):
     add_variable("x", ["int"], add_to_stages=["stage1", "stage2"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1", "stage2"], variable_values={"x": [5]})
 
-    # Start the server
     _, server_info = workflow_server("127.0.0.1", port=0)
     url = server_info["url"]
     token = server_info["token"]
 
-    # 1. cWorker requests work. Should only receive stage1 (since stage2 requires a GPU)
     c_resp = send_request(f"{url}/request_work?cpus_avail=8&gpu_avail=-1&mem_avail=16.0", token)
     assert c_resp["status"] == "spoint"
     assert c_resp["stage"] == "stage1"
 
-    # Reset stage1 status back to initialized so we can test gWorker allocation
     status.write_status("initialized", os.path.join("stage1", "spoints", "x_5"))
 
-    # 2. gWorker requests work.
-    # If gpu_avail=0 (gWorker but currently busy on GPU tasks or has 0 idle GPUs)
-    # It can backfill CPU tasks because future GPU tasks exist (stage2 is not complete)
     g_resp = send_request(f"{url}/request_work?cpus_avail=8&gpu_avail=0&mem_avail=16.0&min_cpu_running_gpu=4", token)
     assert g_resp["status"] == "spoint"
     assert g_resp["stage"] == "stage1"
 
-    # Reset stage1 status again
     status.write_status("initialized", os.path.join("stage1", "spoints", "x_5"))
 
-    # Test reservation logic:
-    # If we request a CPU task with cpus_avail=4, gpu_avail=1, and max_gpu_task_cpu_req=4.
-    # If we assign stage1 (cpu_req=2), remaining cpus = 4 - 2 = 2.
-    # 2 + 0 < 4 (max_gpu_task_cpu_req), so it should NOT assign stage1 (to reserve CPUs for future GPU tasks).
     g_reserve_resp = send_request(f"{url}/request_work?cpus_avail=4&gpu_avail=1&mem_avail=16.0&min_cpu_running_gpu=0", token)
     assert g_reserve_resp["status"] in ["idle", "none"]
 
-    # If we increase cpus_avail=6, then 6 - 2 + 0 = 4 >= 4, so it should assign stage1!
     g_reserve_resp2 = send_request(f"{url}/request_work?cpus_avail=6&gpu_avail=1&mem_avail=16.0&min_cpu_running_gpu=0", token)
     assert g_reserve_resp2["status"] == "spoint"
     assert g_reserve_resp2["stage"] == "stage1"
@@ -125,7 +110,6 @@ def test_dynamic_resource_scheduling(sandbox, env_dir, workflow_server):
 def test_worker_task_filtering(sandbox, env_dir, workflow_server):
     initialize(env_dir)
     
-    # 2 stages: stage1 (CPU only) and stage2 (CPU only)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     env_file1 = os.path.join("stage1", "env.json")
     with open(env_file1, "r") as f:
@@ -146,45 +130,31 @@ def test_worker_task_filtering(sandbox, env_dir, workflow_server):
     add_sweep("sweep1", include_stages=["stage1", "stage2"], variable_values={"x": [5]})
     add_sweep("sweep2", include_stages=["stage1", "stage2"], variable_values={"x": [5]})
 
-    # Start the server
     _, server_info = workflow_server("127.0.0.1", port=0)
     url = server_info["url"]
     token = server_info["token"]
 
-    # 1. Test allowed stages list
-    # Request work with stages=stage1. Should receive stage1
     resp = send_request(f"{url}/request_work?cpus_avail=4&gpu_avail=-1&mem_avail=8.0&stages=stage1", token)
     assert resp["status"] == "spoint"
     assert resp["stage"] == "stage1"
     
-    # Complete the task we just checked out
     status.write_status("complete", os.path.join("stage1", "spoints", "x_5"))
     
-    # Request work again with stages=stage1. Since all stage1 tasks are complete (or not submittable/running),
-    # it should return shutdown even though stage2 has incomplete tasks!
     resp = send_request(f"{url}/request_work?cpus_avail=4&gpu_avail=-1&mem_avail=8.0&stages=stage1", token)
     assert resp["status"] == "shutdown"
 
-    # Reset stage1 task back to initialized
     status.write_status("initialized", os.path.join("stage1", "spoints", "x_5"))
 
-    # 2. Test excluded stages list
-    # Request work with exclude_stages=stage1. Should receive stage2 (skipping stage1)
     resp = send_request(f"{url}/request_work?cpus_avail=4&gpu_avail=-1&mem_avail=8.0&exclude_stages=stage1", token)
     assert resp["status"] == "spoint"
     assert resp["stage"] == "stage2"
 
-    # Reset stage2 task back to initialized (since it gets marked submitted when checked out)
     status.write_status("initialized", os.path.join("stage2", "spoints", "x_5"))
 
-    # 3. Test allowed sweeps list
-    # Request work with sweeps=sweep2. Should receive sweep2 task
     resp = send_request(f"{url}/request_work?cpus_avail=4&gpu_avail=-1&mem_avail=8.0&sweeps=sweep2", token)
     assert resp["status"] == "spoint"
     assert resp["sweep"] == "sweep2"
 
-    # 4. Test excluded sweeps list
-    # Request work with exclude_sweeps=sweep2. Should receive sweep1 task
     resp = send_request(f"{url}/request_work?cpus_avail=4&gpu_avail=-1&mem_avail=8.0&exclude_sweeps=sweep2", token)
     assert resp["status"] == "spoint"
     assert resp["sweep"] == "sweep1"
@@ -203,7 +173,6 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         from snap_workflow.cli.remote import remote_add_cmd, remote_setup_cmd
         from snap_workflow.utils.io import load_global_remotes, load_local_remotes
         
-        # Test adding remote globally
         with patch("subprocess.run") as mock_run_add:
             mock_res_add = MagicMock()
             mock_res_add.stdout = "ok\n"
@@ -216,7 +185,6 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         
         from snap_workflow.utils.version import __version__ as local_ver
 
-        # Test local path setup (with patch to mock ssh commands)
         def mock_ssh_run(cmd, **kwargs):
             mock_res = MagicMock()
             cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
@@ -236,13 +204,11 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         assert "my_workstation" in local_data
         assert local_data["my_workstation"]["path"] == "/home/tanner/sims"
 
-        # 2. Test pre-flight worker submission checks (fail when server not running)
         from snap_workflow.cli.server import server_submit_worker_cmd
         with pytest.raises(ValueError) as exc:
             server_submit_worker_cmd("workflow server submit worker", ["my_workstation", "template", "--num-workers", "1"])
         assert "Manager server is not running" in str(exc.value)
 
-        # 3. Test spawning local workers
         from snap_workflow.utils.constants import SERVER_INFO
         with open(SERVER_INFO, "w") as f:
             json.dump({"port": 1234, "token": "dummy_token"}, f)
@@ -281,7 +247,6 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
 def test_auto_scheduling(sandbox, env_dir, workflow_server):
     initialize(env_dir)
     
-    # Configure stages: stage1 (requires 2 cpus, 1 gpu), and stage2 (depends on stage1)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     env_file1 = os.path.join("stage1", "env.json")
     with open(env_file1, "r") as f:
@@ -301,49 +266,38 @@ def test_auto_scheduling(sandbox, env_dir, workflow_server):
     add_variable("x", ["int"], add_to_stages=["stage1", "stage2"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1", "stage2"], variable_values={"x": [5]})
 
-    # Start the server
     srv, server_info = workflow_server("127.0.0.1", port=0)
-    url = server_info["url"]
-    token = server_info["token"]
 
-    # 1. Register auto-scheduler via POST /submit_auto
     from snap_workflow.cli.server import server_submit_auto_cmd
     from snap_workflow.utils.constants import SERVER_INFO
-    import time
-    
+
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
         
     mock_run_res = MagicMock()
-    mock_run_res.returncode = 1 # simulates no sbatch available
+    mock_run_res.returncode = 1
     
     with patch("subprocess.run", return_value=mock_run_res), \
          patch("snap_workflow.server.scheduler.detect_system_resources", return_value=(8, 2, 16.0)), \
          patch("snap_workflow.worker.detect_system_resources", return_value=(8, 2, 16.0)), \
          patch("subprocess.Popen") as mock_popen:
          
-        # Execute the auto-submit command
         server_submit_auto_cmd("workflow server submit auto", ["local"])
         
-        # Verify the scheduler registered on the server
         assert hasattr(srv, "auto_schedulers")
         assert "local" in srv.auto_schedulers
         scheduler = srv.auto_schedulers["local"]
         assert scheduler.is_alive()
         
-        # Give the scheduler loop a tiny moment to run the workstation spawn
         time.sleep(1.0)
         
-        # SPoint 1 should have been spawned because it is initialized and has no dependencies
         assert mock_popen.called
         call_envs = [call[1].get("env", {}) for call in mock_popen.call_args_list if call[1] and "env" in call[1]]
         assert any("CUDA_VISIBLE_DEVICES" in env for env in call_envs)
         
-        # Check that status was updated to RUNNING
         spoint_path = os.path.join("stage1", "spoints", "x_5")
         assert status.load_status(spoint_path) == "running"
         
-        # Stop the scheduler cleanly
         scheduler.shutdown_event.set()
         scheduler.join()
 
@@ -361,8 +315,6 @@ def test_alternative_scheduler_safety(sandbox, env_dir, workflow_server):
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
     srv, server_info = workflow_server("127.0.0.1", port=0)
-    url = server_info["url"]
-    token = server_info["token"]
 
     from snap_workflow.cli.server import server_submit_auto_cmd
     from snap_workflow.utils.constants import SERVER_INFO
@@ -389,3 +341,156 @@ def test_alternative_scheduler_safety(sandbox, env_dir, workflow_server):
         
         assert not scheduler.is_alive()
         assert not mock_popen.called
+
+def test_local_slurm_auto_scheduling(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    env_file = os.path.join("stage1", "env.json")
+    with open(env_file, "r") as f:
+        env_data = json.load(f)
+    env_data["resources"] = {"cpus": 1, "gpus": 0, "mem": "1G"}
+    env_data["sbatch"] = {"partition": "normal"}
+    with open(env_file, "w") as f:
+        json.dump(env_data, f)
+        
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+
+    mock_server = MagicMock()
+    from snap_workflow.core.domain import spoints
+    mock_server.spoint_manager = spoints.SPointStatusManager()
+    mock_server.server_port = 9999
+    mock_server.token = "token"
+
+    scheduler = OrchestratorScheduler(remote="local", stages="stage1", sweeps="sweep1", server=mock_server)
+
+    def mock_run_slurm(cmd, *args, **kwargs):
+        res = MagicMock()
+        if "which" in cmd and "sbatch" in cmd:
+            res.returncode = 0
+            return res
+        if "sbatch" in cmd:
+            res.returncode = 0
+            return res
+        res.returncode = 1
+        return res
+
+    def mock_sleep(seconds):
+        scheduler.shutdown_event.set()
+
+    with patch("subprocess.run", side_effect=mock_run_slurm), \
+         patch("time.sleep", side_effect=mock_sleep), \
+         patch("threading.Event.wait", side_effect=mock_sleep):
+        scheduler.run()
+    
+    assert status.load_status("stage1/spoints/x_5") == "submitted"
+
+def test_remote_slurm_auto_scheduling_and_monitoring(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    env_file = os.path.join("stage1", "env.json")
+    with open(env_file, "r") as f:
+        env_data = json.load(f)
+    env_data["resources"] = {"cpus": 1, "gpus": 0, "mem": "1G"}
+    with open(env_file, "w") as f:
+        json.dump(env_data, f)
+
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+
+    mock_server = MagicMock()
+    from snap_workflow.core.domain import spoints
+    mock_server.spoint_manager = spoints.SPointStatusManager()
+
+    scheduler = OrchestratorScheduler(remote="cluster1", stages="stage1", sweeps="sweep1", server=mock_server)
+
+    def mock_run(cmd, *args, **kwargs):
+        res = MagicMock()
+        cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+        if "which sbatch" in cmd_str:
+            res.returncode = 0
+            return res
+        if "sbatch" in cmd_str:
+            res.returncode = 0
+            return res
+        if "cat" in cmd_str:
+            res.returncode = 0
+            res.stdout = "complete\n"
+            return res
+        if "squeue" in cmd_str:
+            res.returncode = 0
+            res.stdout = "1001 RUNNING node01\n"
+            return res
+        res.returncode = 0
+        res.stdout = "ok\n"
+        return res
+
+    def mock_sleep(seconds):
+        scheduler.shutdown_event.set()
+
+    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"cluster1": {"host": "user@cluster1"}}), \
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={"cluster1": {"path": "~/sims"}}), \
+         patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"cluster1": {"host": "user@cluster1"}}), \
+         patch("snap_workflow.server.tunnels.ensure_remote_tunnel"), \
+         patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
+         patch("snap_workflow.remote.setup.validate_remote_stage_resources"), \
+         patch("snap_workflow.remote.setup.run_remote_bash", side_effect=lambda host, script, **kw: "1001 RUNNING node01\n" if "squeue" in script else ("complete" if "cat" in script else "ok")), \
+         patch("subprocess.run", side_effect=mock_run), \
+         patch("snap_workflow.remote.ssh.is_remote_ssh_connected", return_value=True), \
+         patch("time.sleep", side_effect=mock_sleep), \
+         patch("threading.Event.wait", side_effect=mock_sleep):
+        
+        scheduler.last_squeue_check_time = 0
+        scheduler.run()
+
+    assert scheduler.shutdown_event.is_set()
+
+def test_remote_ssh_disconnected_alert(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    env_file = os.path.join("stage1", "env.json")
+    with open(env_file, "r") as f:
+        env_data = json.load(f)
+    env_data["resources"] = {"cpus": 1, "gpus": 0, "mem": "1G"}
+    with open(env_file, "w") as f:
+        json.dump(env_data, f)
+
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+
+    mock_server = MagicMock()
+    mock_server.active_tunnels = {}
+    from snap_workflow.core.domain import spoints
+    mock_server.spoint_manager = spoints.SPointStatusManager()
+
+    scheduler = OrchestratorScheduler(remote="cluster1", stages="stage1", sweeps="sweep1", server=mock_server)
+
+    def mock_run_slurm(cmd, *args, **kwargs):
+        res = MagicMock()
+        res.returncode = 0
+        res.stdout = '{"port": 9999, "token": "abc"}\n'
+        return res
+
+    iteration_count = 0
+    def mock_wait(seconds=None):
+        nonlocal iteration_count
+        iteration_count += 1
+        if iteration_count >= 2:
+            scheduler.shutdown_event.set()
+
+    import snap_workflow.server.scheduler as sched_mod
+
+    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"cluster1": {"host": "user@cluster1"}}), \
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={"cluster1": {"path": "~/sims"}}), \
+         patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"cluster1": {"host": "user@cluster1"}}), \
+         patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
+         patch("snap_workflow.remote.setup.validate_remote_stage_resources"), \
+         patch("snap_workflow.remote.setup.run_remote_bash", return_value="ok"), \
+         patch("subprocess.run", side_effect=mock_run_slurm), \
+         patch.object(sched_mod, "is_remote_ssh_connected", return_value=False) as mock_conn, \
+         patch.object(sched_mod, "trigger_alert_sound") as mock_sound, \
+         patch("time.sleep"), \
+         patch("threading.Event.wait", side_effect=mock_wait):
+        
+        scheduler.run()
+        assert mock_sound.called

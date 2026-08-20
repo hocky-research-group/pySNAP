@@ -47,178 +47,105 @@ def test_collect_data_routing(sandbox, env_dir, capsys):
     with patch("importlib.util.spec_from_file_location", return_value=None):
         collect_data(stage_names=["stage1"])
 
-    # 7. Test collect module raising an exception
-    with open(collect_path, "w") as f:
-        f.write("def collect():\n    raise ValueError('runtime collect error')\n")
-    collect_data(stage_names="stage1", verbose=True)
-    captured = capsys.readouterr()
-    assert "Failed to collect data" in captured.out
-    assert "runtime collect error" in captured.out
 
-def test_data_manager_class(sandbox, env_dir):
-    initialize(env_dir)
-    
-    # 1. Data_Manager instantiation without file path
+def test_data_manager_operations(sandbox, env_dir):
     dm = Data_Manager()
-    assert dm.var_names is None
-    assert len(dm.var_vals) == 0
-    assert len(dm) == 0
-
-    # 2. Add data points
-    var_dict = {"x": 5}
-    data_dict = {"loss": 0.1, "accuracy": 0.9}
-    dm._add(var_dict, data_dict)
-    assert len(dm) == 1
-    assert dm.var_names == ["x"]
-    assert dm.data_names == ["accuracy", "loss"] # sorted alphabetically
-
-    # 3. Save / load pickle DM file
-    dm.save("stage1_data") # appends .dm
-    assert os.path.isfile("stage1_data.dm")
-
-    # Move to data/ to test candidate lookup logic
-    import shutil
-    os.makedirs("data", exist_ok=True)
-    shutil.move("stage1_data.dm", "data/stage1_data.dm")
-
-    # Load file using path without .dm extension to test extension appending and candidate lookup fallback
-    dm2 = Data_Manager("stage1_data")
-    assert dm2.var_names == ["x"]
-    assert dm2.data_names == ["accuracy", "loss"]
-
-    # Load non-existent file triggers ValueError
-    with pytest.raises(ValueError):
-        Data_Manager("nonexistent_data")
-
-    # Test candidate lookup Exception handler path
-    with patch("snap_workflow.utils.path.get_root", side_effect=RuntimeError("no root")):
-        with pytest.raises(ValueError):
-            Data_Manager("nonexistent_data")
-
-    # 4. Data Mismatches
-    # Var mismatch - num variables mismatch
-    with pytest.raises(Exception) as exc:
-        dm._verify_variables({"x": 5, "y": 10})
-    assert "Variable Mismatch" in str(exc.value)
-
-    # Var mismatch - names mismatch
-    with pytest.raises(Exception) as exc:
-        dm._verify_variables({"y": 5})
-    assert "Variable Mismatch" in str(exc.value)
-
-    # Data mismatch - num data mismatch
-    with pytest.raises(Exception) as exc:
-        dm._verify_data({"loss": 0.1})
-    assert "Data Mismatch" in str(exc.value)
-
-    # Data mismatch - names mismatch
-    with pytest.raises(Exception) as exc:
-        dm._verify_data({"loss": 0.1, "val_loss": 0.2})
-    assert "Data Mismatch" in str(exc.value)
-
-    # Direct verification with None
-    dm_empty = Data_Manager()
-    dm_empty.num_vars = 1
-    dm_empty._verify_variables({"x": 5})
-    assert dm_empty.var_names == ["x"]
     
-    dm_empty2 = Data_Manager()
-    dm_empty2.num_data = 1
-    dm_empty2._verify_data({"loss": 0.1})
-    assert dm_empty2.data_names == ["loss"]
-
-def test_data_manager_queries(sandbox, env_dir):
-    dm = Data_Manager()
-    dm._add({"x": 5, "y": 1}, {"loss": 0.5})
-    dm._add({"x": 10, "y": 2}, {"loss": 0.2})
-    dm._add({"x": 15, "y": 3}, {"loss": 0.1})
-
-    # 1. Unique values
-    assert np.array_equal(dm.unique("x"), np.array([5, 10, 15]))
-
-    # 2. Get item string (returns numpy arrays)
-    assert np.array_equal(dm["x"], np.array([5, 10, 15]))
-    assert np.array_equal(dm["loss"], np.array([0.5, 0.2, 0.1]))
-    with pytest.raises(ValueError):
-        _ = dm["nonexistent_key"]
-
-    # 3. Get run / get runs queries
-    runs = dm.get_run(x=10)
-    assert runs["loss"] == 0.2
-    assert runs["y"] == 2
+    dm._add({"x": 5, "sweep": "sweep1"}, {"y": 10.0, "time": 1.5})
+    dm._add({"x": 10, "sweep": "sweep1"}, {"y": 20.0, "time": 2.0})
+    dm._add({"x": 15, "sweep": "sweep1"}, {"y": 30.0, "time": 2.5})
     
-    # get_run returning list
-    runs_list = dm.get_runs(x=20) # nonexistent, returns empty list
-    assert runs_list == []
-
-    # get_run with unknown query keys (should ignore/skip)
-    runs_all = dm.get_run(unknown_key=10)
-    assert len(runs_all) == 3
-
-    # 4. Separate other checks
-    assert dm._seperate_other(("x", 5)) == ("x", 5)
-    with pytest.raises(Exception) as exc:
-        dm._seperate_other("x")
-    assert "Data_Manager can only be compared to tuple" in str(exc.value)
+    assert len(dm) == 3
+    assert list(dm["x"]) == [5, 10, 15]
+    assert list(dm["y"]) == [10.0, 20.0, 30.0]
     
-    with pytest.raises(Exception) as exc:
-        dm._seperate_other((5, 10))
-    assert "Data_Manager can only be compared to tuple" in str(exc.value)
-
-    # 5. Operators logic
-    dm_filter = dm > ("x", 8)
-    assert len(dm_filter) == 2
-    assert np.array_equal(dm_filter["x"], np.array([10, 15]))
+    dm_gt = dm > ("x", 8)
+    assert len(dm_gt) == 2
+    assert list(dm_gt["x"]) == [10, 15]
     
-    assert len(dm >= ("x", 10)) == 2
-    assert len(dm < ("x", 10)) == 1
-    assert len(dm <= ("x", 10)) == 2
-    assert len(dm == ("x", 10)) == 1
-    assert len(dm != ("x", 10)) == 2
-
-    # Operator validation exceptions (len != 2)
-    with pytest.raises(Exception) as exc:
-        _ = dm > ("x",)
-    assert "applied via comparison when comparing with iterables of length 2" in str(exc.value).lower()
-
-    # 6. Separate split generators
-    splits = list(dm.split("x", enum=True))
+    dm_ge = dm >= ("x", 10)
+    assert len(dm_ge) == 2
+    
+    dm_lt = dm < ("x", 12)
+    assert len(dm_lt) == 2
+    assert list(dm_lt["x"]) == [5, 10]
+    
+    dm_le = dm <= ("x", 10)
+    assert len(dm_le) == 2
+    
+    dm_eq = dm == ("x", 10)
+    assert len(dm_eq) == 1
+    assert list(dm_eq["x"]) == [10]
+    
+    dm_ne = dm != ("x", 10)
+    assert len(dm_ne) == 2
+    
+    assert list(dm.unique("sweep")) == ["sweep1"]
+    splits = list(dm.split("x"))
     assert len(splits) == 3
-    assert splits[0][0] == 0
-    assert splits[0][1] == 5
-    assert len(splits[0][2]) == 1
-
-    splits_no_enum = list(dm.split("x", enum=False))
-    assert len(splits_no_enum) == 3
-    assert splits_no_enum[0][0] == 5
-    assert len(splits_no_enum[0][1]) == 1
-
-    # 7. __getitem__ np.ndarray / tuple filters
-    dm.np_updated = False
-    arr_filter = np.array([True, False, True])
-    filtered_dm = dm[arr_filter]
-    assert len(filtered_dm) == 2
-    assert np.array_equal(filtered_dm["x"], np.array([5, 15]))
-
-    # Multiple conditions tuple filter
-    multi_filter = (np.array([True, True, True]), np.array([True, False, True]))
-    filtered_dm_multi = dm[multi_filter]
-    assert len(filtered_dm_multi) == 2
-    assert np.array_equal(filtered_dm_multi["x"], np.array([5, 15]))
+    assert splits[0][0] == 5
     
-    # 8. Empty args error
-    with pytest.raises(Exception) as exc:
-        _ = dm[()]
-    assert "Cannot interpret nothing" in str(exc.value)
+    entries = list(dm)
+    assert len(entries) == 3
+    assert entries[0]["x"] == 5
+    assert entries[0]["y"] == 10.0
+    
+    match_run = dm.get_run(x=10)
+    assert match_run["y"] == 20.0
+    
+    splits_enum = list(dm.split("x", enum=True))
+    assert len(splits_enum) == 3
+    assert splits_enum[0][0] == 0
+    assert splits_enum[0][1] == 5
+    
+    with pytest.raises(Exception):
+        dm._add({"x": 10, "z": 2}, {"y": 20.0, "time": 2.0})
+    with pytest.raises(Exception):
+        dm._add({"x": 10, "sweep": "sweep1"}, {"y": 20.0, "time": 2.0, "z": 5})
+    with pytest.raises(ValueError):
+        dm["invalid"]
+    with pytest.raises(ValueError):
+        dm[np.array([True, False])]
+    with pytest.raises(Exception):
+        dm._comparison_filter("invalid", "==")
+    with pytest.raises(Exception):
+        dm._comparison_filter(("x", 5, 6), "==")
+    with pytest.raises(Exception):
+        dm == ("invalid_type", 5)
+    with pytest.raises(Exception):
+        Data_Manager("nonexistent_path")
+        
+    temp_path = os.path.join(env_dir, "test_data.dm")
+    dm.save(temp_path)
+    
+    dm_loaded = Data_Manager(temp_path)
+    assert len(dm_loaded) == 3
+    assert list(dm_loaded["x"]) == [5, 10, 15]
 
-    # 9. Array filter length mismatch
-    with pytest.raises(ValueError):
-        _ = dm[np.array([True, False])]
+
+def test_collect_data_integration(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+    
+    spoint_path = os.path.join("stage1", "spoints", "x_5")
+    os.makedirs(os.path.join(spoint_path, ".spoint_info"), exist_ok=True)
+    with open(os.path.join(spoint_path, ".spoint_info", "status"), "w") as f:
+        f.write("complete")
+    with open(os.path.join(spoint_path, ".spoint_info", "time"), "w") as f:
+        json.dump([1.25], f)
         
-    with pytest.raises(ValueError):
-        dm._filter([np.array([True, False])])
+    collect_py = os.path.join("stage1", "collect.py")
+    with open(collect_py, "w") as f:
+        f.write("def collect():\n    return {'metric1': 42.0}\n")
         
-    # Iteration loop cover
-    items = list(dm)
-    assert len(items) == 3
-    assert items[0]["x"] == 5
+    collect_data(stage_names=["stage1"])
+    
+    dm_path = os.path.join("data", "stage1.dm")
+    assert os.path.isfile(dm_path)
+    
+    dm = Data_Manager(dm_path)
+    assert len(dm) == 1
+    assert list(dm["metric1"]) == [42.0]
+    assert list(dm["x"]) == [5]

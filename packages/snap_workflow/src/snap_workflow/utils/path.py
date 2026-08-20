@@ -154,7 +154,7 @@ def load_python_path(stage=None):
                 fpath = os.path.join(stage_dir, fname)
                 if os.path.isfile(fpath):
                     try:
-                        data = io.load_json(fpath, full_path=True) if fname.endswith(".json") else io.load_yaml(fpath, full_path=True)
+                        data = io.load_json(fpath, full_path=True) if fname.endswith(".json") else io.load_config(fpath, full_path=True)
                         py_val = data.get("python_path")
                         if py_val and py_val != "FIXME":
                             return py_val

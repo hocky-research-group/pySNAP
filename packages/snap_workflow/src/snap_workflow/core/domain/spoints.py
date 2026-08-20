@@ -425,8 +425,7 @@ def get_dependent_spoint_info(stage_name, sweep_name, spoint_dict):
     return all_dep_info
 
 def link_dependent_spoint(stage_name, spoint_dict, dep_info):
-    spoint_path = get_spoint_path(stage_name, spoint_dict)
-    rel_root = path.rel_to_root(spoint_path)
+    spoint_path = path.from_root(get_spoint_path(stage_name, spoint_dict))
     for dep_stage, info in dep_info.items():
         prop_vars = info["prop_vars"]
         conv_vars = info["conv_vars"]
@@ -435,19 +434,19 @@ def link_dependent_spoint(stage_name, spoint_dict, dep_info):
         dep_dir = os.path.join(spoint_path, dep_stage)
         if len(conv_vars) == 0:
             dep_link = dep_dir
-            dep_target = f"{rel_root}/{dep_stage}/{SPOINTS}/{get_spoint_string(dep_dict)}"
+            dep_target = path.from_root(get_spoint_path(dep_stage, dep_dict))
             path.make_sym(dep_target, dep_link, overwrite=True)
         else:
             new_dep_stage_dir = dep_dir
             if os.path.isdir(new_dep_stage_dir):
-                shutil.rmtree(dep_dir)
+                shutil.rmtree(new_dep_stage_dir)
             os.makedirs(new_dep_stage_dir, exist_ok=True)
 
             for conv in info["conv_spoints"]:
                 conv_dict = {var: val for var, val in zip(conv_vars, conv)}
                 conv_link = os.path.join(new_dep_stage_dir, get_spoint_string(conv_dict))
                 conv_dict = {**conv_dict, **dep_dict}
-                dep_target = f"{rel_root}/../{dep_stage}/{SPOINTS}/{get_spoint_string(conv_dict)}"
+                dep_target = path.from_root(get_spoint_path(dep_stage, conv_dict))
                 path.make_sym(dep_target, conv_link, overwrite=True)
 
 class SPointManager():

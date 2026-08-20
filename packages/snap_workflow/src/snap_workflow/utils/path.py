@@ -84,15 +84,22 @@ class FromDir:
         os.chdir(self.start)
         return
 
-def make_sym(real,link,overwrite=False):# {{{
-    if not os.path.islink(link):
-        os.symlink(real,link) 
-    elif os.path.islink(link) and not os.path.exists(link):
-        os.remove(link)
-        os.symlink(real,link) 
+def make_sym(real, link, overwrite=False, relative=True):  # {{{
+    real_abs = os.path.abspath(real) if not os.path.isabs(real) else real
+    link_abs = os.path.abspath(link) if not os.path.isabs(link) else link
+    if relative:
+        target = os.path.relpath(real_abs, os.path.dirname(link_abs))
+    else:
+        target = real_abs
+
+    if not os.path.islink(link_abs):
+        os.symlink(target, link_abs)
+    elif os.path.islink(link_abs) and not os.path.exists(link_abs):
+        os.remove(link_abs)
+        os.symlink(target, link_abs)
     elif overwrite:
-        os.remove(link)
-        os.symlink(real,link) 
+        os.remove(link_abs)
+        os.symlink(target, link_abs)
     return
 # }}}
 def clear_directory(job_path):# {{{

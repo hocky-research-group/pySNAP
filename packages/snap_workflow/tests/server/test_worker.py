@@ -302,8 +302,8 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
         )
         
         # Verify custom env arguments mapping
-        sbatch_call = next(c for c in mock_run.call_args_list if "sbatch" in c[0][0][2])
-        cmd_str = sbatch_call[0][0][2]
+        sbatch_call = next(c for c in mock_run.call_args_list if any("sbatch" in str(arg) for arg in c[0][0]))
+        cmd_str = next(arg for arg in sbatch_call[0][0] if "sbatch" in str(arg))
         assert "WORKER_STAGES=stage1" in cmd_str
         assert "WORKER_SWEEPS=sweep1" in cmd_str
         assert "WORKER_EXCLUDE_STAGES=stage2" in cmd_str
@@ -333,8 +333,8 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
             profile="yaml_prof",
             remote_name="my_remote_node"
         )
-        sbatch_call = next(c for c in mock_run.call_args_list if "sbatch" in c[0][0][2])
-        cmd_str = sbatch_call[0][0][2]
+        sbatch_call = next(c for c in mock_run.call_args_list if any("sbatch" in str(arg) for arg in c[0][0]))
+        cmd_str = next(arg for arg in sbatch_call[0][0] if "sbatch" in str(arg))
         assert "--partition=gpu_test" in cmd_str
         assert "--cpus-per-task=4" in cmd_str
 
@@ -582,7 +582,7 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
         # Verify tunnel ssh was opened
         assert any("ssh" in c[0][0][0] and "-R" in c[0][0] for c in mock_popen.call_args_list)
         # Verify sbatch submission command was sent via ssh
-        assert any("ssh" in c[0][0][0] and "sbatch" in str(c[0][0][2]) for c in mock_run.call_args_list)
+        assert any("ssh" in c[0][0][0] and any("sbatch" in str(arg) for arg in c[0][0]) for c in mock_run.call_args_list)
 
 def test_launch_remote_workers_failure_cleans_up_tunnel(sandbox, env_dir):
     initialize(env_dir)

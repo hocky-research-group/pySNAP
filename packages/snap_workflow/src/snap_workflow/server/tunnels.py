@@ -43,7 +43,7 @@ def ensure_remote_tunnel(server, remote_name):
     tunnel_cmd = [
         "ssh", "-N",
         "-o", "ConnectTimeout=10",
-        "-o", "ServerAliveInterval=60",
+        "-o", "ServerAliveInterval=15",
         "-o", "ServerAliveCountMax=10080",
         "-o", "TCPKeepAlive=yes",
         "-o", "ExitOnForwardFailure=yes",

@@ -3,7 +3,7 @@ import json
 import subprocess
 import logging
 import importlib.resources
-from snap_workflow.remote.ssh import run_remote_python, run_remote_bash
+from snap_workflow.remote.ssh import run_remote_python, run_remote_bash, get_control_path_args
 from snap_workflow.utils import path
 from snap_workflow.core.domain import stages as stage_tools
 from snap_workflow.utils.constants import SPOINTS
@@ -186,7 +186,7 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
     )
 
     for _ in range(num_workers):
-        ssh_cmd = ["ssh", remote_host, sbatch_cmd]
+        ssh_cmd = ["ssh"] + get_control_path_args() + [remote_host, sbatch_cmd]
         res_sbatch = subprocess.run(ssh_cmd, capture_output=True, text=True)
         ret_sbatch = res_sbatch.returncode if isinstance(res_sbatch.returncode, int) else 0
         if ret_sbatch != 0:
@@ -291,22 +291,29 @@ def setup_remote_cluster(remote_host, remote_path):
     logger.info("[REMOTE:WORKER] Setting up workflow structure on remote cluster %s:%s...", remote_host, resolved_path)
 
     try:
-        ssh_mkdir = ["ssh", remote_host, f"mkdir -p {resolved_path}/workers {resolved_path}/slurm_out && test -w {resolved_path}"]
+        ssh_mkdir = ["ssh"] + get_control_path_args() + [remote_host, f"mkdir -p {resolved_path}/workers {resolved_path}/slurm_out && test -w {resolved_path}"]
         subprocess.run(ssh_mkdir, check=True)
     except Exception as e:
         raise ValueError(f"Failed to create or access remote directory '{resolved_path}' on '{remote_host}': {e}")
 
     sync_code_command = [
         "rsync", "-avz",
-        "--exclude", f"{SPOINTS}/",
+        "-e", "ssh " + " ".join(get_control_path_args()),
+        "--exclude", "*.gsd",
+        "--exclude", "*.npy",
+        "--exclude", "*.npz",
+        "--exclude", "*.log",
+        "--exclude", "*.tar.gz",
+        "--exclude", "*.zip",
         "--exclude", ".git/",
         "--exclude", "slurm_out/",
         "--exclude", "temp/",
+        "--exclude", "__pycache__/",
         "--exclude", "**/env.json",
         "--exclude", "**/env.yaml",
         "--exclude", "**/env.yml",
         "--exclude", ".workflow/config.json",
-        "--exclude", "workers/",
+        "--exclude", "workers/logs/",
         "./", f"{remote_host}:{resolved_path}/"
     ]
     res_code = subprocess.run(sync_code_command, capture_output=True, text=True)

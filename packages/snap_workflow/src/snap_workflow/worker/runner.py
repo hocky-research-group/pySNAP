@@ -108,7 +108,7 @@ def worker_loop(server_url, token, cpus_total=None, gpus_total=None, mem_total=N
     log_file = None
     try:
         root = path.get_root()
-        log_dir = os.path.join(root, "worker_logs")
+        log_dir = os.path.join(root, "workers", "logs")
         os.makedirs(log_dir, exist_ok=True)
         log_file_path = os.path.join(log_dir, f"worker_{worker_id}.log")
         log_file = open(log_file_path, "a", buffering=1)

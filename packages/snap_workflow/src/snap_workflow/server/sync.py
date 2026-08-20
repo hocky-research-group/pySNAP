@@ -161,17 +161,67 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
         pull_spoint_data(source_remote, source_host, source_path, dep_rel_path, stage_name)
 
 def pull_worker_logs(remote_type, host, remote_path):
-    """Pulls all worker logs from the remote Spoke back to the local Hub's worker_logs directory."""
+    """Pulls all worker logs from the remote Spoke back to the local Hub's workers/logs directory."""
     if remote_type == "local":
         return
 
     root = path.get_root()
-    local_dest = os.path.join(root, "worker_logs")
+    local_dest = os.path.join(root, "workers", "logs")
     os.makedirs(local_dest, exist_ok=True)
 
-    rsync_cmd = ["rsync", "-avz", f"{host}:{remote_path}/worker_logs/", f"{local_dest}/"]
+    rsync_cmd = ["rsync", "-avz", f"{host}:{remote_path}/workers/logs/", f"{local_dest}/"]
     logger.info("[SYNC] Pulling worker logs: %s", " ".join(rsync_cmd))
     try:
         subprocess.run(rsync_cmd, check=True)
     except Exception as e:
         logger.error("Failed to pull worker logs: %s", e)
+
+
+def push_workflow_structure(remote_name_or_host, remote_path=None):
+    """Pushes the complete workflow directory structure (including .workflow, params, and SPoint metadata) to remote, excluding simulation output binaries."""
+    from snap_workflow.remote.ssh import get_control_path_args, ensure_remote_ssh_master
+    from snap_workflow.cli import load_global_remotes, load_local_remotes
+
+    if not remote_name_or_host or remote_name_or_host == "local":
+        return
+
+    host = remote_name_or_host
+    if remote_path is None:
+        g_remotes = load_global_remotes()
+        l_remotes = load_local_remotes()
+        if remote_name_or_host in g_remotes or remote_name_or_host in l_remotes:
+            host = g_remotes.get(remote_name_or_host, {}).get("host", remote_name_or_host)
+            remote_path = l_remotes.get(remote_name_or_host, {}).get("path") or g_remotes.get(remote_name_or_host, {}).get("path")
+
+    if not remote_path:
+        logger.warning("Remote path not defined for '%s'. Skipping workflow structure push.", remote_name_or_host)
+        return
+
+    ensure_remote_ssh_master(host)
+    root = path.get_root()
+    dest_uri = f"{host}:{remote_path}/"
+    rsync_cmd = [
+        "rsync", "-avz",
+        "-e", "ssh " + " ".join(get_control_path_args()),
+        "--exclude", "*.gsd",
+        "--exclude", "*.npy",
+        "--exclude", "*.npz",
+        "--exclude", "*.log",
+        "--exclude", "*.tar.gz",
+        "--exclude", "*.zip",
+        "--exclude", ".git/",
+        "--exclude", "slurm_out/",
+        "--exclude", "temp/",
+        "--exclude", "__pycache__/",
+        "--exclude", "**/env.json",
+        "--exclude", "**/env.yaml",
+        "--exclude", "**/env.yml",
+        "--exclude", ".workflow/config.json",
+        "--exclude", "workers/logs/",
+        f"{root}/", dest_uri
+    ]
+    logger.info("[SYNC] Pushing full workflow structure to %s: %s", host, " ".join(rsync_cmd))
+    try:
+        subprocess.run(rsync_cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to push workflow structure to %s: %s", host, e)

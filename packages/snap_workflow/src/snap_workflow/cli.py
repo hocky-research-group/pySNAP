@@ -1190,8 +1190,8 @@ def server_submit_worker_cmd(parsed_command, args):
             print(f"Error: Failed to submit worker: {err}")
 
 def main_remote(parsed_command, args):
-    remote_options = ["add", "setup"]
-    remote_functions = [remote_add_cmd, remote_setup_cmd]
+    remote_options = ["add", "setup", "sync"]
+    remote_functions = [remote_add_cmd, remote_setup_cmd, remote_sync_cmd]
     remote_options = {remote_options[i]: remote_functions[i] for i in range(len(remote_options))}
     execute_option("remote_option", remote_options, parsed_command=parsed_command, args=args)
 
@@ -1266,6 +1266,15 @@ def remote_setup_cmd(parsed_command, args):
         local_remotes[name] = {"path": resolved_path}
         save_local_remotes(local_remotes)
         print(f"Automatically updated saved path config to: {resolved_path}")
+
+def remote_sync_cmd(parsed_command, args):
+    from snap_workflow.server.sync import push_workflow_structure
+    args, kwargs = parse_remaining(args)
+    if len(args) != 1:
+        raise ValueError("Usage: 'workflow remote sync name'")
+    name = args[0]
+    push_workflow_structure(name)
+    print(f"Full workflow structure successfully synced to remote '{name}'.")
 
 def main_stage(parsed_command, args):
     stage_options = ["add", "print", "list"]

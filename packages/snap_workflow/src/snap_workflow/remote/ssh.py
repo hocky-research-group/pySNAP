@@ -9,8 +9,9 @@ def get_control_path_args():
     control_path = os.path.join(ssh_dir, "mux_%h_%p_%r")
     return [
         "-o", "LogLevel=ERROR",
-        "-o", "ServerAliveInterval=60",
+        "-o", "ServerAliveInterval=15",
         "-o", "ServerAliveCountMax=10080",
+        "-o", "TCPKeepAlive=yes",
         "-o", "ControlMaster=auto",
         "-o", f"ControlPath={control_path}",
         "-o", "ControlPersist=7d"
@@ -69,6 +70,17 @@ def ensure_remote_ssh_master(remote_host_or_name):
     check_cmd = ["ssh", "-o", "BatchMode=yes"] + get_control_path_args() + [host, "echo", "ping"]
     res = subprocess.run(check_cmd, capture_output=True, text=True, timeout=5)
     if res.returncode != 0:
+        ssh_dir = os.path.expanduser("~/.config/snap_workflow/ssh")
+        if os.path.isdir(ssh_dir):
+            for f in os.listdir(ssh_dir):
+                if f.startswith("mux_"):
+                    sock_path = os.path.join(ssh_dir, f)
+                    try:
+                        exit_cmd = ["ssh", "-O", "exit", "-o", f"ControlPath={sock_path}", host]
+                        subprocess.run(exit_cmd, capture_output=True, timeout=2)
+                    except Exception:
+                        pass
+
         print(f"Establishing persistent SSH master connection to '{remote_host_or_name}' ({host})...")
         interactive_cmd = ["ssh", "-N", "-f"] + get_control_path_args() + [host]
         subprocess.run(interactive_cmd)

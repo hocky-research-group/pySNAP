@@ -94,7 +94,7 @@ def detect_system_resources():
     return cpus, gpus, mem_gb
 
 
-from snap_workflow.utils.resource_allocator import ResourcePool
+from snap_workflow.worker.resource_allocator import ResourcePool
 from snap_workflow.utils.io import parse_memory_to_gb
 
 

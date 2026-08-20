@@ -8,7 +8,7 @@ import logging
 from snap_workflow.utils import path, io
 from snap_workflow.core.domain import stages as stage_tools, sweeps as sweep_tools
 from snap_workflow.worker.runner import parse_memory_to_gb, detect_system_resources
-from snap_workflow.utils.resource_allocator import ResourcePool
+from snap_workflow.worker.resource_allocator import ResourcePool
 import shutil
 from snap_workflow.server.tunnels import ensure_remote_tunnel
 from snap_workflow.remote.ssh import is_remote_ssh_connected, trigger_alert_sound

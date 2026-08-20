@@ -1,6 +1,6 @@
 import os
 import pytest
-from snap_workflow.utils.resource_allocator import ResourcePool
+from snap_workflow.worker.resource_allocator import ResourcePool
 
 
 def test_resource_pool_init_defaults(monkeypatch):

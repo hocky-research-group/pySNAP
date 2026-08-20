@@ -348,41 +348,40 @@ def submit_queue(stage_name, submit_details, test_submit, num_submits=None):
             if "--array" in sbatch_flags:
                 sbatch_flags.pop("--array")
 
-    with path.FromRoot():
-        sbatch_command = ["sbatch"] +\
-                        convert_sbatch_flags(sbatch_flags) +\
-                        [submit_script] + queue 
-        if test_submit:
-            print(' '.join(sbatch_command))
-            print()
+    root_dir = path.get_root()
+    sbatch_command = ["sbatch"] +\
+                    convert_sbatch_flags(sbatch_flags) +\
+                    [submit_script] + queue 
+    if test_submit:
+        print(' '.join(sbatch_command))
+        print()
+    else:
+        submitted_job = subprocess.run(sbatch_command, cwd=root_dir)
+        print()
+        if submitted_job.returncode != 0:
+            print(f"Sbatch submission failed")
+            return False
         else:
-            submitted_job = subprocess.run(sbatch_command)
-            print()
-            if submitted_job.returncode != 0:
-                print(f"Sbatch submission failed")
-                return False
-            else:
-                print(f"Sbatch submission succeeded")
+            print(f"Sbatch submission succeeded")
 
-            for spoint_path in queue:
-                status.write_status(SUBMITTED, spoint_path)
+        for spoint_path in queue:
+            status.write_status(SUBMITTED, spoint_path)
 
     clear_queue(submit_details)
     return True
 
 def execute_spoint(stage_name, spoint_dict, test_submit):
-    with path.FromRoot():
-        spoint_string = get_spoint_string(spoint_dict)
-        spoint_path = get_spoint_path(stage_name, spoint_dict)
-        spoint_path = os.path.realpath(spoint_path)
+    spoint_string = get_spoint_string(spoint_dict)
+    spoint_path = path.from_root(get_spoint_path(stage_name, spoint_dict))
 
-        print(f"Running {stage_name}: {spoint_string}")
-        if not test_submit:
-            completed_job = subprocess.run(["bash", ".workflow/spoint.sh", spoint_path])
-            if completed_job.returncode == 0:
-                print(f"Completed {stage_name}: {spoint_string}")
-                status.write_status(COMPLETE, spoint_path)
-            else:
+    print(f"Running {stage_name}: {spoint_string}")
+    if not test_submit:
+        script_path = path.from_root(".workflow", "spoint.sh")
+        completed_job = subprocess.run(["bash", script_path, spoint_path], cwd=path.get_root())
+        if completed_job.returncode == 0:
+            print(f"Completed {stage_name}: {spoint_string}")
+            status.write_status(COMPLETE, spoint_path)
+        else:
                 status.write_status(ERROR, spoint_path)
                 print(f"Error running {stage_name}: {spoint_string}")
         print()
@@ -427,7 +426,7 @@ def get_dependent_spoint_info(stage_name, sweep_name, spoint_dict):
 
 def link_dependent_spoint(stage_name, spoint_dict, dep_info):
     spoint_path = get_spoint_path(stage_name, spoint_dict)
-    rel_root = path.get_root(spoint_path)
+    rel_root = path.rel_to_root(spoint_path)
     for dep_stage, info in dep_info.items():
         prop_vars = info["prop_vars"]
         conv_vars = info["conv_vars"]

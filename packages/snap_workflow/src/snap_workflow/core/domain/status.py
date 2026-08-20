@@ -1,5 +1,6 @@
 import os
 from snap_workflow.utils.constants import *
+from snap_workflow.utils import path
 from snap_workflow.core.domain import spoints
 
 def set_status(new_status, old_status=None, sweep_names=None, stage_names=None):
@@ -31,21 +32,33 @@ def print_status(sweep_names=None, stage_names=None):
         print("    "*2, spoint_string, load_status(spoint_path))
     print()
 
+def _resolve_spoint_dir(spoint_dir="."):
+    if os.path.isabs(spoint_dir):
+        return spoint_dir
+    if os.path.isdir(os.path.join(spoint_dir, SPOINT_INFO)):
+        return os.path.abspath(spoint_dir)
+    return path.from_root(spoint_dir)
+
+
 def write_status(status, spoint_dir="."):
-    with open(os.path.join(spoint_dir, SPOINT_INFO, STATUS), 'w') as file:
+    target_path = os.path.join(_resolve_spoint_dir(spoint_dir), SPOINT_INFO, STATUS)
+    with open(target_path, 'w') as file:
         file.write(status)
 
 def load_status(spoint_dir="."):
-    with open(os.path.join(spoint_dir, SPOINT_INFO, STATUS), 'r') as file:
+    target_path = os.path.join(_resolve_spoint_dir(spoint_dir), SPOINT_INFO, STATUS)
+    with open(target_path, 'r') as file:
         status_val = file.readline().strip()
     return status_val
 
 def write_progress(progress, spoint_dir="."):
-    with open(os.path.join(spoint_dir, SPOINT_INFO, PROGRESS), 'w') as file:
+    target_path = os.path.join(_resolve_spoint_dir(spoint_dir), SPOINT_INFO, PROGRESS)
+    with open(target_path, 'w') as file:
         file.write(progress)
 
 def load_progress(spoint_dir="."):
-    with open(os.path.join(spoint_dir, SPOINT_INFO, PROGRESS), 'r') as file:
+    target_path = os.path.join(_resolve_spoint_dir(spoint_dir), SPOINT_INFO, PROGRESS)
+    with open(target_path, 'r') as file:
         progress_val = file.readline().strip()
     return progress_val
 

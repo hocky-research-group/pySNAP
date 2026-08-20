@@ -19,68 +19,65 @@ def collect_data(stage_names=None, verbose=False):
     elif not isinstance(stage_names, list):
         stage_names = [stage_names]
 
-    with path.FromRoot():
-        for stage_name in stage_names:
-            if stage_name not in stages:
-                continue
+    for stage_name in stage_names:
+        if stage_name not in stages:
+            continue
 
-            collect_file = os.path.join(stage_name, "collect.py")
-            if not os.path.isfile(collect_file):
-                continue
+        collect_file = path.from_root(stage_name, "collect.py")
+        if not path.isfile(collect_file):
+            continue
 
-            # Load the stage's collect module in isolation
-            spec = importlib.util.spec_from_file_location("collect", collect_file)
-            if spec is None or spec.loader is None:
-                continue
-            collect_module = importlib.util.module_from_spec(spec)
-            
-            # Add stage path temporarily during module loading to support local imports
-            orig_path = sys.path.copy()
-            sys.path.insert(0, os.path.abspath(stage_name))
-            try:
-                spec.loader.exec_module(collect_module)
+        # Load the stage's collect module in isolation
+        spec = importlib.util.spec_from_file_location("collect", collect_file)
+        if spec is None or spec.loader is None:
+            continue
+        collect_module = importlib.util.module_from_spec(spec)
+        
+        # Add stage path temporarily during module loading to support local imports
+        orig_path = sys.path.copy()
+        sys.path.insert(0, path.from_root(stage_name))
+        try:
+            spec.loader.exec_module(collect_module)
 
-                if verbose:
-                    print(f"Collecting {stage_name} data")
-                collected = _collect_data(stage_name, collect_module, verbose)
-                if not verbose and collected:
-                    print(f"Collected {stage_name} data")
-            finally:
-                sys.path = orig_path
+            if verbose:
+                print(f"Collecting {stage_name} data")
+            collected = _collect_data(stage_name, collect_module, verbose)
+            if not verbose and collected:
+                print(f"Collected {stage_name} data")
+        finally:
+            sys.path = orig_path
 
 def _collect_data(stage_name, collect_module, verbose):
     data = Data_Manager()
     for sweep_name, sname, spoint_dict in spoints.iter_spoints(stage_names=stage_name):
-        with path.FromRoot():
-            spoint_string = spoints.get_spoint_string(spoint_dict)
-            spoint_path = spoints.get_spoint_path(stage_name, spoint_dict)
+        spoint_string = spoints.get_spoint_string(spoint_dict)
+        spoint_path = path.from_root(spoints.get_spoint_path(stage_name, spoint_dict))
 
-            if verbose:
-                print(f"    {spoint_string}")
+        if verbose:
+            print(f"    {spoint_string}")
 
-            spoint_dict = variables.cast_spoint_dict(spoint_dict)
-            spoint_dict["sweep"] = sweep_name
+        spoint_dict = variables.cast_spoint_dict(spoint_dict)
+        spoint_dict["sweep"] = sweep_name
 
-            with path.FromDir(spoint_path):
-                data_dict = None
-                try:
-                    data_dict = collect_module.collect()
-                    data_dict["time"] = load_time(sum=True)
-                except Exception as e:
-                    if verbose:
-                        print("    Failed to collect data")
-                        print("    ", e)
+        with path.FromDir(spoint_path):
+            data_dict = None
+            try:
+                data_dict = collect_module.collect()
+                data_dict["time"] = load_time(sum=True)
+            except Exception as e:
+                if verbose:
+                    print("    Failed to collect data")
+                    print("    ", e)
 
-                if data_dict is not None:
-                    if verbose:
-                        print("    Data collection successful")
-                        print("    ", spoint_dict)
-                    data._add(spoint_dict, data_dict)
+            if data_dict is not None:
+                if verbose:
+                    print("    Data collection successful")
+                    print("    ", spoint_dict)
+                data._add(spoint_dict, data_dict)
 
     if len(data) == 0:
         return False
-    with path.FromRoot():
-        data.pickle(os.path.join("data", stage_name))
+    data.pickle(path.from_root("data", stage_name))
     return True
 
 class DataManager:

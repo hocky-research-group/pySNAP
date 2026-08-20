@@ -51,10 +51,8 @@ class SystemParams:  # {{{
         if stored_hash is not None:
             try:
                 from snap_workflow.utils import path
-                spoint_dir = os.path.dirname(os.path.abspath(param_path))
-                root_rel = path.get_root(spoint_dir)
-                root_params_dir = os.path.abspath(os.path.join(spoint_dir, root_rel, "params"))
-                if os.path.isdir(root_params_dir):
+                root_params_dir = path.from_root("params")
+                if path.isdir(root_params_dir):
                     from snap_workflow.core.params import compute_params_hash
                     current_hash = compute_params_hash(root_params_dir)
                     if current_hash is not None and current_hash != stored_hash:

@@ -26,13 +26,12 @@ def remove_sweep(sweep_name, hard=False):
         raise SweepNotFoundError(f"{sweep_name} is not a sweep")
 
     if hard:
-        with path.FromRoot():
-            for sname, stage_name, spoint_dict in spoints.iter_spoints(sweep_names=sweep_name):
-                if spoints.spoint_still_defined(sweep_name, stage_name, spoint_dict):
-                    continue
-                spoint_path = spoints.get_spoint_path(stage_name, spoint_dict)
-                if os.path.isdir(spoint_path):
-                    shutil.rmtree(spoint_path)
+        for sname, stage_name, spoint_dict in spoints.iter_spoints(sweep_names=sweep_name):
+            if spoints.spoint_still_defined(sweep_name, stage_name, spoint_dict):
+                continue
+            spoint_path = path.from_root(spoints.get_spoint_path(stage_name, spoint_dict))
+            if path.isdir(spoint_path):
+                shutil.rmtree(spoint_path)
 
     sweeps.pop(sweep_name)
     save_sweeps(sweeps)

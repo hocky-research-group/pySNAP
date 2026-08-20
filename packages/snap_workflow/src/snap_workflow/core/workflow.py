@@ -138,30 +138,30 @@ def zip_workflow(zip_name, sweep_names=None, stage_names=None, include_spoints=F
     elif not isinstance(stage_names, list):
         stage_names = [stage_names]
 
-    with path.FromRoot():
-        print("Zipping workflow:")
-        print("\tessentials")
-        subprocess.run(["zip", "-ryq", zip_name, ".workflow"])
-        print("\tparams")
-        subprocess.run(["zip", "-ryq", zip_name, "params"])
-        if os.path.exists("workers"):
-            subprocess.run(["zip", "-ryq", zip_name, "workers"])
-        if os.path.exists("data"):
-            subprocess.run(["zip", "-ryq", zip_name, "data"])
+    root = path.get_root()
+    print("Zipping workflow:")
+    print("\tessentials")
+    subprocess.run(["zip", "-ryq", zip_name, ".workflow"], cwd=root)
+    print("\tparams")
+    subprocess.run(["zip", "-ryq", zip_name, "params"], cwd=root)
+    if path.exists("workers"):
+        subprocess.run(["zip", "-ryq", zip_name, "workers"], cwd=root)
+    if path.exists("data"):
+        subprocess.run(["zip", "-ryq", zip_name, "data"], cwd=root)
 
-        for stage_name in stage_names:
-            stage_py = os.path.join(stage_name, f"{stage_name}.py")
-            if os.path.exists(stage_py):
-                subprocess.run(["zip", "-ryq", zip_name, stage_py])
-            collect_py = os.path.join(stage_name, "collect.py")
-            if os.path.exists(collect_py):
-                subprocess.run(["zip", "-ryq", zip_name, collect_py])
-            env_json = os.path.join(stage_name, "env.json")
-            if os.path.exists(env_json):
-                subprocess.run(["zip", "-ryq", zip_name, env_json])
-            sbatch_json = os.path.join(stage_name, "sbatch.json")
-            if os.path.exists(sbatch_json):
-                subprocess.run(["zip", "-ryq", zip_name, sbatch_json])
+    for stage_name in stage_names:
+        stage_py = os.path.join(stage_name, f"{stage_name}.py")
+        if path.exists(stage_py):
+            subprocess.run(["zip", "-ryq", zip_name, stage_py], cwd=root)
+        collect_py = os.path.join(stage_name, "collect.py")
+        if path.exists(collect_py):
+            subprocess.run(["zip", "-ryq", zip_name, collect_py], cwd=root)
+        env_json = os.path.join(stage_name, "env.json")
+        if path.exists(env_json):
+            subprocess.run(["zip", "-ryq", zip_name, env_json], cwd=root)
+        sbatch_json = os.path.join(stage_name, "sbatch.json")
+        if path.exists(sbatch_json):
+            subprocess.run(["zip", "-ryq", zip_name, sbatch_json], cwd=root)
 
         if not include_spoints:
             return

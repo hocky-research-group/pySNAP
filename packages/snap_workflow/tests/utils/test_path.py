@@ -7,6 +7,41 @@ from snap_workflow.utils import constants, path, io
 from snap_workflow.utils.exceptions import WorkflowError
 
 
+def test_get_root_and_path_helpers(sandbox, env_dir):
+    os.makedirs(os.path.join(sandbox, ".workflow"), exist_ok=True)
+    root = path.get_root()
+    assert os.path.isabs(root)
+    assert os.path.isdir(os.path.join(root, ".workflow"))
+
+    # Test from_root
+    assert path.from_root(".workflow") == os.path.join(root, ".workflow")
+    assert path.from_root("sub", "file.txt") == os.path.join(root, "sub", "file.txt")
+
+    # Test isfile, isdir, exists
+    assert path.isdir(".workflow")
+    assert path.exists(".workflow")
+    
+    test_file = path.from_root(".workflow", "test.txt")
+    with open(test_file, "w") as f:
+        f.write("test")
+    assert path.isfile(".workflow", "test.txt")
+    assert path.exists(".workflow", "test.txt")
+
+    # Test path resolution from nested directory
+    nested_dir = os.path.join(sandbox, "nested", "sub_dir")
+    os.makedirs(nested_dir, exist_ok=True)
+    
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(nested_dir)
+        # get_root should find workflow root without changing os.getcwd()
+        assert path.get_root() == root
+        assert os.getcwd() == nested_dir
+        assert path.from_root(".workflow") == os.path.join(root, ".workflow")
+    finally:
+        os.chdir(old_cwd)
+
+
 def test_get_default_python_file(tmp_path):
     global_dir = str(tmp_path / "global_config")
     with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_dir):

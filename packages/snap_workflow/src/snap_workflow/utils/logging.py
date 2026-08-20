@@ -18,7 +18,8 @@ class MinimalistFormatter(logging.Formatter):
     BOLD_RED = "\033[1;31m"
 
     def __init__(self, use_color=True, is_debug=False):
-        super().__init__(datefmt="%H:%M:%S")
+        fmt = "[%(asctime)s] %(levelname)s [%(name)s:%(filename)s:%(lineno)d] %(message)s" if is_debug else "%(message)s"
+        super().__init__(fmt=fmt, datefmt="%H:%M:%S")
         self.use_color = use_color and hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
         self.is_debug = is_debug
 

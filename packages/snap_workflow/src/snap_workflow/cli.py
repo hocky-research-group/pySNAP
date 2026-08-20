@@ -1190,8 +1190,8 @@ def server_submit_worker_cmd(parsed_command, args):
             print(f"Error: Failed to submit worker: {err}")
 
 def main_remote(parsed_command, args):
-    remote_options = ["add", "setup", "sync", "connect"]
-    remote_functions = [remote_add_cmd, remote_setup_cmd, remote_sync_cmd, remote_connect_cmd]
+    remote_options = ["add", "setup", "sync", "connect", "list"]
+    remote_functions = [remote_add_cmd, remote_setup_cmd, remote_sync_cmd, remote_connect_cmd, remote_list_cmd]
     remote_options = {remote_options[i]: remote_functions[i] for i in range(len(remote_options))}
     execute_option("remote_option", remote_options, parsed_command=parsed_command, args=args)
 
@@ -1286,6 +1286,32 @@ def remote_connect_cmd(parsed_command, args):
     io.warn_unused_kwargs(kwargs)
     ensure_remote_ssh_master(name)
     print(f"Persistent SSH master connection successfully established to remote '{name}'.")
+
+def remote_list_cmd(parsed_command, args):
+    from snap_workflow.utils import io
+    from snap_workflow.remote.ssh import is_remote_ssh_connected
+    args, kwargs = parse_remaining(args)
+    io.warn_unused_kwargs(kwargs)
+
+    g_remotes = load_global_remotes()
+    l_remotes = load_local_remotes()
+
+    all_names = sorted(set(g_remotes.keys()) | set(l_remotes.keys()))
+    if not all_names:
+        print("No remotes currently registered.")
+        return
+
+    print("Configured Remotes:")
+    print("-------------------")
+    for name in all_names:
+        host = g_remotes.get(name, {}).get("host", "<unspecified>")
+        path_val = l_remotes.get(name, {}).get("path") or g_remotes.get(name, {}).get("path") or "<not set up>"
+        status = "CONNECTED" if is_remote_ssh_connected(name) else "DISCONNECTED"
+        print(f"• {name}")
+        print(f"  Host:   {host}")
+        print(f"  Path:   {path_val}")
+        print(f"  SSH:    [{status}]")
+        print()
 
 def main_stage(parsed_command, args):
     stage_options = ["add", "print", "list"]

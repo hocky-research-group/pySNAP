@@ -15,6 +15,7 @@ from snap_workflow.core.domain import sweeps as sweep_tools
 from snap_workflow.core.params import params
 from snap_workflow.utils.time import load_time, write_time
 from snap_workflow.utils.io import parse_memory_to_gb
+from snap_workflow.utils.logging import logger
 
 def get_spoint_string(spoint_dict):
     if len(spoint_dict) == 0:

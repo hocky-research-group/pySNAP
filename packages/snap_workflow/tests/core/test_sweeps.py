@@ -45,15 +45,20 @@ def test_hard_remove_sweep(sandbox, env_dir):
     remove_sweep("sweep1", hard=True)
     assert not os.path.isdir(spoint_path)
 
-def test_print_sweeps(sandbox, env_dir):
+def test_print_sweeps(sandbox, env_dir, capsys):
     initialize(env_dir)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
     
-    with patch('sys.stdout') as mock_stdout:
-        print_sweeps()
-        assert mock_stdout.write.called
+    print_sweeps()
+    captured = capsys.readouterr()
+    assert "NAME" in captured.out
+    assert "STAGES" in captured.out
+    assert "VARIABLES & VALUES" in captured.out
+    assert "sweep1" in captured.out
+    assert "stage1" in captured.out
+    assert "x: [5]" in captured.out
 
 def test_rename_and_unlink_spoints(sandbox, env_dir):
     initialize(env_dir)

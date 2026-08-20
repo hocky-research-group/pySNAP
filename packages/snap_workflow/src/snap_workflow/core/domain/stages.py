@@ -38,10 +38,39 @@ def add_stage(stage_name, sbatch_details=None, stage_variables=None, stage_depen
     save_stages(stages)
     make_new_stage_files(stage_name, sbatch_details)
 
-def print_stages():
-    stages = list(load_stages().keys())
-    for stage in stages:
-        print(stage)
+def print_stages(stage_name="all"):
+    stages = load_stages()
+    if not stages:
+        print("No stages registered.")
+        return
+
+    if stage_name != "all":
+        if stage_name in stages:
+            stages = {stage_name: stages[stage_name]}
+        else:
+            print(f"Stage '{stage_name}' not found.")
+            return
+
+    print(f"{'NAME':<20} {'VARIABLES':<20} {'DEPENDENCIES':<20} {'SBATCH'}")
+    print("-" * 75)
+    for idx, (name, info) in enumerate(stages.items()):
+        vars_list = info.get("variables", [])
+        deps_list = info.get("dependent_stages", [])
+        has_sbatch = "yes" if info.get("sbatch_details") is not None else "no"
+
+        vars_lines = vars_list if vars_list else ["(none)"]
+        deps_lines = deps_list if deps_list else ["(none)"]
+        num_rows = max(len(vars_lines), len(deps_lines))
+
+        for i in range(num_rows):
+            n_str = name if i == 0 else ""
+            v_str = vars_lines[i] if i < len(vars_lines) else ""
+            d_str = deps_lines[i] if i < len(deps_lines) else ""
+            sb_str = has_sbatch if i == 0 else ""
+            print(f"{n_str:<20} {v_str:<20} {d_str:<20} {sb_str}")
+
+        if idx < len(stages) - 1:
+            print()
 
 # ---- Support ----
 def make_new_stage_files(stage_name, sbatch_details=None):

@@ -8,7 +8,7 @@ from snap_workflow.cli.workflow import main_init, main_update, main_zip, main_au
 from snap_workflow.cli.verbs import main_add, main_print, main_set, main_remove, main_reset
 from snap_workflow.cli.stage import main_stage
 from snap_workflow.cli.sweep import main_sweep
-from snap_workflow.cli.spoint import main_status
+from snap_workflow.cli.spoint import main_status, main_spoint
 from snap_workflow.cli.utils import get_completions
 
 
@@ -175,9 +175,66 @@ def test_get_completions_noun_verb():
 
     assert get_completions(["stage"], "") == ["add", "print", "list"]
     assert get_completions(["sweep"], "") == ["add", "print", "list", "reset", "remove"]
-    assert get_completions(["variable"], "") == ["add"]
-    assert get_completions(["status"], "") == ["print", "set"]
-    assert get_completions(["spoint"], "") == ["reset", "submit"]
+    assert get_completions(["variable"], "") == ["add", "print", "list"]
+    assert get_completions(["status"], "") == ["print", "list", "set", "reset", "submit"]
+    assert get_completions(["spoint"], "") == ["print", "list", "set", "reset", "submit"]
+
+
+def test_cli_spoint_consolidated(sandbox, env_dir, capsys):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+
+    main_spoint("workflow spoint", ["print"])
+    captured = capsys.readouterr()
+    assert "Sweep: " in captured.out or "sweep1" in captured.out
+
+    main_spoint("workflow spoint", ["set", "complete"])
+    main_spoint("workflow spoint", ["print"])
+    captured = capsys.readouterr()
+    assert "complete" in captured.out
+
+    # Test error reset
+    main_spoint("workflow spoint", ["set", "error"])
+    main_spoint("workflow spoint", ["reset", "errors"])
+    main_spoint("workflow spoint", ["print"])
+    captured = capsys.readouterr()
+    assert "initialized" in captured.out
+
+    # Test setting status --from error
+    main_spoint("workflow spoint", ["set", "error"])
+    main_spoint("workflow spoint", ["set", "initialized", "--from", "error"])
+    main_spoint("workflow spoint", ["print"])
+    captured = capsys.readouterr()
+    assert "initialized" in captured.out
+
+
+def test_cli_variable_print(sandbox, env_dir, capsys):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
+    add_variable("y", ["float"], add_to_stages=["stage1"], default_val=1.5)
+
+    main_variable("workflow variable", ["print"])
+    captured = capsys.readouterr()
+    assert "NAME" in captured.out
+    assert "TYPE" in captured.out
+    assert "STAGES" in captured.out
+    assert "x" in captured.out
+    assert "int" in captured.out
+    assert "stage1" in captured.out
+    assert "y" in captured.out
+
+    main_variable("workflow variable", ["list"])
+    captured = capsys.readouterr()
+    assert "NAME" in captured.out
+    assert "x" in captured.out
+
+    main_print("workflow print", ["variable"])
+    captured = capsys.readouterr()
+    assert "NAME" in captured.out
+    assert "x" in captured.out
 
 
 @patch('builtins.input')

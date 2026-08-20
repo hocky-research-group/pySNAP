@@ -36,7 +36,34 @@ def add_variable(name, types, add_to_stages=None, default_val=None):
 
     sweep_tools.link_sweep("all")
 
-# ---- IO ----
+def print_variables(var_name="all"):
+    variables = load_variables()
+    if not variables:
+        print("No variables registered.")
+        return
+
+    if var_name != "all":
+        if var_name in variables:
+            variables = {var_name: variables[var_name]}
+        else:
+            print(f"Variable '{var_name}' not found.")
+            return
+
+    stages_dict = stage_tools.load_stages()
+
+    print(f"{'NAME':<20} {'TYPE':<20} {'STAGES'}")
+    print("-" * 60)
+    for name, types in variables.items():
+        type_str = ", ".join(types) if isinstance(types, list) else str(types)
+        assigned_stages = [
+            st_name for st_name, st_info in stages_dict.items()
+            if name in st_info.get("variables", [])
+        ]
+        stages_str = ", ".join(assigned_stages) if assigned_stages else "(none)"
+        print(f"{name:<20} {type_str:<20} {stages_str}")
+
+def print_variable(var_name="all"):
+    return print_variables(var_name)
 def load_variables():
     return io.load_json(VARIABLES)
 

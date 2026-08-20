@@ -89,9 +89,22 @@ def main_print(parsed_command, args):
         "stages": print_stage_verb,
         "sweep": print_sweep_verb,
         "sweeps": print_sweep_verb,
+        "variable": print_variable_verb,
+        "variables": print_variable_verb,
+        "spoint": print_status_verb,
+        "spoints": print_status_verb,
         "status": print_status_verb,
     }
     execute_option("print_option", print_options, parsed_command=parsed_command, args=args)
+
+
+def print_variable_verb(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    var_name = kwargs.pop("v", kwargs.pop("var", kwargs.pop("variable", "all")))
+    if len(args) > 0 and var_name == "all":
+        var_name = args.pop(0)
+    io.warn_unused_kwargs(kwargs)
+    var_tools.print_variables(var_name)
 
 
 def print_stage_verb(parsed_command, args):
@@ -173,10 +186,13 @@ def reset_sweep_verb(parsed_command, args):
 
 
 def main_set(parsed_command, args):
-    if args and args[0] in ["status", "set_status"]:
+    if args and args[0] in ["status", "set_status", "spoint", "spoints"]:
         args.pop(0)
         return set_status_verb(parsed_command, args)
     set_options = {
+        "status": set_status_verb,
+        "spoint": set_status_verb,
+        "spoints": set_status_verb,
         "params": set_params_verb,
         "python": set_python_verb,
     }
@@ -231,17 +247,9 @@ def main_remove(parsed_command, args):
         args.pop(0)
         return remove_sweep_verb(parsed_command, args)
     remove_options = {
-        "stage": remove_stage_verb,
         "sweep": remove_sweep_verb,
     }
     execute_option("remove_option", remove_options, parsed_command=parsed_command, args=args)
-
-
-def remove_stage_verb(parsed_command, args):
-    args, kwargs = parse_remaining(args)
-    stage_name = get_existing_stage_name(kwargs, include_all=True, get_input=True)
-    io.warn_unused_kwargs(kwargs)
-    stage_tools.remove_stage(stage_name)
 
 
 def remove_sweep_verb(parsed_command, args):

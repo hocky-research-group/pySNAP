@@ -36,10 +36,37 @@ def remove_sweep(sweep_name, hard=False):
     sweeps.pop(sweep_name)
     save_sweeps(sweeps)
 
-def print_sweeps():
-    sweeps = list(load_sweeps().keys())
-    for sweep in sweeps:
-        print(sweep)
+def print_sweeps(sweep_name="all"):
+    sweeps = load_sweeps()
+    if not sweeps:
+        print("No sweeps registered.")
+        return
+
+    if sweep_name != "all":
+        if sweep_name in sweeps:
+            sweeps = {sweep_name: sweeps[sweep_name]}
+        else:
+            print(f"Sweep '{sweep_name}' not found.")
+            return
+
+    print(f"{'NAME':<20} {'STAGES':<20} {'VARIABLES & VALUES'}")
+    print("-" * 70)
+    for idx, (name, info) in enumerate(sweeps.items()):
+        st_list = info.get("stages", [])
+        var_dict = info.get("values", {})
+
+        st_lines = st_list if st_list else ["(none)"]
+        var_lines = [f"{k}: {v}" for k, v in var_dict.items()] if var_dict else ["(none)"]
+        num_rows = max(len(st_lines), len(var_lines))
+
+        for i in range(num_rows):
+            n_str = name if i == 0 else ""
+            s_str = st_lines[i] if i < len(st_lines) else ""
+            v_str = var_lines[i] if i < len(var_lines) else ""
+            print(f"{n_str:<20} {s_str:<20} {v_str}")
+
+        if idx < len(sweeps) - 1:
+            print()
 
 def reset_sweep(sweep_name, hard=False):
     sweeps = load_sweeps()

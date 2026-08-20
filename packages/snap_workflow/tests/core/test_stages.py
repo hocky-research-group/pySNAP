@@ -44,9 +44,13 @@ def test_add_stage_duplicate(sandbox, env_dir):
 
 def test_print_stages(sandbox, env_dir, capsys):
     initialize(env_dir)
-    add_stage("stage1", sbatch_details=None, stage_variables=[], stage_dependencies=[])
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     print_stages()
     captured = capsys.readouterr()
+    assert "NAME" in captured.out
+    assert "VARIABLES" in captured.out
+    assert "DEPENDENCIES" in captured.out
+    assert "SBATCH" in captured.out
     assert "stage1" in captured.out
 
 def test_make_new_stage_files_local_config_exception(sandbox, env_dir):

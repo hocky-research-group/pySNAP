@@ -5,8 +5,21 @@ from snap_workflow.cli.prompts import prompt_each_stage, get_values
 
 
 def main_variable(parsed_command, args):
-    variable_options = {"add": add_variable_cmd}
+    variable_options = {
+        "add": add_variable_cmd,
+        "print": print_variable_cmd,
+        "list": print_variable_cmd,
+    }
     execute_option("variable_option", variable_options, parsed_command=parsed_command, args=args)
+
+
+def print_variable_cmd(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    var_name = kwargs.pop("v", kwargs.pop("var", kwargs.pop("variable", "all")))
+    if len(args) > 0 and var_name == "all":
+        var_name = args.pop(0)
+    io.warn_unused_kwargs(kwargs)
+    var_tools.print_variables(var_name)
 
 
 def add_variable_cmd(parsed_command, args):

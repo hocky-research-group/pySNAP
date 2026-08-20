@@ -1190,8 +1190,8 @@ def server_submit_worker_cmd(parsed_command, args):
             print(f"Error: Failed to submit worker: {err}")
 
 def main_remote(parsed_command, args):
-    remote_options = ["add", "setup", "sync"]
-    remote_functions = [remote_add_cmd, remote_setup_cmd, remote_sync_cmd]
+    remote_options = ["add", "setup", "sync", "connect"]
+    remote_functions = [remote_add_cmd, remote_setup_cmd, remote_sync_cmd, remote_connect_cmd]
     remote_options = {remote_options[i]: remote_functions[i] for i in range(len(remote_options))}
     execute_option("remote_option", remote_options, parsed_command=parsed_command, args=args)
 
@@ -1275,6 +1275,17 @@ def remote_sync_cmd(parsed_command, args):
     name = args[0]
     push_workflow_structure(name)
     print(f"Full workflow structure successfully synced to remote '{name}'.")
+
+def remote_connect_cmd(parsed_command, args):
+    from snap_workflow.utils import io
+    from snap_workflow.remote.ssh import ensure_remote_ssh_master
+    args, kwargs = parse_remaining(args)
+    if len(args) != 1:
+        raise ValueError("Usage: 'workflow remote connect name'")
+    name = args[0]
+    io.warn_unused_kwargs(kwargs)
+    ensure_remote_ssh_master(name)
+    print(f"Persistent SSH master connection successfully established to remote '{name}'.")
 
 def main_stage(parsed_command, args):
     stage_options = ["add", "print", "list"]

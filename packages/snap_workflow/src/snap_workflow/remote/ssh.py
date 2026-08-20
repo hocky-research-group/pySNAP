@@ -84,3 +84,50 @@ def ensure_remote_ssh_master(remote_host_or_name):
         print(f"Establishing persistent SSH master connection to '{remote_host_or_name}' ({host})...")
         interactive_cmd = ["ssh", "-N", "-f"] + get_control_path_args() + [host]
         subprocess.run(interactive_cmd)
+
+
+def is_remote_ssh_connected(remote_host_or_name):
+    """Probes if the active SSH ControlMaster socket connection to remote host is alive."""
+    if not remote_host_or_name or remote_host_or_name == "local":
+        return True
+    host = remote_host_or_name
+    try:
+        from snap_workflow.cli import load_global_remotes
+        remotes = load_global_remotes()
+        if remote_host_or_name in remotes:
+            host = remotes[remote_host_or_name]["host"]
+    except Exception:
+        pass
+
+    check_cmd = ["ssh", "-o", "BatchMode=yes"] + get_control_path_args() + [host, "echo", "ping"]
+    try:
+        res = subprocess.run(check_cmd, capture_output=True, text=True, timeout=5)
+        return res.returncode == 0
+    except Exception:
+        return False
+
+
+def trigger_alert_sound():
+    """Emits a cross-platform alert sound (terminal bell + sound daemon fallback)."""
+    import sys
+    import shutil
+
+    # 1. ASCII Terminal Bell
+    try:
+        sys.stdout.write("\a")
+        sys.stdout.flush()
+    except Exception:
+        pass
+
+    # 2. Sound utilities fallback for desktop/Linux/WSL systems
+    for sound_cmd in [
+        ["paplay", "/usr/share/sounds/freedesktop/stereo/dialog-warning.oga"],
+        ["aplay", "/usr/share/sounds/alsa/Front_Center.wav"],
+        ["canberra-gtk-play", "-i", "dialog-warning"],
+    ]:
+        try:
+            if shutil.which(sound_cmd[0]):
+                subprocess.run(sound_cmd, capture_output=True, timeout=2)
+                return
+        except Exception:
+            pass

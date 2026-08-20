@@ -11,6 +11,7 @@ from snap_workflow.worker.runner import parse_memory_to_gb, detect_system_resour
 from snap_workflow.utils.resource_allocator import ResourcePool
 import shutil
 from snap_workflow.server.tunnels import ensure_remote_tunnel
+from snap_workflow.remote.ssh import is_remote_ssh_connected, trigger_alert_sound
 
 logger = logging.getLogger("snap_workflow.server.scheduler")
 
@@ -43,6 +44,8 @@ class OrchestratorScheduler(threading.Thread):
         self.server = server
         self.profile = profile
         self.shutdown_event = threading.Event()
+        self.last_squeue_check_time = 0
+        self.slurm_job_states = {}
 
     def run(self):
         logger.info("Starting auto-scheduler for remote '%s'...", self.remote)
@@ -231,6 +234,43 @@ class OrchestratorScheduler(threading.Thread):
                     if resource_pool and "assigned_cpus" in job and "assigned_gpus" in job:
                         resource_pool.release(job["assigned_cpus"], job["assigned_gpus"])
                     active_jobs.remove(job)
+
+            if has_slurm and self.remote != "local":
+                # 1. SSH Connection Health Check & Sound Alert if disconnected while jobs are active
+                if slurm_submitted_jobs or active_jobs:
+                    if not is_remote_ssh_connected(host):
+                        logger.error(
+                            "[ALERT] SSH master connection to remote '%s' (%s) lost while active Slurm jobs are queued! Run 'workflow remote connect %s' to reconnect.",
+                            self.remote, host, self.remote
+                        )
+                        trigger_alert_sound()
+
+                # 2. Periodic squeue monitoring (every 300s, reporting diffs silently)
+                now_t = time.time()
+                if (now_t - self.last_squeue_check_time >= 300) and is_remote_ssh_connected(host):
+                    self.last_squeue_check_time = now_t
+                    try:
+                        from snap_workflow.remote.ssh import run_remote_bash
+                        sq_out = run_remote_bash(host, "squeue -u $USER -o '%i %T %R' --noheader 2>/dev/null || echo ''", timeout=10)
+                        curr_states = {}
+                        for line in sq_out.strip().splitlines():
+                            parts = line.strip().split()
+                            if len(parts) >= 2:
+                                j_id, j_st = parts[0], parts[1]
+                                curr_states[j_id] = j_st
+
+                        for j_id, new_st in curr_states.items():
+                            old_st = self.slurm_job_states.get(j_id)
+                            if old_st != new_st:
+                                logger.info("[SLURM] Job %s on remote '%s' status: %s -> %s", j_id, self.remote, old_st or "NEW", new_st)
+
+                        for j_id in list(self.slurm_job_states.keys()):
+                            if j_id not in curr_states:
+                                logger.info("[SLURM] Job %s on remote '%s' departed queue.", j_id, self.remote)
+
+                        self.slurm_job_states = curr_states
+                    except Exception as sq_e:
+                        logger.debug("Slurm queue check warning on remote '%s': %s", self.remote, sq_e)
 
             if has_slurm and self.remote != "local" and slurm_submitted_jobs:
                 finished_slurm = []

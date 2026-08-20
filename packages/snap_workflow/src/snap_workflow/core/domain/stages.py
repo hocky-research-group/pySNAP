@@ -59,15 +59,15 @@ def make_new_stage_files(stage_name, sbatch_details=None):
 
     os.makedirs(os.path.join(stage_dir, SPOINTS), exist_ok=True)
 
+    default_python = path.load_python_path(stage=stage_name)
     try:
         local_config = io.load_json(LOCAL_CONFIG)
-        default_python = local_config.get("default_python_env", sys.executable)
         default_activate = local_config.get("default_activate_cmd", [])
         default_env_vars = local_config.get("default_env_vars", {})
     except Exception:
-        default_python = sys.executable
         default_activate = []
         default_env_vars = {}
+
 
     fmt = io.get_default_format()
     env_json = os.path.join(root, stage_name, "env.json")

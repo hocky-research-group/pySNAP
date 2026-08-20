@@ -14,8 +14,12 @@ from snap_workflow.utils.exceptions import (
 )
 
 from snap_workflow.utils.version import __version__
+from snap_workflow.utils.path import ensure_default_python_path
+
+ensure_default_python_path()
 
 SPointManager = SPointManager
+
 SPoint_Manager = SPointManager
 DataManager = DataManager
 Data_Manager = DataManager

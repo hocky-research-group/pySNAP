@@ -17,6 +17,9 @@ ssh -i ~/.ssh/id_rsa -o BatchMode=yes -o StrictHostKeyChecking=no -L $SERVER_POR
 #---- Start Worker Client ----
 # Parse python interpreter path from .workflow/config.json
 python_path=$(grep -o '"default_python_env"[[:space:]]*:[[:space:]]*"[^"]*' ".workflow/config.json" | cut -d'"' -f4 2>/dev/null)
+if [ -z "$python_path" ] && [ -f "$HOME/.config/snap_workflow/default_python" ]; then
+    python_path=$(cat "$HOME/.config/snap_workflow/default_python" 2>/dev/null | tr -d '\r\n ')
+fi
 if [ -z "$python_path" ]; then
     if command -v python3 &>/dev/null; then
         python_path="python3"

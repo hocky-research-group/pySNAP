@@ -114,8 +114,9 @@ def setup_blank_workflow():
     variables.make_variables()
     sweeps.make_sweeps()
 
+    path.ensure_default_python_path()
     config_data = {
-        "default_python_env": sys.executable,
+        "default_python_env": path.load_python_path(),
         "default_activate_cmd": [],
         "default_env_vars": {}
     }

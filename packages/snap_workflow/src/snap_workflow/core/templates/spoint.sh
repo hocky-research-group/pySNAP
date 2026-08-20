@@ -67,6 +67,16 @@ for spoint in "$@"; do
         fi
     fi
 
+    # Fallback to ~/.config/snap_workflow/default_python
+    if [ -z "$python_path" ] || [ "$python_path" == "FIXME" ]; then
+        if [ -f "$HOME/.config/snap_workflow/default_python" ]; then
+            parsed_path=$(cat "$HOME/.config/snap_workflow/default_python" 2>/dev/null | tr -d '\r\n ')
+            if [ -n "$parsed_path" ] && [ "$parsed_path" != "FIXME" ]; then
+                python_path="$parsed_path"
+            fi
+        fi
+    fi
+
     # Fallback to system python interpreter
     if [ -z "$python_path" ] || [ "$python_path" == "FIXME" ]; then
         python_path="$python_cmd"

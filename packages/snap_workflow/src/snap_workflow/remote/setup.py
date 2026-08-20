@@ -75,7 +75,7 @@ def launch_remote_workers_server_side(server_port, token, remote_name, profile, 
                                      sbatch_args="", stages="", sweeps="", exclude_stages="", exclude_sweeps="",
                                      remote_host=None, remote_path=None):
     if not remote_host or not remote_path:
-        from snap_workflow.cli import load_global_remotes, load_local_remotes
+        from snap_workflow.utils.io import load_global_remotes, load_local_remotes
 
         global_remotes = load_global_remotes()
         if remote_name not in global_remotes:

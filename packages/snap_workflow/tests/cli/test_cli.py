@@ -2,9 +2,8 @@ import os
 import pytest
 from unittest.mock import patch
 
-from snap_workflow.cli import (
-    main_init, main_add, main_print, main_set, main_remove, main_reset
-)
+from snap_workflow.cli.workflow import main_init
+from snap_workflow.cli.verbs import main_add, main_print, main_set, main_remove, main_reset
 from snap_workflow.core import load_stages
 from snap_workflow.core.domain.sweeps import load_sweeps
 
@@ -73,7 +72,10 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
 
 @patch('builtins.input')
 def test_cli_noun_verb_lifecycle(mock_input, sandbox, env_dir):
-    from snap_workflow.cli import main_stage, main_sweep, main_variable, main_status
+    from snap_workflow.cli.stage import main_stage
+    from snap_workflow.cli.sweep import main_sweep
+    from snap_workflow.cli.workflow import main_variable
+    from snap_workflow.cli.spoint import main_status
     mock_input.side_effect = ["y", "json", env_dir]
     try:
         main_init("workflow init", [])

@@ -180,7 +180,7 @@ def pull_worker_logs(remote_type, host, remote_path):
 def push_workflow_structure(remote_name_or_host, remote_path=None):
     """Pushes the complete workflow directory structure (including .workflow, params, and SPoint metadata) to remote, excluding simulation output binaries."""
     from snap_workflow.remote.ssh import get_control_path_args, ensure_remote_ssh_master
-    from snap_workflow.cli import load_global_remotes, load_local_remotes
+    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
 
     if not remote_name_or_host or remote_name_or_host == "local":
         return

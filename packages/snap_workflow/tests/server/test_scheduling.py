@@ -197,10 +197,11 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
     
     with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_config_dir), \
          patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file), \
-         patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", global_config_dir), \
-         patch("snap_workflow.cli.GLOBAL_REMOTES_FILE", global_remotes_file):
+         patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_config_dir), \
+         patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file):
         
-        from snap_workflow.cli import remote_add_cmd, remote_setup_cmd, load_global_remotes, load_local_remotes
+        from snap_workflow.cli.remote import remote_add_cmd, remote_setup_cmd
+        from snap_workflow.utils.io import load_global_remotes, load_local_remotes
         
         # Test adding remote globally
         with patch("subprocess.run") as mock_run_add:
@@ -236,7 +237,7 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         assert local_data["my_workstation"]["path"] == "/home/tanner/sims"
 
         # 2. Test pre-flight worker submission checks (fail when server not running)
-        from snap_workflow.cli import server_submit_worker_cmd
+        from snap_workflow.cli.server import server_submit_worker_cmd
         with pytest.raises(ValueError) as exc:
             server_submit_worker_cmd("workflow server submit worker", ["my_workstation", "template", "--num-workers", "1"])
         assert "Manager server is not running" in str(exc.value)
@@ -306,7 +307,7 @@ def test_auto_scheduling(sandbox, env_dir, workflow_server):
     token = server_info["token"]
 
     # 1. Register auto-scheduler via POST /submit_auto
-    from snap_workflow.cli import server_submit_auto_cmd
+    from snap_workflow.cli.server import server_submit_auto_cmd
     from snap_workflow.utils.constants import SERVER_INFO
     import time
     
@@ -363,7 +364,7 @@ def test_alternative_scheduler_safety(sandbox, env_dir, workflow_server):
     url = server_info["url"]
     token = server_info["token"]
 
-    from snap_workflow.cli import server_submit_auto_cmd
+    from snap_workflow.cli.server import server_submit_auto_cmd
     from snap_workflow.utils.constants import SERVER_INFO
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)

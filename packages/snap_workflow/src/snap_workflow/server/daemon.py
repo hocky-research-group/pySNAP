@@ -189,7 +189,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 }
                 if host != "local":
                     try:
-                        from snap_workflow.cli import load_global_remotes, load_local_remotes
+                        from snap_workflow.utils.io import load_global_remotes, load_local_remotes
                         from snap_workflow.server.sync import push_dependency_data
                         g_remotes = load_global_remotes()
                         l_remotes = load_local_remotes()
@@ -282,7 +282,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
 
                 if host != "local" and stage_name and spoint_dict:
                     try:
-                        from snap_workflow.cli import load_global_remotes, load_local_remotes
+                        from snap_workflow.utils.io import load_global_remotes, load_local_remotes
                         g_remotes = load_global_remotes()
                         l_remotes = load_local_remotes()
                         r_path = l_remotes.get(host, {}).get("path") or g_remotes.get(host, {}).get("path")
@@ -398,7 +398,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 if remote == "local":
                     stage_tools.validate_stage_resources()
                 else:
-                    from snap_workflow.cli import load_global_remotes, load_local_remotes
+                    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
                     from snap_workflow.remote.setup import validate_remote_stage_resources, resolve_remote_path
                     global_remotes = load_global_remotes()
                     if remote not in global_remotes:

@@ -4,7 +4,8 @@ import pytest
 import warnings
 from snap_workflow.core.workflow import initialize
 from snap_workflow.core.domain import stages, sweeps, variables, spoints, params, status
-from snap_workflow.cli import main_reset, main_convert
+from snap_workflow.cli.verbs import main_reset
+from snap_workflow.cli.params import main_convert
 
 
 def test_params_hashing_and_drift_warning(sandbox):

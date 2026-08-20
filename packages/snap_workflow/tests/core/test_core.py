@@ -87,17 +87,18 @@ def test_workflow_lifecycle(sandbox, env_dir):
         assert any("stage1/spoints/x_10/" in f for f in file_list)
 
     # 7. Test collect CLI stage filtering
-    from snap_workflow.cli import main_collect
-    with patch('snap_workflow.cli.collect_data') as mock_collect_data:
-        main_collect("workflow collect", ["stage1"])
+    from snap_workflow.cli.data import main_data
+    from snap_workflow.cli.verbs import main_collect
+    with patch('snap_workflow.core.data.collect_data') as mock_collect_data:
+        main_data("workflow data", ["collect", "stage1"])
         mock_collect_data.assert_called_once_with(stage_names=["stage1"], verbose=False)
         
     add_stage("stage2", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
-    with patch('snap_workflow.cli.collect_data') as mock_collect_data:
+    with patch('snap_workflow.core.data.collect_data') as mock_collect_data:
         main_collect("workflow collect", ["stage1", "stage2"])
         mock_collect_data.assert_called_once_with(stage_names=["stage1", "stage2"], verbose=False)
 
-    with patch('snap_workflow.cli.collect_data') as mock_collect_data:
+    with patch('snap_workflow.core.data.collect_data') as mock_collect_data:
         main_collect("workflow collect", ["all"])
         mock_collect_data.assert_called_once_with(stage_names="all", verbose=False)
 
@@ -105,7 +106,7 @@ def test_workflow_lifecycle(sandbox, env_dir):
         main_collect("workflow collect", ["invalid_stage"])
 
     # 8. Test CLI autocomplete
-    from snap_workflow.cli import get_completions
+    from snap_workflow.cli.utils import get_completions
     res = get_completions([], "")
     assert "submit" in res
     assert "add" in res

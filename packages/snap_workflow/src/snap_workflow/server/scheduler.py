@@ -55,7 +55,7 @@ class OrchestratorScheduler(threading.Thread):
 
         if self.remote != "local":
             try:
-                from snap_workflow.cli import load_global_remotes, load_local_remotes
+                from snap_workflow.utils.io import load_global_remotes, load_local_remotes
                 global_remotes = load_global_remotes()
                 if self.remote not in global_remotes:
                     logger.error("Remote '%s' not registered globally.", self.remote)

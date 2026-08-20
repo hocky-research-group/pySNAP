@@ -1,6 +1,7 @@
 import os
 import base64
 import subprocess
+from snap_workflow.utils.io import load_global_remotes
 
 
 def get_control_path_args():
@@ -60,7 +61,6 @@ def ensure_remote_ssh_master(remote_host_or_name):
         return
     host = remote_host_or_name
     try:
-        from snap_workflow.cli import load_global_remotes
         remotes = load_global_remotes()
         if remote_host_or_name in remotes:
             host = remotes[remote_host_or_name]["host"]
@@ -92,7 +92,6 @@ def is_remote_ssh_connected(remote_host_or_name):
         return True
     host = remote_host_or_name
     try:
-        from snap_workflow.cli import load_global_remotes
         remotes = load_global_remotes()
         if remote_host_or_name in remotes:
             host = remotes[remote_host_or_name]["host"]

@@ -156,8 +156,8 @@ def test_orchestrator_scheduler_live_ssh(sandbox, env_dir, tmp_path):
 
     with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_config_dir), \
          patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file), \
-         patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", global_config_dir), \
-         patch("snap_workflow.cli.GLOBAL_REMOTES_FILE", global_remotes_file), \
+         patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_config_dir), \
+         patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file), \
          patch("time.sleep", side_effect=mock_sleep), \
          patch("threading.Event.wait", side_effect=mock_sleep):
         scheduler.run()
@@ -337,13 +337,13 @@ def test_orchestrator_scheduler_exclusions_and_errors(sandbox, env_dir, workflow
     # Mock load_local_remotes to raise connection configuration load failure
     scheduler3 = OrchestratorScheduler(remote="unregistered_remote")
     with patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"unregistered_remote": {"host": "host"}}), \
-         patch("snap_workflow.cli.load_local_remotes", side_effect=RuntimeError("config load error")):
+         patch("snap_workflow.utils.io.load_local_remotes", side_effect=RuntimeError("config load error")):
          scheduler3.run()  # Should log connection conn exception and return
 
     # 4. Test remote configuration not set up locally (lines 469-470)
     scheduler_no_local = OrchestratorScheduler(remote="remote_no_local")
     with patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"remote_no_local": {"host": "host"}}), \
-         patch("snap_workflow.cli.load_local_remotes", return_value={}):
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={}):
          scheduler_no_local.run()
 
     # 5. Test workstation process completion polling branch
@@ -487,7 +487,7 @@ def test_orchestrator_scheduler_additional_branches(sandbox, env_dir):
         ret.returncode = 1
         return ret
     with patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
-         patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.run", side_effect=mock_run_remote), \
          patch("time.sleep", side_effect=lambda x=None: scheduler_remote_err.shutdown_event.set()), \
          patch("threading.Event.wait", side_effect=lambda x=None: scheduler_remote_err.shutdown_event.set()):
@@ -544,7 +544,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
         return ret
 
     with patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
-         patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.run", side_effect=mock_run_remote), \
          patch("snap_workflow.server.tunnels.ensure_remote_tunnel"), \
          patch("snap_workflow.remote.setup.launch_remote_workers_server_side"), \
@@ -574,7 +574,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
         return ret
 
     with patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
-         patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.run", side_effect=mock_run_remote_fail), \
          patch("snap_workflow.server.tunnels.ensure_remote_tunnel"), \
          patch("snap_workflow.remote.setup.launch_remote_workers_server_side"), \
@@ -603,7 +603,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
         return ret
 
     with patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
-         patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.run", side_effect=mock_run_remote_except), \
          patch("time.sleep", side_effect=lambda x=None: scheduler_remote_except.shutdown_event.set()), \
          patch("threading.Event.wait", side_effect=lambda x=None: scheduler_remote_except.shutdown_event.set()):
@@ -626,7 +626,7 @@ def test_orchestrator_slurm_mode(sandbox, env_dir):
         return ret
 
     with patch("snap_workflow.server.tunnels.load_global_remotes", return_value={"Lab_Main": {"host": "Lab_Main"}}), \
-         patch("snap_workflow.cli.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
+         patch("snap_workflow.utils.io.load_local_remotes", return_value={"Lab_Main": {"path": "/path"}}), \
          patch("subprocess.run", side_effect=mock_run_remote_submit), \
          patch("snap_workflow.server.tunnels.ensure_remote_tunnel"), \
          patch("snap_workflow.remote.setup.launch_remote_workers_server_side"), \

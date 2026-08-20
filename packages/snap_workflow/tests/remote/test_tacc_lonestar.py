@@ -42,7 +42,7 @@ pytestmark = [
 def check_lonestar_ssh():
     """Verify basic SSH reachability to the remote host using ControlPath."""
     try:
-        from snap_workflow.cli import load_global_remotes
+        from snap_workflow.utils.io import load_global_remotes
         from snap_workflow.remote.ssh import run_remote_python
         remotes = load_global_remotes()
         if REMOTE_NAME not in remotes:
@@ -72,7 +72,7 @@ def prepare_lonestar_remote(sandbox_dir, remote_path_override=None):
     except Exception:
         pass
     """Syncs the test workspace to Lonestar, copies worker profile, and configures python paths."""
-    from snap_workflow.cli import load_global_remotes
+    from snap_workflow.utils.io import load_global_remotes
     global_remotes = load_global_remotes()
     if REMOTE_NAME not in global_remotes:
         pytest.fail(f"Global remote '{REMOTE_NAME}' is not registered. Run 'workflow remote add' first.")
@@ -133,7 +133,7 @@ def test_tacc_lonestar_connectivity():
     Verifies SSH connection to Lonestar, remote Python environment, and base64 payload execution.
     """
     assert check_lonestar_ssh(), f"Cannot reach global remote '{REMOTE_NAME}' via SSH."
-    from snap_workflow.cli import load_global_remotes
+    from snap_workflow.utils.io import load_global_remotes
     host = load_global_remotes()[REMOTE_NAME]["host"]
 
     out = run_remote_python(host, "import sys, platform; print(f'{platform.node()}|{sys.version_info[0]}.{sys.version_info[1]}')", python_cmd=REMOTE_PYTHON_CMD)
@@ -157,7 +157,7 @@ def test_tacc_lonestar_persistent_tunnel(sandbox, workflow_server):
     assert tunnel_proc is not None
     assert tunnel_proc.poll() is None, "SSH reverse tunnel process died immediately."
     
-    from snap_workflow.cli import load_global_remotes
+    from snap_workflow.utils.io import load_global_remotes
     host = load_global_remotes()[REMOTE_NAME]["host"]
 
     # Test reverse port connection on Lonestar
@@ -289,7 +289,7 @@ def test_tacc_lonestar_autosubmit_orchestrator(sandbox, workflow_server):
 
         local_remotes = {REMOTE_NAME: {"path": resolved_path}}
 
-        with patch("snap_workflow.cli.load_local_remotes", return_value=local_remotes):
+        with patch("snap_workflow.utils.io.load_local_remotes", return_value=local_remotes):
             print(f"\n[Auto-Submit Test] Registering auto-scheduler for remote '{REMOTE_NAME}'...")
             register_auto_scheduler(
                 server=srv,

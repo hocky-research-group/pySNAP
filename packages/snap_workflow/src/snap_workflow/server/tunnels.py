@@ -2,7 +2,7 @@ import os
 import time
 import subprocess
 import logging
-from snap_workflow.cli import load_global_remotes
+from snap_workflow.utils.io import load_global_remotes
 
 logger = logging.getLogger("snap_workflow.server.tunnels")
 

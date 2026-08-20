@@ -11,7 +11,8 @@ from snap_workflow.core.domain.sweeps import add_sweep, load_sweeps
 from snap_workflow.utils import path
 from snap_workflow.server import sync
 from snap_workflow import worker
-from snap_workflow.cli import main_remove, main_reset, main_remote
+from snap_workflow.cli.verbs import main_remove, main_reset
+from snap_workflow.cli.remote import main_remote
 
 def test_remove_sweep_soft_safety(sandbox, env_dir):
     """Verify that removing a sweep soft-deletes config, but leaves SPoint user files intact."""
@@ -134,7 +135,7 @@ def test_cli_outside_workflow_aborts_safely(tmp_path):
     start_dir = os.getcwd()
     os.chdir(non_workflow_dir)
     try:
-        from snap_workflow.cli import reset_sweep_cmd
+        from snap_workflow.cli.sweep import reset_sweep_cmd
         with pytest.raises(Exception, match="Not in a workflow system"):
             reset_sweep_cmd("workflow reset sweep", ["sweep1"])
             

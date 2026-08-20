@@ -688,7 +688,7 @@ def test_set_python_config(sandbox, env_dir):
 
 def test_cli_set_python(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.cli import main_set
+    from snap_workflow.cli.params import main_set
     from snap_workflow.core.domain.stages import add_stage
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
@@ -704,7 +704,7 @@ def test_cli_set_python(sandbox, env_dir):
 
 def test_remote_preflight_checks(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.cli import remote_add_cmd
+    from snap_workflow.cli.remote import remote_add_cmd
     from snap_workflow.remote.setup import setup_remote_cluster
     
     # 1. Test remote_add_cmd connection failure raises ValueError

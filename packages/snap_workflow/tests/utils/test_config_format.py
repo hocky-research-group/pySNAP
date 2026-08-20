@@ -7,7 +7,7 @@ import snap_workflow.core.workflow as workflow
 import snap_workflow.core.domain.stages as stages
 import snap_workflow.core.domain.spoints as spoints
 import snap_workflow.server as server
-import snap_workflow.cli as cli
+from snap_workflow.cli import workflow as cli
 from snap_workflow.core.workflow import initialize
 
 def test_load_save_config_fallbacks(sandbox, env_dir):
@@ -71,8 +71,8 @@ def test_cli_init_prompt_json(sandbox, env_dir):
     # Test main_init interactive prompt defaulting to json
     with patch("snap_workflow.utils.io.InputCollector.collect", side_effect=["y", "json", env_dir]):
         temp_config = os.path.join(env_dir, "config.json")
-        with patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", env_dir), \
-             patch("snap_workflow.utils.io.GLOBAL_CONFIG_DIR", env_dir):
+        with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", env_dir), \
+             patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", env_dir):
             with pytest.raises(SystemExit):
                 cli.main_init("init", [])
             
@@ -85,8 +85,8 @@ def test_cli_init_prompt_yaml(sandbox, env_dir):
     # Test main_init interactive prompt choosing yaml
     with patch("snap_workflow.utils.io.InputCollector.collect", side_effect=["y", "yaml", env_dir]):
         temp_config = os.path.join(env_dir, "config.json")
-        with patch("snap_workflow.cli.GLOBAL_CONFIG_DIR", env_dir), \
-             patch("snap_workflow.utils.io.GLOBAL_CONFIG_DIR", env_dir):
+        with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", env_dir), \
+             patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", env_dir):
             with pytest.raises(SystemExit):
                 cli.main_init("init", [])
             

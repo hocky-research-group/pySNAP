@@ -3,9 +3,8 @@ import pytest
 from unittest.mock import patch
 from snap_workflow.core import initialize, add_stage, add_variable, add_sweep
 from snap_workflow.core.domain.sweeps import load_sweeps
-from snap_workflow.cli import (
-    main_init, main_update, main_zip, main_reset, main_plot, main_autocomplete
-)
+from snap_workflow.cli.workflow import main_init, main_update, main_zip, main_autocomplete
+from snap_workflow.cli.verbs import main_reset
 
 def test_cli_autocomplete(sandbox):
     # Test valid shell
@@ -83,7 +82,7 @@ def test_cli_remove_force(sandbox, env_dir):
     
     # Add sweep to remove
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-    from snap_workflow.cli import main_remove
+    from snap_workflow.cli.verbs import main_remove
 
     # Remove with --force (should bypass confirmation)
     main_remove("workflow remove", ["sweep", "-w", "sweep1", "--force"])
@@ -94,12 +93,10 @@ def test_cli_remove_force(sandbox, env_dir):
     main_remove("workflow remove", ["sweep", "-w", "sweep1", "-f"])
     assert "sweep1" not in load_sweeps()
 
-def test_cli_plot(sandbox):
-    # Plot should just pass and do nothing/not raise exception
-    main_plot("workflow plot", [])
+
 
 def test_get_completions_noun_verb():
-    from snap_workflow.cli import get_completions
+    from snap_workflow.cli.utils import get_completions
     assert "stage" in get_completions([], "")
     assert "sweep" in get_completions([], "")
     assert "variable" in get_completions([], "")

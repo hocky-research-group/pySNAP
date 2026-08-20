@@ -69,21 +69,6 @@ def join(*paths):
     return os.path.join(*paths)
 
 
-class FromRoot:
-    def __init__(self):
-        return
-
-    def __enter__(self):
-        self.start = os.getcwd()
-        self.root = get_root()
-        os.chdir(self.root)
-        return self.root
-
-    def __exit__(self, exc_type, exc_val, traceback):
-        os.chdir(self.start)
-        return
-
-
 class FromDir:
     def __init__(self, from_dir=None):
         self.start = os.getcwd()

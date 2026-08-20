@@ -1,7 +1,6 @@
 import os
 import json
 from snap_workflow.utils import io
-from snap_workflow.utils.path import FromRoot
 from snap_workflow.utils.constants import SERVER_INFO
 from snap_workflow.utils.io import load_global_remotes, load_local_remotes
 from snap_workflow import server

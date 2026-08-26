@@ -5,6 +5,7 @@ import subprocess
 import importlib.util
 import logging
 from snap_workflow.utils import path, io
+from snap_workflow.utils.constants import SPOINTS, SPOINT_INFO
 
 logger = logging.getLogger("snap_workflow.core.sync")
 
@@ -52,40 +53,41 @@ def measure_directory_size(remote, host, remote_path, spoint_rel_path):
             logger.warning("Failed to measure remote directory size for %s: %s", target_path, e)
         return 0
 
-def pull_spoint_data(remote, host, remote_path, spoint_rel_path, stage_name):
+def pull_spoint_data(remote, host, remote_path, spoint_rel_path, stage_name, verbose=False):
     """Pulls only files matching the AUTO_SYNC patterns of the stage back to the local Hub."""
     if remote == "local":
         return
 
     patterns = get_auto_sync_patterns(stage_name)
     if not patterns:
-        logger.info("[SYNC] No AUTO_SYNC patterns defined for stage '%s'. Skipping pull.", stage_name)
+        if verbose:
+            logger.info("[SYNC] No AUTO_SYNC patterns defined for stage '%s'. Skipping pull.", stage_name)
         return
 
     root = path.get_root()
     local_dest = os.path.join(root, spoint_rel_path)
     os.makedirs(local_dest, exist_ok=True)
 
-    # Build rsync command with include/exclude glob filters
-    # Format: rsync -avz --include="*/" --include="pat1" ... --exclude="*" host:source/ dest/
-    rsync_cmd = ["rsync", "-avz"]
-    # Allow directory traversal so includes are matched nested
+    rsync_flag = "-avz" if verbose else "-az"
+    rsync_cmd = ["rsync", rsync_flag]
     rsync_cmd.append('--include=*/')
     for pat in patterns:
         rsync_cmd.append(f'--include={pat}')
     rsync_cmd.append('--exclude=*')
 
-    # Ensure trailing slash on source to copy contents
     source_uri = f"{host}:{remote_path}/{spoint_rel_path}/"
     rsync_cmd.extend([source_uri, f"{local_dest}/"])
 
-    logger.info("[SYNC] Pulling AUTO_SYNC files for %s: %s", spoint_rel_path, " ".join(rsync_cmd))
+    if verbose:
+        logger.info("[SYNC] Pulling AUTO_SYNC files for %s: %s", spoint_rel_path, " ".join(rsync_cmd))
     try:
-        subprocess.run(rsync_cmd, check=True)
+        subprocess.run(rsync_cmd, check=True, capture_output=not verbose)
     except subprocess.CalledProcessError as e:
-        logger.error("Failed to pull AUTO_SYNC files for %s: %s", spoint_rel_path, e)
+        err_out = e.stderr.decode('utf-8', errors='replace') if e.stderr else str(e)
+        logger.error("Failed to pull AUTO_SYNC files for %s: %s", spoint_rel_path, err_out)
 
-def push_dependency_data(remote, host, remote_path, dep_spoint_rel_path):
+
+def push_dependency_data(remote, host, remote_path, dep_spoint_rel_path, verbose=False):
     """Pushes local Hub directory of the dependency SPoint to the target Spoke."""
     if remote == "local":
         return
@@ -96,23 +98,26 @@ def push_dependency_data(remote, host, remote_path, dep_spoint_rel_path):
         logger.warning("Local dependency directory %s does not exist. Skipping push.", local_src)
         return
 
-    # Ensure remote parent directory exists
     parent_remote_dir = os.path.dirname(f"{remote_path}/{dep_spoint_rel_path}")
     try:
-        subprocess.run(["ssh", host, f"mkdir -p {parent_remote_dir}"], check=True, timeout=10)
+        subprocess.run(["ssh", host, f"mkdir -p {parent_remote_dir}"], check=True, timeout=10, capture_output=not verbose)
     except Exception as e:
         logger.error("Failed to create remote parent directory %s: %s", parent_remote_dir, e)
         return
 
     dest_uri = f"{host}:{remote_path}/{dep_spoint_rel_path}/"
-    rsync_cmd = ["rsync", "-avz", f"{local_src}/", dest_uri]
-    logger.info("[SYNC] Pushing dependency data for %s: %s", dep_spoint_rel_path, " ".join(rsync_cmd))
+    rsync_flag = "-avz" if verbose else "-az"
+    rsync_cmd = ["rsync", rsync_flag, f"{local_src}/", dest_uri]
+    if verbose:
+        logger.info("[SYNC] Pushing dependency data for %s: %s", dep_spoint_rel_path, " ".join(rsync_cmd))
     try:
-        subprocess.run(rsync_cmd, check=True)
+        subprocess.run(rsync_cmd, check=True, capture_output=not verbose)
     except subprocess.CalledProcessError as e:
-        logger.error("Failed to push dependency data for %s: %s", dep_spoint_rel_path, e)
+        err_out = e.stderr.decode('utf-8', errors='replace') if e.stderr else str(e)
+        logger.error("Failed to push dependency data for %s: %s", dep_spoint_rel_path, err_out)
 
-def transit_sync_dependency(source_remote, source_host, source_path, dest_remote, dest_host, dest_path, dep_rel_path, stage_name):
+
+def transit_sync_dependency(source_remote, source_host, source_path, dest_remote, dest_host, dest_path, dep_rel_path, stage_name, verbose=False):
     """Performs transient transit sync of dependency (pull all, push all, delete from Hub, restore AUTO_SYNC)."""
     root = path.get_root()
     if source_remote != "local" and dest_remote != "local":
@@ -120,47 +125,48 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
     else:
         local_temp = os.path.join(root, dep_rel_path)
 
-    # Step 1: Pull full dependency from source to local Hub (if source is remote)
+    rsync_flag = "-avz" if verbose else "-az"
+
     if source_remote != "local":
         os.makedirs(local_temp, exist_ok=True)
         source_uri = f"{source_host}:{source_path}/{dep_rel_path}/"
-        pull_cmd = ["rsync", "-avz", source_uri, f"{local_temp}/"]
-        logger.info("[SYNC] Transit pull: %s", " ".join(pull_cmd))
+        pull_cmd = ["rsync", rsync_flag, source_uri, f"{local_temp}/"]
+        if verbose:
+            logger.info("[SYNC] Transit pull: %s", " ".join(pull_cmd))
         try:
-            subprocess.run(pull_cmd, check=True)
+            subprocess.run(pull_cmd, check=True, capture_output=not verbose)
         except subprocess.CalledProcessError as e:
-            logger.error("Failed transit pull for %s: %s", dep_rel_path, e)
+            err_out = e.stderr.decode('utf-8', errors='replace') if e.stderr else str(e)
+            logger.error("Failed transit pull for %s: %s", dep_rel_path, err_out)
             return
 
-    # Step 2: Push full dependency from local Hub to destination (if destination is remote)
     if dest_remote != "local":
-        # Ensure remote parent directory exists
         parent_remote_dir = os.path.dirname(f"{dest_path}/{dep_rel_path}")
         try:
-            subprocess.run(["ssh", dest_host, f"mkdir -p {parent_remote_dir}"], check=True, timeout=10)
+            subprocess.run(["ssh", dest_host, f"mkdir -p {parent_remote_dir}"], check=True, timeout=10, capture_output=not verbose)
         except Exception as e:
             logger.error("Failed transit remote mkdir %s: %s", parent_remote_dir, e)
             return
 
         dest_uri = f"{dest_host}:{dest_path}/{dep_rel_path}/"
-        push_cmd = ["rsync", "-avz", f"{local_temp}/", dest_uri]
-        logger.info("[SYNC] Transit push: %s", " ".join(push_cmd))
+        push_cmd = ["rsync", rsync_flag, f"{local_temp}/", dest_uri]
+        if verbose:
+            logger.info("[SYNC] Transit push: %s", " ".join(push_cmd))
         try:
-            subprocess.run(push_cmd, check=True)
+            subprocess.run(push_cmd, check=True, capture_output=not verbose)
         except subprocess.CalledProcessError as e:
-            logger.error("Failed transit push for %s: %s", dep_rel_path, e)
+            err_out = e.stderr.decode('utf-8', errors='replace') if e.stderr else str(e)
+            logger.error("Failed transit push for %s: %s", dep_rel_path, err_out)
             return
 
-    # Step 3: Clean up full folder from local Hub (if either end was remote)
-    # Note: If destination was local, we keep it because the user explicitly ran it locally.
     if source_remote != "local" and dest_remote != "local":
-        logger.info("[SYNC] Cleaning up transient local directory: %s", local_temp)
+        if verbose:
+            logger.info("[SYNC] Cleaning up transient local directory: %s", local_temp)
         shutil.rmtree(local_temp, ignore_errors=True)
+        pull_spoint_data(source_remote, source_host, source_path, dep_rel_path, stage_name, verbose=verbose)
 
-        # Step 4: Restore only the AUTO_SYNC subset to local Hub
-        pull_spoint_data(source_remote, source_host, source_path, dep_rel_path, stage_name)
 
-def pull_worker_logs(remote_type, host, remote_path):
+def pull_worker_logs(remote_type, host, remote_path, verbose=False):
     """Pulls all worker logs from the remote Spoke back to the local Hub's workers/logs directory."""
     if remote_type == "local":
         return
@@ -169,15 +175,17 @@ def pull_worker_logs(remote_type, host, remote_path):
     local_dest = os.path.join(root, "workers", "logs")
     os.makedirs(local_dest, exist_ok=True)
 
-    rsync_cmd = ["rsync", "-avz", f"{host}:{remote_path}/workers/logs/", f"{local_dest}/"]
-    logger.info("[SYNC] Pulling worker logs: %s", " ".join(rsync_cmd))
+    rsync_flag = "-avz" if verbose else "-az"
+    rsync_cmd = ["rsync", rsync_flag, f"{host}:{remote_path}/workers/logs/", f"{local_dest}/"]
+    if verbose:
+        logger.info("[SYNC] Pulling worker logs: %s", " ".join(rsync_cmd))
     try:
-        subprocess.run(rsync_cmd, check=True)
+        subprocess.run(rsync_cmd, check=True, capture_output=not verbose)
     except Exception as e:
         logger.error("Failed to pull worker logs: %s", e)
 
 
-def push_workflow_structure(remote_name_or_host, remote_path=None):
+def push_workflow_structure(remote_name_or_host, remote_path=None, verbose=False):
     """Pushes the complete workflow directory structure (including .workflow, params, and SPoint metadata) to remote, excluding simulation output binaries."""
     from snap_workflow.remote.ssh import get_control_path_args, ensure_remote_ssh_master
     from snap_workflow.utils.io import load_global_remotes, load_local_remotes
@@ -185,23 +193,31 @@ def push_workflow_structure(remote_name_or_host, remote_path=None):
     if not remote_name_or_host or remote_name_or_host == "local":
         return
 
+    g_remotes = load_global_remotes()
+    l_remotes = load_local_remotes()
+
     host = remote_name_or_host
-    if remote_path is None:
-        g_remotes = load_global_remotes()
-        l_remotes = load_local_remotes()
-        if remote_name_or_host in g_remotes or remote_name_or_host in l_remotes:
-            host = g_remotes.get(remote_name_or_host, {}).get("host", remote_name_or_host)
-            remote_path = l_remotes.get(remote_name_or_host, {}).get("path") or g_remotes.get(remote_name_or_host, {}).get("path")
+    if remote_name_or_host in l_remotes:
+        host = l_remotes[remote_name_or_host].get("host", host)
+        if remote_path is None:
+            remote_path = l_remotes[remote_name_or_host].get("path")
+    if remote_name_or_host in g_remotes:
+        if remote_name_or_host not in l_remotes or "host" not in l_remotes[remote_name_or_host]:
+            host = g_remotes[remote_name_or_host].get("host", host)
+        if remote_path is None:
+            remote_path = g_remotes[remote_name_or_host].get("path")
 
     if not remote_path:
-        logger.warning("Remote path not defined for '%s'. Skipping workflow structure push.", remote_name_or_host)
-        return
+        root_dir = path.get_root()
+        dirname = os.path.basename(os.path.abspath(root_dir))
+        remote_path = f"~/{dirname}"
 
     ensure_remote_ssh_master(host)
     root = path.get_root()
     dest_uri = f"{host}:{remote_path}/"
+    rsync_flag = "-avz" if verbose else "-az"
     rsync_cmd = [
-        "rsync", "-avz",
+        "rsync", rsync_flag,
         "-e", "ssh " + " ".join(get_control_path_args()),
         "--exclude", "*.gsd",
         "--exclude", "*.npy",
@@ -220,8 +236,79 @@ def push_workflow_structure(remote_name_or_host, remote_path=None):
         "--exclude", "workers/logs/",
         f"{root}/", dest_uri
     ]
-    logger.info("[SYNC] Pushing full workflow structure to %s: %s", host, " ".join(rsync_cmd))
+    if verbose:
+        logger.info("[SYNC] Pushing full workflow structure to %s: %s", host, " ".join(rsync_cmd))
     try:
-        subprocess.run(rsync_cmd, check=True)
+        subprocess.run(rsync_cmd, check=True, capture_output=not verbose)
     except subprocess.CalledProcessError as e:
-        logger.error("Failed to push workflow structure to %s: %s", host, e)
+        err_out = e.stderr.decode('utf-8', errors='replace') if e.stderr else str(e)
+        logger.error("Failed to push workflow structure to %s: %s", host, err_out)
+        raise
+
+
+def pull_spoint_statuses(host, remote_path, stages=None, sweeps=None, verbose=False):
+    """Pulls SPoint info and status files from remote to local."""
+    from snap_workflow.remote.ssh import get_control_path_args, ensure_remote_ssh_master
+    from snap_workflow.core.domain import spoints as spoint_tools
+
+    try:
+        ensure_remote_ssh_master(host)
+    except Exception as e:
+        logger.warning("Could not establish SSH master connection for status pull: %s", e)
+
+    root = path.get_root()
+    rsync_flag = "-avz" if verbose else "-az"
+    for sweep_name, stage_name, spoint_dict in spoint_tools.iter_spoints(sweeps, stages):
+        spoint_rel_path = spoint_tools.get_spoint_string(spoint_dict)
+        rel_spoint_dir = os.path.join(stage_name, SPOINTS, spoint_rel_path)
+
+        remote_info_dir = f"{host}:{remote_path}/{rel_spoint_dir}/{SPOINT_INFO}/"
+        local_info_dir = os.path.join(root, rel_spoint_dir, SPOINT_INFO)
+        os.makedirs(local_info_dir, exist_ok=True)
+
+        rsync_cmd = [
+            "rsync", rsync_flag,
+            "-e", "ssh " + " ".join(get_control_path_args()),
+            remote_info_dir, f"{local_info_dir}/"
+        ]
+        try:
+            subprocess.run(rsync_cmd, check=True, capture_output=not verbose)
+        except Exception as e:
+            logger.debug("Failed to pull spoint info for %s: %s", rel_spoint_dir, e)
+
+        pull_spoint_data("remote", host, remote_path, os.path.join(stage_name, SPOINTS, spoint_rel_path), stage_name, verbose=verbose)
+
+
+def sync_remote(remote_name_or_host, direction="push", stages=None, sweeps=None, verbose=False):
+    """Syncs workflow structure, SPoints, worker logs, or statuses between local and remote."""
+    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+
+    if not remote_name_or_host or remote_name_or_host == "local":
+        print("Remote is 'local'. Nothing to sync.")
+        return
+
+    g_remotes = load_global_remotes()
+    l_remotes = load_local_remotes()
+    r_info = l_remotes.get(remote_name_or_host) or g_remotes.get(remote_name_or_host)
+    if not r_info:
+        raise ValueError(f"Remote '{remote_name_or_host}' is not registered.")
+
+    host = r_info.get("host", remote_name_or_host)
+    remote_path = l_remotes.get(remote_name_or_host, {}).get("path") or g_remotes.get(remote_name_or_host, {}).get("path")
+
+    if not remote_path:
+        root_dir = path.get_root()
+        dirname = os.path.basename(os.path.abspath(root_dir))
+        remote_path = f"~/{dirname}"
+
+    print(f"Syncing with remote '{remote_name_or_host}' ({host}:{remote_path}) [direction={direction}]...")
+
+    if direction in ["push", "both", "all", "sync"]:
+        push_workflow_structure(remote_name_or_host, remote_path=remote_path, verbose=verbose)
+        print(f"Pushed workflow structure and parameters to '{remote_name_or_host}' ({host}:{remote_path}).")
+
+    if direction in ["pull", "both", "all"]:
+        pull_worker_logs("remote", host, remote_path, verbose=verbose)
+        pull_spoint_statuses(host, remote_path, stages=stages, sweeps=sweeps, verbose=verbose)
+        print(f"Pulled status, worker logs, and data from '{remote_name_or_host}' ({host}:{remote_path}).")
+

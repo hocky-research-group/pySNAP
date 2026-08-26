@@ -1,7 +1,7 @@
 from snap_workflow.utils import io
 from snap_workflow.core.domain import stages as stage_tools
 from snap_workflow.cli.utils import parse_remaining, execute_option
-from snap_workflow.cli.prompts import get_new_stage_name, get_existing_stage_name, get_sbatch_details, prompt_each_stage
+from snap_workflow.cli.prompts import get_new_stage_name, get_existing_stage_name, get_sbatch_details, prompt_each_stage, prompt_each_variable
 
 
 def main_stage(parsed_command, args):
@@ -23,7 +23,7 @@ def add_stage_cmd(parsed_command, args):
     else:
         sbatch_details = get_sbatch_details(stage_name)
 
-    stage_variables = prompt_each_stage(f"Add which variables to the {stage_name} stage?")
+    stage_variables = prompt_each_variable(f"Add which variables to the {stage_name} stage?")
     stage_dependencies = prompt_each_stage(f"The {stage_name} stage depends on which stage results?")
     io.warn_unused_kwargs(kwargs)
     stage_tools.add_stage(stage_name, sbatch_details, stage_variables, stage_dependencies)

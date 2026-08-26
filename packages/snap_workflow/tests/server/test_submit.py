@@ -90,12 +90,14 @@ def test_submit_remote_registered_success(wf_init):
 
     with patch("snap_workflow.utils.io.load_global_remotes", return_value=remotes), \
          patch("snap_workflow.utils.io.load_local_remotes", return_value={}), \
-         patch("snap_workflow.remote.setup.validate_remote_stage_resources"), \
-         patch("snap_workflow.server.submit.ensure_remote_tunnel"), \
+         patch("snap_workflow.remote.setup.validate_remote_stage_resources") as mock_val, \
+         patch("snap_workflow.server.submit.ensure_remote_tunnel") as mock_tunnel, \
          patch("snap_workflow.worker.send_request", return_value=mock_res):
         
-        res1 = server.submit_worker("my_cluster", profile="lonestar")
+        res1 = server.submit_worker("my_cluster", profile="lonestar", stages="st1", sweeps="gamma_sweep")
         assert res1 == mock_res
+        mock_val.assert_called_with("cluster.edu", stages="st1", sweeps="gamma_sweep")
+        mock_tunnel.assert_called_with("my_cluster")
 
-        res2 = server.submit_auto("my_cluster")
+        res2 = server.submit_auto("my_cluster", stages="st1", sweeps="gamma_sweep")
         assert res2 == mock_res

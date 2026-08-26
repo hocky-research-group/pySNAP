@@ -92,9 +92,12 @@ def is_remote_ssh_connected(remote_host_or_name):
         return True
     host = remote_host_or_name
     try:
-        remotes = load_global_remotes()
-        if remote_host_or_name in remotes:
-            host = remotes[remote_host_or_name]["host"]
+        from snap_workflow.utils.io import load_local_remotes
+        l_remotes = load_local_remotes()
+        g_remotes = load_global_remotes()
+        r_info = l_remotes.get(remote_host_or_name) or g_remotes.get(remote_host_or_name)
+        if r_info and "host" in r_info:
+            host = r_info["host"]
     except Exception:
         pass
 
@@ -104,6 +107,27 @@ def is_remote_ssh_connected(remote_host_or_name):
         return res.returncode == 0
     except Exception:
         return False
+
+
+def connect_remote(remote_name_or_host):
+    """Opens an interactive SSH shell session to remote host."""
+    from snap_workflow.utils.io import load_local_remotes, load_global_remotes
+    g_remotes = load_global_remotes()
+    l_remotes = load_local_remotes()
+    r_info = l_remotes.get(remote_name_or_host) or g_remotes.get(remote_name_or_host)
+    if not r_info:
+        raise ValueError(f"Remote '{remote_name_or_host}' is not registered.")
+
+    host = r_info.get("host", remote_name_or_host)
+    remote_path = r_info.get("path")
+
+    cmd = ["ssh"] + get_control_path_args()
+    if remote_path:
+        cmd += ["-t", host, f"cd {remote_path} && exec $SHELL -l"]
+    else:
+        cmd += [host]
+
+    subprocess.run(cmd)
 
 
 def trigger_alert_sound():

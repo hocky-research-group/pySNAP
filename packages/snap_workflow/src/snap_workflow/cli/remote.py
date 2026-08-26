@@ -1,3 +1,4 @@
+import os
 import subprocess
 from snap_workflow.utils import io, path
 from snap_workflow.utils.io import load_global_remotes, save_global_remotes, load_local_remotes, save_local_remotes
@@ -7,10 +8,52 @@ from snap_workflow.cli.utils import parse_remaining, execute_option
 
 
 def main_remote(parsed_command, args):
-    remote_options = ["add", "setup", "sync", "connect", "list"]
-    remote_functions = [remote_add_cmd, remote_setup_cmd, remote_sync_cmd, remote_connect_cmd, remote_list_cmd]
+    remote_options = ["add", "setup", "sync", "connect", "list", "print"]
+    remote_functions = [remote_add_cmd, remote_setup_cmd, remote_sync_cmd, remote_connect_cmd, remote_list_cmd, remote_print_cmd]
     remote_options = {remote_options[i]: remote_functions[i] for i in range(len(remote_options))}
     execute_option("remote_option", remote_options, parsed_command=parsed_command, args=args)
+
+
+def remote_print_cmd(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    name = args[0] if len(args) > 0 else kwargs.pop("name", kwargs.pop("r", None))
+    io.warn_unused_kwargs(kwargs)
+    print_remotes_info(name)
+
+
+def print_remotes_info(name=None):
+    remotes_info = io.get_remotes_info()
+    if not remotes_info:
+        print("No remotes registered.")
+        return
+
+    if name and name != "all":
+        matched = [r for r in remotes_info if r["name"] == name]
+        if not matched:
+            raise ValueError(f"Remote '{name}' is not registered. Run 'workflow remote print' to see all registered remotes.")
+        r = matched[0]
+        g_remotes = load_global_remotes()
+        l_remotes = load_local_remotes()
+        is_global = "Yes" if name in g_remotes else "No"
+        is_local = "Yes" if name in l_remotes else "No"
+        conn_str = "connected" if r["connected"] else "disconnected"
+
+        print(f"Remote Configuration: '{r['name']}'")
+        print("-" * 50)
+        print(f"  Name:       {r['name']}")
+        print(f"  Host:       {r['host']}")
+        print(f"  Path:       {r['path']}")
+        print(f"  Status:     {conn_str}")
+        print(f"  Global:     {is_global}")
+        print(f"  Local:      {is_local}")
+        print("-" * 50)
+    else:
+        print(f"{'NAME':<20} {'HOST':<30} {'PATH':<30} {'STATUS'}")
+        print("-" * 90)
+        for r in remotes_info:
+            path_str = r['path'] if r['path'] else "(not set)"
+            conn_str = "connected" if r['connected'] else "disconnected"
+            print(f"{r['name']:<20} {r['host']:<30} {path_str:<30} {conn_str}")
 
 
 def remote_add_cmd(parsed_command, args):
@@ -78,15 +121,13 @@ def remote_setup_cmd(parsed_command, args):
 def remote_sync_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
     if len(args) != 1:
-        raise ValueError("Usage: 'workflow remote sync name'")
+        raise ValueError("Usage: 'workflow remote sync name [-v/--verbose]'")
     name = args[0]
     direction = kwargs.pop("direction", "push")
     stages = kwargs.pop("stage", kwargs.pop("stages", kwargs.pop("s", None)))
     sweeps = kwargs.pop("sweep", kwargs.pop("sweeps", kwargs.pop("w", None)))
-    if hasattr(remote_sync, "sync_remote"):
-        remote_sync.sync_remote(name, direction=direction, stages=stages, sweeps=sweeps)
-    else:
-        print(f"Synced remote '{name}'.")
+    verbose = bool(kwargs.pop("verbose", kwargs.pop("v", False)))
+    remote_sync.sync_remote(name, direction=direction, stages=stages, sweeps=sweeps, verbose=verbose)
     io.warn_unused_kwargs(kwargs)
 
 

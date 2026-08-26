@@ -2,7 +2,7 @@ import sys
 from snap_workflow.utils import io
 from snap_workflow.utils.logging import setup_logging
 from snap_workflow.core.workflow import initialize, zip_workflow
-from snap_workflow.cli.utils import parse_remaining, get_data_format, get_script_path, get_completions
+from snap_workflow.cli.utils import parse_remaining, get_data_format, get_script_path, get_completions, get_shell_completion_script
 from snap_workflow.cli.prompts import get_existing_stage_name, get_existing_sweep_name
 
 from snap_workflow.cli.stage import main_stage
@@ -72,17 +72,42 @@ def main_zip(parsed_command, args):
 
 
 def main_autocomplete(parsed_command, args):
-    if not args:
-        raise ValueError("Supported shells: bash, zsh")
-    shell = args[0]
+    shell = args[0] if args else "bash"
     if shell not in ["bash", "zsh"]:
         raise ValueError(f"Supported shells: bash, zsh. Received '{shell}'")
-    print(get_completions(shell))
+    print(f"Run the following command in your shell or add it to your ~/.{shell}rc:\n")
+    print(f'  eval "$(_WORKFLOW_COMPLETE={shell}_source workflow)"\n')
+    sys.exit(0)
+
+
+def main_complete(parsed_command, args):
+    prefix = ""
+    prior_args = []
+    if args:
+        if "--prefix" in args:
+            idx = args.index("--prefix")
+            if idx + 1 < len(args):
+                prefix = args[idx + 1]
+            prior_args = args[:idx]
+        else:
+            prefix = args[-1]
+            prior_args = args[:-1]
+
+    completions = get_completions(args=prior_args, prefix=prefix)
+    for c in completions:
+        print(c)
     sys.exit(0)
 
 
 def main(command_name=None, args=None):
     setup_logging()
+    import os
+    env_complete = os.getenv("_WORKFLOW_COMPLETE")
+    if env_complete in ["bash_source", "zsh_source"]:
+        shell = "zsh" if "zsh" in env_complete else "bash"
+        print(get_shell_completion_script(shell))
+        sys.exit(0)
+
     if command_name is None:
         sys_args = sys.argv
         if len(sys_args) < 2:
@@ -98,6 +123,7 @@ def main(command_name=None, args=None):
         "zip": main_zip,
         "autocomplete": main_autocomplete,
         "completions": main_autocomplete,
+        "_complete": main_complete,
 
         # Object-first routes
         "stage": main_stage,

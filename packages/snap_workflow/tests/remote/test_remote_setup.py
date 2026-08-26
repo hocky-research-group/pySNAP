@@ -26,9 +26,9 @@ def test_validate_remote_stage_resources(sandbox, env_dir):
     # 1. Local validation
     remote_setup.validate_remote_stage_resources("local")
     
-    # 2. Remote python validation success
+    # 2. Remote python validation success (with kwargs)
     with patch("snap_workflow.remote.setup.run_remote_python", return_value="ok"):
-        remote_setup.validate_remote_stage_resources("cluster_host", "/path")
+        remote_setup.validate_remote_stage_resources("cluster_host", "/path", stages="st1", sweeps="sw1")
 
     # 3. Remote python failure with bash fallback success
     with patch("snap_workflow.remote.setup.run_remote_python", side_effect=Exception("python3 command not found")), \

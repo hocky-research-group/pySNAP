@@ -16,7 +16,21 @@ def get_template(name):
     return ref.read_text()
 
 
-def validate_remote_stage_resources(remote_host, resolved_path=None):
+def resolve_remote_host(remote_name_or_host):
+    if not remote_name_or_host or remote_name_or_host == "local":
+        return "local"
+    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+    l_remotes = load_local_remotes()
+    g_remotes = load_global_remotes()
+    if remote_name_or_host in l_remotes and "host" in l_remotes[remote_name_or_host]:
+        return l_remotes[remote_name_or_host]["host"]
+    if remote_name_or_host in g_remotes and "host" in g_remotes[remote_name_or_host]:
+        return g_remotes[remote_name_or_host]["host"]
+    return remote_name_or_host
+
+
+def validate_remote_stage_resources(remote_host, resolved_path=None, stages=None, sweeps=None, **kwargs):
+    remote_host = resolve_remote_host(remote_host)
     if remote_host == "local":
         stage_tools.validate_stage_resources(root_dir=resolved_path if resolved_path else None)
         return

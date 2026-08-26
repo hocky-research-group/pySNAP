@@ -15,10 +15,14 @@ from snap_workflow.cli.prompts import (
     get_existing_stage_name,
     get_sbatch_details,
     prompt_each_stage,
+    prompt_each_variable,
     get_sweep_name,
     get_existing_sweep_name,
     get_values,
     get_variable_values,
+    get_variable_name,
+    get_variable_type,
+    get_default_val,
 )
 
 
@@ -40,7 +44,7 @@ def add_stage_verb(parsed_command, args):
     else:
         sbatch_details = get_sbatch_details(stage_name)
 
-    stage_variables = prompt_each_stage(f"Add which variables to the {stage_name} stage?")
+    stage_variables = prompt_each_variable(f"Add which variables to the {stage_name} stage?")
     stage_dependencies = prompt_each_stage(f"The {stage_name} stage depends on which stage results?")
     io.warn_unused_kwargs(kwargs)
     stage_tools.add_stage(stage_name, sbatch_details, stage_variables, stage_dependencies)
@@ -62,25 +66,19 @@ def add_sweep_verb(parsed_command, args):
 
 def add_variable_verb(parsed_command, args):
     args, kwargs = parse_remaining(args)
-    name = kwargs.pop("n", kwargs.pop("name", None))
-    if name is None:
-        if len(args) > 0:
-            name = args.pop(0)
-        else:
-            raise ValueError("Must provide variable name")
-    var_type = kwargs.pop("t", kwargs.pop("type", None))
-    if var_type is not None and not isinstance(var_type, list):
-        var_type = [var_type]
+    name = get_variable_name(kwargs, args)
+    var_type = get_variable_type(kwargs)
+
     add_to_stages = kwargs.pop("s", kwargs.pop("stages", None))
     if add_to_stages is not None and not isinstance(add_to_stages, list):
         add_to_stages = [add_to_stages]
     if add_to_stages is None:
-        add_to_stages = prompt_each_stage("Add variable to which stages?")
-    default_val = kwargs.pop("d", kwargs.pop("default", None))
-    has_values = any(k in kwargs for k in ["value", "v", "Value", "V", "values", "Values"])
-    values = get_values(kwargs, var=name, types=var_type, is_list=True) if has_values else None
+        add_to_stages = prompt_each_stage(f"Add variable '{name}' to which stages?")
+
+    default_val = get_default_val(kwargs, name, var_type)
     io.warn_unused_kwargs(kwargs)
-    var_tools.add_variable(name, values, add_to_stages=add_to_stages, default_val=default_val)
+    var_tools.add_variable(name, var_type, add_to_stages=add_to_stages, default_val=default_val)
+
 
 
 def main_print(parsed_command, args):
@@ -94,8 +92,15 @@ def main_print(parsed_command, args):
         "spoint": print_status_verb,
         "spoints": print_status_verb,
         "status": print_status_verb,
+        "remote": print_remote_verb,
+        "remotes": print_remote_verb,
     }
     execute_option("print_option", print_options, parsed_command=parsed_command, args=args)
+
+
+def print_remote_verb(parsed_command, args):
+    from snap_workflow.cli.remote import remote_print_cmd
+    remote_print_cmd(parsed_command, args)
 
 
 def print_variable_verb(parsed_command, args):

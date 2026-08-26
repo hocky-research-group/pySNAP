@@ -29,7 +29,8 @@ def submit_worker(remote, profile, num_workers=1, sbatch_args="", stages="", swe
         if not r_info:
             raise ValueError(f"Remote '{remote}' is not registered.")
 
-        remote_setup.validate_remote_stage_resources(remote, stages=stages, sweeps=sweeps)
+        remote_host = r_info.get("host", remote)
+        remote_setup.validate_remote_stage_resources(remote_host, stages=stages, sweeps=sweeps)
         ensure_remote_tunnel(remote)
 
     payload = {
@@ -58,7 +59,8 @@ def submit_auto(remote, stages="", sweeps="", exclude_stages="", exclude_sweeps=
         if not r_info:
             raise ValueError(f"Remote '{remote}' is not registered.")
 
-        remote_setup.validate_remote_stage_resources(remote, stages=stages, sweeps=sweeps)
+        remote_host = r_info.get("host", remote)
+        remote_setup.validate_remote_stage_resources(remote_host, stages=stages, sweeps=sweeps)
         ensure_remote_tunnel(remote)
 
     payload = {

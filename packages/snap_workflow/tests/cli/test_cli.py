@@ -40,7 +40,7 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
     
     sweeps = load_sweeps()
     assert "sweepA" in sweeps
-    assert sweeps["sweepA"]["values"]["x"] == ["10", "20"]
+    assert sweeps["sweepA"]["values"]["x"] == [10, 20]
     
     # 5. Test CLI print sweeps
     with patch('sys.stdout'):

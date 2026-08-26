@@ -100,6 +100,84 @@ def build_computes(Computes, hoomd_objs):
 def build_dihedrals(Dihedrals):
     return _build_bonded_potentials(Dihedrals, ["md", "dihedral"], "Dihedrals")
 
+def _resolve_dybond_rates(spec_name, spec_info, dt_check):
+    import math
+
+    has_kon = "kon" in spec_info and spec_info["kon"] is not None
+    has_koff = "koff" in spec_info and spec_info["koff"] is not None
+
+    eps_key = None
+    for k in ("epsilon", "eps", "E"):
+        if k in spec_info and spec_info[k] is not None:
+            eps_key = k
+            break
+
+    pon_key = None
+    for k in ("Pon", "pon", "P_on"):
+        if k in spec_info and spec_info[k] is not None:
+            pon_key = k
+            break
+
+    has_eps = eps_key is not None
+    has_pon = pon_key is not None
+
+    kon_val = float(spec_info["kon"]) if has_kon else None
+    koff_val = float(spec_info["koff"]) if has_koff else None
+    eps_val = float(spec_info[eps_key]) if has_eps else None
+    pon_val = float(spec_info[pon_key]) if has_pon else None
+
+    # Step 1: Resolve kon from Pon if specified, and validate if kon was also specified
+    kon = None
+    if has_pon:
+        expected_kon = pon_val / dt_check
+        if has_kon:
+            if not math.isclose(kon_val, expected_kon, rel_tol=1e-4, abs_tol=1e-8):
+                raise ValueError(
+                    f"Inconsistent dybond spec '{spec_name}': specified kon ({kon_val}) does not match "
+                    f"Pon ({pon_val}) given dt_check={dt_check} (expected kon={expected_kon})."
+                )
+            kon = kon_val
+        else:
+            kon = expected_kon
+    elif has_kon:
+        kon = kon_val
+
+    # Step 2: Resolve koff and epsilon relationship
+    koff = None
+    if has_eps:
+        expected_ratio = math.exp(eps_val)
+        if has_koff and kon is not None:
+            if koff_val <= 0:
+                raise ValueError(f"Inconsistent dybond spec '{spec_name}': koff must be > 0 when epsilon is specified, got {koff_val}.")
+            actual_ratio = kon / koff_val
+            actual_eps = math.log(actual_ratio)
+            if not math.isclose(actual_eps, eps_val, rel_tol=1e-4, abs_tol=1e-8):
+                raise ValueError(
+                    f"Inconsistent dybond spec '{spec_name}': specified epsilon ({eps_val}) does not match "
+                    f"kon={kon} and koff={koff_val} (implied epsilon={actual_eps})."
+                )
+            koff = koff_val
+        elif has_koff:
+            koff = koff_val
+            kon = koff * expected_ratio
+        elif kon is not None:
+            koff = kon * math.exp(-eps_val)
+        else:
+            kon = 1000.0
+            koff = kon * math.exp(-eps_val)
+    else:
+        if has_koff:
+            koff = koff_val
+            if kon is None:
+                kon = 1000.0
+        else:
+            if kon is None:
+                kon = 1000.0
+            koff = 0.0
+
+    return kon, koff
+
+
 def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
     import hoomd
     from hoomd.dybond import DyBond, DyBondUpdater
@@ -116,11 +194,20 @@ def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
     check_steps = Dybond.get("check_steps", 100)
     if isinstance(check_steps, str):
         trigger = hoomd_objs["triggers"][check_steps]
+        period = getattr(trigger, "period", 100)
     else:
-        trigger = hoomd.trigger.Periodic(check_steps)
+        period = int(check_steps)
+        trigger = hoomd.trigger.Periodic(period)
         
+    dt_check = float(period) * float(dt)
     nearest_neighbor = Dybond.get("nearestNeighbor", True)
     
+    print("    ", "nlist:", nlist_name)
+    print("    ", "thermo:", thermo_name)
+    print("    ", "check_steps:", check_steps)
+    print("    ", "nearestNeighbor:", nearest_neighbor)
+    print()
+
     # 2. Construct DyBondUpdater
     updater = DyBondUpdater(
         trigger=trigger,
@@ -136,11 +223,13 @@ def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
         bond_name = spec_info["bond"]
         bond = hoomd_objs["bonds"][bond_name]
         
+        kon, koff = _resolve_dybond_rates(spec_name, spec_info, dt_check)
+
         # Build options dictionary for DyBond updater __setitem__
         val_dict = {
             "bond": bond,
-            "kon": spec_info.get("kon", 1000.0),
-            "koff": spec_info.get("koff", 0.0),
+            "kon": kon,
+            "koff": koff,
             "rmin": spec_info.get("rmin", 0.8),
             "rmax": spec_info.get("rmax", 1.2),
             "r0": spec_info.get("r0", 1.0),
@@ -170,7 +259,17 @@ def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
         # Register the key-value pair on the updater
         key = (pair[0], pair[1])
         updater[key] = val_dict
-        print(f"    Added spec: {key[0]} <-> {key[1]} on bond '{bond_name}'")
+        
+        print("    ", spec_name, ":")
+        print("    " * 2, "Pair:", pair)
+        print("    " * 2, "Bond:", bond_name)
+        print("    " * 2, "Parameters:")
+        print("    " * 3, f"kon: {kon}")
+        print("    " * 3, f"koff: {koff}")
+        for k, v in spec_info.items():
+            if k not in ("pair", "bond", "kon", "koff"):
+                print("    " * 3, f"{k}: {v}")
+        print()
         
     return updater# }}}
 def build_filters(Filter):# {{{

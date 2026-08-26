@@ -213,3 +213,35 @@ def test_dybond_mutual_exclusion():
 
         with pytest.raises(ValueError, match="Only one of 'bond_typename' or 'bond_typeid' can be specified"):
             build_simulation(params)
+
+def test_dybond_pon_and_epsilon():
+    import math
+    with tempfile.TemporaryDirectory() as tmpdir:
+        params = _setup_params_and_gsd(tmpdir)
+        params["dybond"] = {
+            "nlist": "cell",
+            "thermo": "thermo",
+            "check_steps": 10,
+            "specs": {
+                "a_b_bond": {
+                    "pair": ["A", "B"],
+                    "bond": "Harmonic",
+                    "Pon": 0.01,
+                    "epsilon": 2.0,
+                    "rmin": 0.5,
+                    "rmax": 1.5,
+                    "r0": 1.0,
+                }
+            }
+        }
+
+        sim, hoomd_objs = build_simulation(params)
+        updater = hoomd_objs["dybond"]
+        dybond_spec = updater[("A", "B")]
+        # dt = 0.001, check_steps = 10 -> dt_check = 0.01
+        # Pon = 0.01 -> kon = 0.01 / 0.01 = 1.0
+        # epsilon = 2.0 -> koff = 1.0 * exp(-2.0)
+        assert math.isclose(dybond_spec.kon, 1.0)
+        assert math.isclose(dybond_spec.koff, math.exp(-2.0))
+        sim.run(1)
+

@@ -73,14 +73,18 @@ def test_get_completions_advanced(sandbox):
     sw_comp = get_completions(args=["workflow", "-w"], prefix="sw")
     assert sw_comp == ["sweep1"]
 
-    # Remote subcommand completions
+    # Remote subcommand completions (level 1 & level 2)
     rem_comp = get_completions(args=["remote"], prefix="s")
     assert sorted(rem_comp) == ["setup", "sync"]
 
+    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"my_cluster": {"host": "h"}}):
+        rem_sync = get_completions(args=["remote", "sync"], prefix="")
+        assert "my_cluster" in rem_sync
+
     # Shell scripts
-    assert get_shell_completion_script("zsh") == "#compdef workflow\n"
-    assert get_shell_completion_script("bash") == "_workflow_completion"
-    assert get_completions("zsh") == "#compdef workflow\n"
+    assert "#compdef workflow" in get_shell_completion_script("zsh")
+    assert "_workflow_completion" in get_shell_completion_script("bash")
+    assert "#compdef workflow" in get_completions("zsh")
 
 
 def test_prompts_prompt_each_stage(sandbox):

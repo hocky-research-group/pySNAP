@@ -45,8 +45,9 @@ def execute_option(key, options, parsed_command, args):
         options[val](parsed_command, args)
     else:
         keys = list(options.keys())
+        prompt_label = key.replace('_', ' ')
         help_string = f"Action to be taken on {key.split('_')[0]}"
-        collector = io.InputCollector(f"Select {key}: ", help_string, valid_options=keys, keys=[key])
+        collector = io.InputCollector(f"Select {prompt_label}: ", help_string, valid_options=keys, keys=[key])
         parsed_val = collector.parse_kwargs(dict())
         if parsed_val is not None:
             options[parsed_val](parsed_command, args)
@@ -122,34 +123,159 @@ def get_completions(args=None, prefix="", shell='bash'):
         except Exception:
             return []
 
+    # 2. Top-level completion (no positional command arguments provided yet)
     if not args:
-        commands = ["init", "build", "stage", "sweep", "variable", "status", "reset", "convert", "set", "remove", "collect", "zip", "submit", "remote", "server", "spoint", "add", "print", "update", "plot", "clean", "completions", "autocomplete"]
+        commands = [
+            "init", "build", "stage", "sweep", "variable", "status",
+            "reset", "convert", "set", "remove", "collect", "zip",
+            "submit", "remote", "server", "spoint", "add", "print",
+            "update", "plot", "clean", "completions", "autocomplete"
+        ]
         if prefix:
             commands = [c for c in commands if c.startswith(prefix)]
         return commands
 
+    # 3. Level 1 subcommand mapping (when only 1 positional argument has been provided)
     first_arg = args[0]
-    mapping = {
-        "stage": ["add", "print", "list"],
-        "sweep": ["add", "print", "list", "reset", "remove"],
-        "variable": ["add", "print", "list"],
-        "status": ["print", "list", "set", "reset", "submit"],
-        "spoint": ["print", "list", "set", "reset", "submit"],
-        "remote": ["add", "setup", "sync", "connect", "list"],
-        "server": ["start", "submit"],
-        "add": ["stage", "sweep", "variable"],
-        "remove": ["sweep"],
-        "reset": ["stage", "sweep", "spoint"],
-        "print": ["stage", "sweep", "variable", "spoint", "status"],
-        "set": ["status", "spoint", "params", "python"]
-    }
-    cmds = mapping.get(first_arg, [])
-    if prefix:
-        cmds = [c for c in cmds if c.startswith(prefix)]
-    return cmds
+    if len(args) == 1:
+        mapping = {
+            "stage": ["add", "print", "list"],
+            "sweep": ["add", "print", "list", "reset", "remove"],
+            "variable": ["add", "print", "list"],
+            "status": ["print", "list", "set", "reset", "submit"],
+            "spoint": ["print", "list", "set", "reset", "submit"],
+            "remote": ["add", "setup", "sync", "connect", "list", "print"],
+            "server": ["start", "submit"],
+            "add": ["stage", "sweep", "variable"],
+            "remove": ["sweep"],
+            "reset": ["stage", "sweep", "spoint"],
+            "print": ["stage", "sweep", "variable", "spoint", "status", "remote"],
+            "set": ["status", "spoint", "params", "python"]
+        }
+        cmds = mapping.get(first_arg, [])
+        if prefix:
+            cmds = [c for c in cmds if c.startswith(prefix)]
+        return cmds
+
+    # 4. Level 2+ subcommand completions (when 2 or more positional arguments have been provided)
+    second_arg = args[1]
+
+    if first_arg == "remote":
+        if second_arg in ["sync", "connect", "setup", "print"]:
+            try:
+                from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                remotes = list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))
+                if prefix:
+                    remotes = [r for r in remotes if r.startswith(prefix)]
+                return remotes
+            except Exception:
+                return []
+        elif second_arg in ["add", "list"]:
+            flags = ["--global", "--host", "--help"]
+            if prefix:
+                flags = [f for f in flags if f.startswith(prefix)]
+            return flags
+
+    elif first_arg in ["status", "spoint"]:
+        if second_arg in ["set"]:
+            statuses = ["initialized", "submitted", "complete", "error"]
+            if prefix:
+                statuses = [s for s in statuses if s.startswith(prefix)]
+            return statuses
+        elif second_arg in ["reset"]:
+            targets = ["errors", "params", "sweep", "spoint"]
+            if prefix:
+                targets = [t for t in targets if t.startswith(prefix)]
+            return targets
+        elif second_arg in ["print", "list", "submit"]:
+            try:
+                from snap_workflow.core.domain.sweeps import load_sweeps
+                sw = list(load_sweeps().keys()) + ["all"]
+                if prefix:
+                    sw = [s for s in sw if s.startswith(prefix)]
+                return sw
+            except Exception:
+                return []
+
+    elif first_arg in ["stage"]:
+        if second_arg in ["print", "list"]:
+            try:
+                from snap_workflow.core.domain.stages import load_stages
+                st = list(load_stages().keys()) + ["all"]
+                if prefix:
+                    st = [s for s in st if s.startswith(prefix)]
+                return st
+            except Exception:
+                return []
+
+    elif first_arg in ["sweep"]:
+        if second_arg in ["print", "list", "reset", "remove"]:
+            try:
+                from snap_workflow.core.domain.sweeps import load_sweeps
+                sw = list(load_sweeps().keys()) + ["all"]
+                if prefix:
+                    sw = [s for s in sw if s.startswith(prefix)]
+                return sw
+            except Exception:
+                return []
+
+    elif first_arg == "reset":
+        if second_arg == "stage":
+            try:
+                from snap_workflow.core.domain.stages import load_stages
+                st = list(load_stages().keys()) + ["all"]
+                if prefix:
+                    st = [s for s in st if s.startswith(prefix)]
+                return st
+            except Exception:
+                return []
+        elif second_arg == "sweep":
+            try:
+                from snap_workflow.core.domain.sweeps import load_sweeps
+                sw = list(load_sweeps().keys()) + ["all"]
+                if prefix:
+                    sw = [s for s in sw if s.startswith(prefix)]
+                return sw
+            except Exception:
+                return []
+        elif second_arg == "spoint":
+            targets = ["errors", "params", "sweep", "spoint"]
+            if prefix:
+                targets = [t for t in targets if t.startswith(prefix)]
+            return targets
+
+    elif first_arg == "set":
+        if second_arg in ["status", "spoint"]:
+            statuses = ["initialized", "submitted", "complete", "error"]
+            if prefix:
+                statuses = [s for s in statuses if s.startswith(prefix)]
+            return statuses
+
+    return []
 
 
 def get_shell_completion_script(shell):
     if shell == 'zsh':
-        return "#compdef workflow\n"
-    return "_workflow_completion"
+        return """#compdef workflow
+_workflow_completion() {
+    local -a completions
+    completions=(${(f)"$(workflow _complete "${words[@]:1}")"})
+    _describe 'values' completions
+}
+compdef _workflow_completion workflow
+"""
+    return """_workflow_completion() {
+    local cur prev words cword
+    _get_comp_words_by_ref -n : cur prev words cword 2>/dev/null || {
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+    }
+    local completions
+    completions=$(workflow _complete "${words[@]:1}")
+    COMPREPLY=( $(compgen -W "$completions" -- "$cur") )
+    return 0
+}
+complete -F _workflow_completion workflow
+"""

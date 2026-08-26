@@ -1,10 +1,15 @@
 import os
 import time
+import json
 import subprocess
 import logging
-from snap_workflow.utils.io import load_global_remotes
+from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+from snap_workflow.utils.constants import SERVER_INFO
+from snap_workflow.utils import path
 
 logger = logging.getLogger("snap_workflow.server.tunnels")
+
+_ACTIVE_TUNNELS = {}
 
 
 def get_ssh_control_dir():
@@ -14,29 +19,57 @@ def get_ssh_control_dir():
     return ssh_dir
 
 
-def ensure_remote_tunnel(server, remote_name):
-    if not hasattr(server, "active_tunnels"):
-        server.active_tunnels = {}
+def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
+    if isinstance(server_or_remote, str) and remote_name is None:
+        target_remote = server_or_remote
+        server_obj = None
+    else:
+        server_obj = server_or_remote
+        target_remote = remote_name
 
-    proc = server.active_tunnels.get(remote_name)
+    active_dict = getattr(server_obj, "active_tunnels", None) if server_obj is not None else _ACTIVE_TUNNELS
+    if active_dict is None:
+        active_dict = _ACTIVE_TUNNELS
+
+    proc = active_dict.get(target_remote)
     if proc is not None:
         if proc.poll() is None:
             return proc
         else:
             logger.warning(
                 "SSH reverse tunnel process for remote '%s' (PID %s) terminated unexpectedly. Re-establishing connection...",
-                remote_name, proc.pid
+                target_remote, proc.pid
             )
-            del server.active_tunnels[remote_name]
+            del active_dict[target_remote]
 
-    global_remotes = load_global_remotes()
-    if remote_name not in global_remotes:
-        raise ValueError(f"Remote '{remote_name}' is not registered globally.")
+    from snap_workflow.utils import io
+    local_remotes = io.load_local_remotes()
+    global_remotes = io.load_global_remotes()
+    r_info = local_remotes.get(target_remote) or global_remotes.get(target_remote)
+    if not r_info:
+        raise ValueError(f"Remote '{target_remote}' is not registered.")
 
-    remote_host = global_remotes[remote_name]["host"]
-    port = getattr(server, "server_port", None) or getattr(server, "port", None)
-    if not port and hasattr(server, "server_address") and isinstance(server.server_address, tuple):
-        port = server.server_address[1]
+    remote_host = r_info.get("host", target_remote)
+
+    if port is None and server_obj is not None:
+        port = getattr(server_obj, "server_port", None) or getattr(server_obj, "port", None)
+        if not port and hasattr(server_obj, "server_address") and isinstance(server_obj.server_address, tuple):
+            port = server_obj.server_address[1]
+
+    if not port:
+        try:
+            info_file = path.from_root(SERVER_INFO)
+        except Exception:
+            info_file = SERVER_INFO
+        if os.path.isfile(info_file):
+            try:
+                with open(info_file, "r") as f:
+                    s_info = json.load(f)
+                port = s_info.get("port", 8080)
+            except Exception:
+                port = 8080
+        else:
+            port = 8080
 
     ssh_dir = get_ssh_control_dir()
     control_path = os.path.join(ssh_dir, "mux_%h_%p_%r")
@@ -53,10 +86,15 @@ def ensure_remote_tunnel(server, remote_name):
         "-R", f"{port}:127.0.0.1:{port}",
         remote_host
     ]
-    logger.info("[TUNNEL] Spawning SSH reverse tunnel for remote '%s' on port %s...", remote_name, port)
+    logger.info("[TUNNEL] Spawning SSH reverse tunnel for remote '%s' on port %s...", target_remote, port)
     tunnel_proc = subprocess.Popen(tunnel_cmd)
     time.sleep(1.5)
-    server.active_tunnels[remote_name] = tunnel_proc
+
+    active_dict[target_remote] = tunnel_proc
+    if server_obj is not None and hasattr(server_obj, "active_tunnels"):
+        server_obj.active_tunnels[target_remote] = tunnel_proc
+    _ACTIVE_TUNNELS[target_remote] = tunnel_proc
+
     return tunnel_proc
 
 

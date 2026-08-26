@@ -159,7 +159,6 @@ def test_pull_worker_logs(sandbox, env_dir):
 def test_push_workflow_structure(sandbox, env_dir):
     initialize(env_dir)
     assert sync.push_workflow_structure("local") is None
-    assert sync.push_workflow_structure("unregistered_remote", None) is None
 
     with patch("snap_workflow.remote.ssh.ensure_remote_ssh_master"), \
          patch("snap_workflow.remote.ssh.get_control_path_args", return_value=[]), \
@@ -170,4 +169,32 @@ def test_push_workflow_structure(sandbox, env_dir):
     with patch("snap_workflow.remote.ssh.ensure_remote_ssh_master"), \
          patch("snap_workflow.remote.ssh.get_control_path_args", return_value=[]), \
          patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "rsync")):
-        sync.push_workflow_structure("user@cluster", "/remote/path")
+        with pytest.raises(subprocess.CalledProcessError):
+            sync.push_workflow_structure("user@cluster", "/remote/path")
+
+
+def test_sync_remote(sandbox, env_dir):
+    initialize(env_dir)
+    assert sync.sync_remote("local") is None
+
+    with patch("snap_workflow.server.sync.push_workflow_structure") as mock_push, \
+         patch("snap_workflow.server.sync.pull_worker_logs") as mock_pull_logs, \
+         patch("snap_workflow.server.sync.pull_spoint_statuses") as mock_pull_statuses:
+
+        sync.sync_remote("Lonestar", direction="push")
+        assert mock_push.called
+        assert not mock_pull_logs.called
+
+        mock_push.reset_mock()
+        sync.sync_remote("Lonestar", direction="pull")
+        assert not mock_push.called
+        assert mock_pull_logs.called
+        assert mock_pull_statuses.called
+
+        mock_pull_logs.reset_mock()
+        mock_pull_statuses.reset_mock()
+        sync.sync_remote("Lonestar", direction="both")
+        assert mock_push.called
+        assert mock_pull_logs.called
+        assert mock_pull_statuses.called
+

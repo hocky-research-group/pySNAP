@@ -273,7 +273,7 @@ def get_submission_details(stage_name, stage):
 
     sbatch_flags = sbatch_details.copy()
     root = path.get_root()
-    sbatch_flags["-o"] = os.path.join(root, "slurm_out", "%j.out")
+    sbatch_flags["-o"] = os.path.join("slurm_out", "%j.out")
     jobs_per_submit = int(sbatch_flags.pop("num_jobs"))
     expect_multi = sbatch_flags.pop("multi_submission")
     sbatch_flags["-J"] = stage_name
@@ -291,8 +291,7 @@ def get_submission_details(stage_name, stage):
     except Exception as e:
         print(f"Warning: Failed to load sbatch configuration for stage '{stage_name}': {e}")
 
-    submit_script = os.path.join(path.get_root(), ".workflow", "spoint.sh") 
-    submit_script = os.path.realpath(submit_script)
+    submit_script = os.path.join(".workflow", "spoint.sh")
     return {"sbatch_flags": sbatch_flags,
             "jobs_per_submit": jobs_per_submit,
             "expect_multi": expect_multi,
@@ -315,9 +314,9 @@ def clear_queue(submit_details):
 def queue_spoint(stage_name, spoint_dict, submit_details):
     spoint_string = get_spoint_string(spoint_dict)
     spoint_path = get_spoint_path(stage_name, spoint_dict)
-    spoint_path = os.path.realpath(spoint_path)
+    spoint_rel_path = os.path.relpath(spoint_path, path.get_root())
 
-    submit_details["queue"].append(spoint_path)
+    submit_details["queue"].append(spoint_rel_path)
     submit_details["spoint_names"].append(spoint_string)
     return
 

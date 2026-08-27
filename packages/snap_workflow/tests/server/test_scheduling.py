@@ -6,8 +6,8 @@ from unittest.mock import patch, MagicMock
 
 from snap_workflow.core import initialize, add_stage, add_variable, add_sweep
 from snap_workflow.core.domain.stages import validate_stage_resources
-from snap_workflow.server import start_server, parse_memory_to_gb, get_stage_depth, OrchestratorScheduler
-from snap_workflow.worker import detect_system_resources, worker_loop, send_request
+from snap_workflow.server import start_server, get_stage_depth, OrchestratorScheduler
+from snap_workflow.dispatcher import detect_system_resources, dispatcher_loop, send_request, parse_memory_to_gb
 from snap_workflow.core.domain import status
 
 def test_stage_resource_validation(sandbox, env_dir):
@@ -204,9 +204,9 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         assert "my_workstation" in local_data
         assert local_data["my_workstation"]["path"] == "/home/tanner/sims"
 
-        from snap_workflow.cli.server import server_submit_worker_cmd
+        from snap_workflow.cli.server import server_reserve_cmd
         with pytest.raises(ValueError) as exc:
-            server_submit_worker_cmd("workflow server submit worker", ["my_workstation", "template", "--num-workers", "1"])
+            server_reserve_cmd("workflow server reserve", ["my_workstation", "template", "--num-workers", "1"])
         assert "Manager server is not running" in str(exc.value)
 
         from snap_workflow.utils.constants import SERVER_INFO
@@ -221,10 +221,12 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         with open(env_file1, "w") as f:
             json.dump(env1, f, indent=4)
 
-        from snap_workflow.worker import launch_local_workers
+        from snap_workflow.dispatcher.controller import DispatcherController
         def mock_send_request(url, token, data=None):
             if data and data.get("name") == "local":
-                launch_local_workers(
+                ctrl = DispatcherController(
+                    target_name="local",
+                    mode="subprocess",
                     num_workers=data.get("num_workers", 1),
                     stages=data.get("stages", ""),
                     sweeps=data.get("sweeps", ""),
@@ -232,15 +234,17 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
                     exclude_sweeps=data.get("exclude_sweeps", ""),
                     profile=data.get("profile", "cpu")
                 )
+                ctrl.start()
                 return {"status": "success", "message": "Spawned local workers"}
             return {"status": "success"}
 
-        with patch("subprocess.Popen") as mock_popen, \
-             patch("snap_workflow.worker.send_request", side_effect=mock_send_request):
-            server_submit_worker_cmd("workflow server submit worker", ["local", "cpu", "--num-workers", "3", "--stage", "stage1"])
+        with patch("snap_workflow.utils.exec.has_slurm", return_value=True), \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("snap_workflow.server.api.send_request", side_effect=mock_send_request):
+            server_reserve_cmd("workflow server reserve", ["local", "cpu", "--num-workers", "3", "--stage", "stage1"])
             assert mock_popen.call_count == 3
             first_args = mock_popen.call_args_list[0][0][0]
-            assert any("snap_workflow.worker" in arg for arg in first_args)
+            assert any("snap_workflow.dispatcher" in arg for arg in first_args)
             assert "--stages" in first_args
             assert "stage1" in first_args
 
@@ -268,7 +272,7 @@ def test_auto_scheduling(sandbox, env_dir, workflow_server):
 
     srv, server_info = workflow_server("127.0.0.1", port=0)
 
-    from snap_workflow.cli.server import server_submit_auto_cmd
+    from snap_workflow.cli.server import server_auto_cmd
     from snap_workflow.utils.constants import SERVER_INFO
 
     with open(SERVER_INFO, "w") as f:
@@ -279,10 +283,10 @@ def test_auto_scheduling(sandbox, env_dir, workflow_server):
     
     with patch("subprocess.run", return_value=mock_run_res), \
          patch("snap_workflow.server.scheduler.detect_system_resources", return_value=(8, 2, 16.0)), \
-         patch("snap_workflow.worker.detect_system_resources", return_value=(8, 2, 16.0)), \
+         patch("snap_workflow.dispatcher.runner.detect_system_resources", return_value=(8, 2, 16.0)), \
          patch("subprocess.Popen") as mock_popen:
          
-        server_submit_auto_cmd("workflow server submit auto", ["local"])
+        server_auto_cmd("workflow server auto", ["local"])
         
         assert hasattr(srv, "auto_schedulers")
         assert "local" in srv.auto_schedulers
@@ -316,7 +320,7 @@ def test_alternative_scheduler_safety(sandbox, env_dir, workflow_server):
 
     srv, server_info = workflow_server("127.0.0.1", port=0)
 
-    from snap_workflow.cli.server import server_submit_auto_cmd
+    from snap_workflow.cli.server import server_auto_cmd
     from snap_workflow.utils.constants import SERVER_INFO
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
@@ -334,7 +338,7 @@ def test_alternative_scheduler_safety(sandbox, env_dir, workflow_server):
     with patch("subprocess.run", side_effect=mock_run), \
          patch("subprocess.Popen") as mock_popen:
          
-        server_submit_auto_cmd("workflow server submit auto", ["local"])
+        server_auto_cmd("workflow server auto", ["local"])
         
         scheduler = srv.auto_schedulers["local"]
         scheduler.join(timeout=2.0)
@@ -378,7 +382,8 @@ def test_local_slurm_auto_scheduling(sandbox, env_dir):
     def mock_sleep(seconds):
         scheduler.shutdown_event.set()
 
-    with patch("subprocess.run", side_effect=mock_run_slurm), \
+    with patch("snap_workflow.utils.exec.has_slurm", return_value=True), \
+         patch("subprocess.run", side_effect=mock_run_slurm), \
          patch("time.sleep", side_effect=mock_sleep), \
          patch("threading.Event.wait", side_effect=mock_sleep):
         scheduler.run()

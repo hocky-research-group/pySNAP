@@ -250,11 +250,8 @@
 </li>
 <li class="toctree-l2 current has-children current-page"><a class="current reference internal" href="#">workflow server</a><input aria-label="Toggle navigation of workflow server" checked="" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="start.html">workflow server start</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="submit.html">workflow server submit</a><input aria-label="Toggle navigation of workflow server submit" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4"><a class="reference internal" href="submit_worker.html">workflow server submit worker</a></li>
-<li class="toctree-l4"><a class="reference internal" href="submit_auto.html">workflow server submit auto</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="auto.html">workflow server auto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reserve.html">workflow server reserve</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../zip.html">workflow zip</a></li>
@@ -312,7 +309,7 @@
 </section>
 <section id="description">
 <h2>Description<a class="headerlink" href="#description" title="Link to this heading">¶</a></h2>
-<p>Manages worker coordination server start and job submission routines.</p>
+<p>Manages worker coordination server start, autonomous scheduling, and compute allocation reservation routines.</p>
 </section>
 <section id="arguments">
 <h2>Arguments<a class="headerlink" href="#arguments" title="Link to this heading">¶</a></h2>
@@ -320,7 +317,8 @@
 <dt>&lt;<em>action</em>&gt;</dt><dd><p>Can be any of the following:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="start.html"><span class="doc">start</span></a></p></li>
-<li><p><a class="reference internal" href="submit.html"><span class="doc">submit</span></a></p></li>
+<li><p><a class="reference internal" href="auto.html"><span class="doc">auto</span></a></p></li>
+<li><p><a class="reference internal" href="reserve.html"><span class="doc">reserve</span></a></p></li>
 </ul>
 </dd>
 </dl>

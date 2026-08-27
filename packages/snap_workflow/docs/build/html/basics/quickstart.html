@@ -250,11 +250,8 @@
 </li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../cli/server/server.html">workflow server</a><input aria-label="Toggle navigation of workflow server" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../cli/server/start.html">workflow server start</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../cli/server/submit.html">workflow server submit</a><input aria-label="Toggle navigation of workflow server submit" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4"><a class="reference internal" href="../cli/server/submit_worker.html">workflow server submit worker</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../cli/server/submit_auto.html">workflow server submit auto</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/server/auto.html">workflow server auto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/server/reserve.html">workflow server reserve</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../cli/zip.html">workflow zip</a></li>
@@ -325,7 +322,7 @@ workflow<span class="w"> </span>init
 <section id="add-a-sweep-variable">
 <h2>2. Add a Sweep Variable<a class="headerlink" href="#add-a-sweep-variable" title="Link to this heading">¶</a></h2>
 <p>Variables are parameters whose values you want to sweep or vary during computational experiments. Register a new variable:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>add<span class="w"> </span>variable<span class="w"> </span>--name<span class="w"> </span>mesh_size
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>variable<span class="w"> </span>add<span class="w"> </span>--name<span class="w"> </span>mesh_size
 </pre></div>
 </div>
 <p>Follow the prompts to select a type (e.g., <code class="docutils literal notranslate"><span class="pre">int</span></code>).</p>
@@ -333,7 +330,7 @@ workflow<span class="w"> </span>init
 <section id="add-a-stage">
 <h2>3. Add a Stage<a class="headerlink" href="#add-a-stage" title="Link to this heading">¶</a></h2>
 <p>Stages are modular steps in your pipeline (e.g. mesh generation, numerical solving). Add a new stage:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>add<span class="w"> </span>stage<span class="w"> </span>--name<span class="w"> </span>simulation
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>stage<span class="w"> </span>add<span class="w"> </span>--name<span class="w"> </span>simulation
 </pre></div>
 </div>
 <p>This creates a new stage directory <code class="docutils literal notranslate"><span class="pre">simulation/</span></code> containing:</p>
@@ -372,7 +369,7 @@ workflow<span class="w"> </span>init
 <section id="add-a-sweep">
 <h2>4. Add a Sweep<a class="headerlink" href="#add-a-sweep" title="Link to this heading">¶</a></h2>
 <p>A sweep maps values to variables across stages. Add a new sweep:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>add<span class="w"> </span>sweep<span class="w"> </span>--name<span class="w"> </span>grid_sweep
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>sweep<span class="w"> </span>add<span class="w"> </span>--name<span class="w"> </span>grid_sweep
 </pre></div>
 </div>
 <p>Follow the prompts to include the <code class="docutils literal notranslate"><span class="pre">simulation</span></code> stage and specify the values of <code class="docutils literal notranslate"><span class="pre">mesh_size</span></code> (e.g., <code class="docutils literal notranslate"><span class="pre">64,</span> <span class="pre">128,</span> <span class="pre">256</span></code>).</p>

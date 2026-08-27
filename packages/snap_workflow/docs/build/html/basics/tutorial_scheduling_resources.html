@@ -250,11 +250,8 @@
 </li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../cli/server/server.html">workflow server</a><input aria-label="Toggle navigation of workflow server" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../cli/server/start.html">workflow server start</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../cli/server/submit.html">workflow server submit</a><input aria-label="Toggle navigation of workflow server submit" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4"><a class="reference internal" href="../cli/server/submit_worker.html">workflow server submit worker</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../cli/server/submit_auto.html">workflow server submit auto</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/server/auto.html">workflow server auto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/server/reserve.html">workflow server reserve</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../cli/zip.html">workflow zip</a></li>
@@ -357,17 +354,17 @@
 </pre></div>
 </div>
 </li>
-<li><p><strong>Submit a local workstation auto-scheduler</strong>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>server<span class="w"> </span>submit<span class="w"> </span>auto<span class="w"> </span><span class="nb">local</span>
+<li><p><strong>Run a local workstation auto-scheduler</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>server<span class="w"> </span>auto<span class="w"> </span><span class="nb">local</span>
 </pre></div>
 </div>
 </li>
 </ol>
 <p>The auto-scheduler checks the workstation’s total hardware resources, maps the SPoint resource requirements, packs as many concurrent processes as fit within the limits, and queues subsequent SPoints.</p>
 </section>
-<section id="remote-coordination-slurm-worker-pools">
-<h2>Remote Coordination &amp; Slurm Worker Pools<a class="headerlink" href="#remote-coordination-slurm-worker-pools" title="Link to this heading">¶</a></h2>
-<p>When running on cluster systems, you can coordination-schedule runs from your local workstation:</p>
+<section id="remote-coordination-slurm-worker-reservations">
+<h2>Remote Coordination &amp; Slurm Worker Reservations<a class="headerlink" href="#remote-coordination-slurm-worker-reservations" title="Link to this heading">¶</a></h2>
+<p>When running on cluster systems, you can coordinate and reserve compute allocations directly from your local workstation:</p>
 <ol class="arabic">
 <li><p><strong>Register and setup the remote cluster</strong>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>remote<span class="w"> </span>add<span class="w"> </span>my_cluster<span class="w"> </span>--host<span class="w"> </span>user@hpc.university.edu
@@ -380,14 +377,14 @@ workflow<span class="w"> </span>remote<span class="w"> </span>setup<span class="
 </pre></div>
 </div>
 </li>
-<li><p><strong>Submit a persistent Slurm worker allocation to the cluster</strong>:</p>
-<p>Submit worker processes using a defined worker profile (e.g. <code class="docutils literal notranslate"><span class="pre">gpu</span></code>):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>server<span class="w"> </span>submit<span class="w"> </span>worker<span class="w"> </span>my_cluster<span class="w"> </span>--profile<span class="w"> </span>gpu<span class="w"> </span>--num-workers<span class="w"> </span><span class="m">4</span>
+<li><p><strong>Reserve Slurm worker allocations on the cluster</strong>:</p>
+<p>Submit worker reservations using a defined sbatch profile (e.g. <code class="docutils literal notranslate"><span class="pre">gpu</span></code>):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>workflow<span class="w"> </span>server<span class="w"> </span>reserve<span class="w"> </span>my_cluster<span class="w"> </span>gpu<span class="w"> </span>--num-workers<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
 </li>
 </ol>
-<p>These allocations launch on the cluster, connect back to your local server, pull pending SPoint tasks, execute them on their assigned GPU nodes, and sync outputs back.</p>
+<p>These compute node allocations launch on the cluster, connect back to your local server over the reverse SSH tunnel using <code class="docutils literal notranslate"><span class="pre">.workflow/server</span></code>, execute pending SPoint tasks on their assigned GPU nodes, survive temporary connection drops, and sync outputs back.</p>
 </section>
 </section>
 
@@ -452,7 +449,7 @@ workflow<span class="w"> </span>remote<span class="w"> </span>setup<span class="
 </ul>
 </li>
 <li><a class="reference internal" href="#workstation-resource-packing">Workstation Resource Packing</a></li>
-<li><a class="reference internal" href="#remote-coordination-slurm-worker-pools">Remote Coordination &amp; Slurm Worker Pools</a></li>
+<li><a class="reference internal" href="#remote-coordination-slurm-worker-reservations">Remote Coordination &amp; Slurm Worker Reservations</a></li>
 </ul>
 </li>
 </ul>

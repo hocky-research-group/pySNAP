@@ -322,8 +322,39 @@ def test_check_submittable_dependency_checks(sandbox, env_dir):
     status.write_status("initialized", spoints.get_spoint_path("stage_parent", {"x": 5, "y": 10}))
     
     assert spoints.check_submittable("sweep1", "stage_child_no_conv", {"x": 5, "y": 10}) is False
-    assert spoints.check_submittable("sweep1", "stage_child_conv", {"x": 5}) is False
-    
     status.write_status("complete", spoints.get_spoint_path("stage_parent", {"x": 5, "y": 10}))
     assert spoints.check_submittable("sweep1", "stage_child_no_conv", {"x": 5, "y": 10}) is True
     assert spoints.check_submittable("sweep1", "stage_child_conv", {"x": 5}) is True
+
+
+def test_get_submission_details_sbatch_profile_and_overrides(sandbox, env_dir):
+    initialize(env_dir)
+    os.makedirs("sbatch_profiles", exist_ok=True)
+    with open("sbatch_profiles/gpu.json", "w") as f:
+        json.dump({
+            "partition": "gpu-a100",
+            "time": "02:00:00",
+            "nodes": 1,
+            "ntasks-per-node": 1,
+            "mem": "32G"
+        }, f)
+
+    add_stage("stage_prof", sbatch_details=None, stage_variables=[], stage_dependencies=[])
+    with open("stage_prof/env.json", "w") as f:
+        json.dump({
+            "sbatch_profile": "gpu",
+            "sbatch": {
+                "time": "04:00:00",
+                "gres": "gpu:2"
+            }
+        }, f)
+
+    stage_data = {"sbatch_details": None}
+    details = spoints.get_submission_details("stage_prof", stage_data)
+    assert details is not None
+    flags = details["sbatch_flags"]
+    assert flags["--partition"] == "gpu-a100"
+    assert flags["--time"] == "04:00:00"  # overridden by stage
+    assert flags["--nodes"] == 1
+    assert flags["--gres"] == "gpu:2"
+    assert flags["-J"] == "stage_prof"

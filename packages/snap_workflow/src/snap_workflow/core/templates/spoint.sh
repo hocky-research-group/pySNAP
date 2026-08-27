@@ -9,17 +9,6 @@
 #called from the actual spoint directory.
 #**This script should be left where it is and always be named spoint.sh**#
 
-#---- Load cuda if available ----
-#The following code can loads cuda if available
-
-module load cuda > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    echo "Cuda loaded"
-    export LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
-else
-    echo "Cuda not loaded"
-fi
-
 export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
 
 #---- Loop through spoint directories supplied ----

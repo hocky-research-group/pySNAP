@@ -10,7 +10,9 @@ from snap_workflow.core.domain.stages import add_stage
 from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.domain import status
-from snap_workflow import worker
+from snap_workflow import dispatcher
+from snap_workflow.dispatcher.controller import DispatcherController
+from snap_workflow.remote.reserve import reserve_remote_workers
 
 def is_ssh_reachable():
     try:
@@ -25,15 +27,15 @@ def is_ssh_reachable():
         return False
 
 def test_parse_memory_to_gb():
-    assert worker.parse_memory_to_gb("4G") == 4.0
-    assert worker.parse_memory_to_gb("4096M") == 4.0
-    assert worker.parse_memory_to_gb("4194304K") == 4.0
-    assert worker.parse_memory_to_gb("4") == 4.0
-    assert worker.parse_memory_to_gb("") == 0.0
-    assert worker.parse_memory_to_gb("invalid") == 0.0
+    assert dispatcher.parse_memory_to_gb("4G") == 4.0
+    assert dispatcher.parse_memory_to_gb("4096M") == 4.0
+    assert dispatcher.parse_memory_to_gb("4194304K") == 4.0
+    assert dispatcher.parse_memory_to_gb("4") == 4.0
+    assert dispatcher.parse_memory_to_gb("") == 0.0
+    assert dispatcher.parse_memory_to_gb("invalid") == 0.0
 
 def test_detect_system_resources():
-    cpus, gpus, mem = worker.detect_system_resources()
+    cpus, gpus, mem = dispatcher.detect_system_resources()
     assert isinstance(cpus, int)
     assert isinstance(gpus, int)
     assert isinstance(mem, float)
@@ -44,7 +46,7 @@ def test_send_request():
         mock_response.read.return_value = json.dumps({"status": "ok"}).encode("utf-8")
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
-        resp = worker.send_request("http://localhost:8000", "token")
+        resp = dispatcher.send_request("http://localhost:8000", "token")
         assert resp == {"status": "ok"}
 
 def test_worker_loop(sandbox, env_dir):
@@ -72,9 +74,9 @@ def test_worker_loop(sandbox, env_dir):
     mock_proc = MagicMock()
     mock_proc.poll.return_value = 0 # immediately complete
     
-    with patch("snap_workflow.worker.runner.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.dispatcher.runner.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc):
-        worker.worker_loop(
+        dispatcher.dispatcher_loop(
             server_url="http://localhost:8000",
             token="token",
             cpus_total=4,
@@ -86,17 +88,20 @@ def test_worker_loop(sandbox, env_dir):
 
 def test_launch_local_workers(sandbox, env_dir):
     initialize(env_dir)
-    # Create a mock SERVER_INFO to bypass the server running check
-    from snap_workflow.utils.constants import SERVER_INFO
-    server_info = {"port": 1234, "token": "dummy_token"}
-    with open(SERVER_INFO, "w") as f:
-        json.dump(server_info, f)
-        
+    controller = DispatcherController(
+        target_name="local",
+        mode="subprocess",
+        server_url="http://localhost:1234",
+        token="dummy_token",
+        num_workers=2,
+        stages="stage1",
+        sweeps="sweep1"
+    )
     with patch("subprocess.Popen") as mock_popen:
-        worker.launch_local_workers(num_workers=2, stages="stage1", sweeps="sweep1")
+        controller.start()
         assert mock_popen.call_count == 2
         args = mock_popen.call_args_list[0][0][0]
-        assert any("snap_workflow.worker" in a for a in args)
+        assert any("snap_workflow.dispatcher" in a for a in args)
 
 # --- Additional Worker Coverage Tests ---
 
@@ -115,13 +120,13 @@ def test_send_request_failures_and_retries():
         return mock_response
         
     with patch("urllib.request.urlopen", side_effect=mock_urlopen):
-        resp = worker.send_request("http://localhost:8000", "token", data={"hello": "world"}, retries=3, backoff=0.01)
+        resp = dispatcher.send_request("http://localhost:8000", "token", data={"hello": "world"}, retries=3, backoff=0.01)
         assert resp == {"status": "ok"}
         assert call_count == 3
 
     # 2. Connection fails completely after maximum retries
     with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("permanent error")):
-        resp = worker.send_request("http://localhost:8000", "token", retries=2, backoff=0.01)
+        resp = dispatcher.send_request("http://localhost:8000", "token", retries=2, backoff=0.01)
         assert resp is None
 
 def test_worker_loop_auto_detect_resources_and_env_json(sandbox, env_dir):
@@ -167,11 +172,11 @@ def test_worker_loop_auto_detect_resources_and_env_json(sandbox, env_dir):
     # task runs: first checks return running (None) so they are kept in queue, then finished (0)
     mock_proc.poll.side_effect = [None, None, None, 0, 0, 0]
     
-    with patch("snap_workflow.worker.runner.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.dispatcher.runner.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc), \
-         patch("snap_workflow.worker.detect_system_resources", return_value=(3, 0, 8.0)):
+         patch("snap_workflow.dispatcher.runner.detect_system_resources", return_value=(3, 0, 8.0)):
         # Pass None to auto-detect resources (will return 3 cpus from mocked detect_system_resources, covering line 42)
-        worker.worker_loop(
+        dispatcher.dispatcher_loop(
             server_url="http://localhost:8000",
             token="token",
             cpus_total=None,
@@ -189,7 +194,7 @@ def test_worker_loop_zero_resources(sandbox, env_dir):
     initialize(env_dir)
     # Start a loop with 0 cpus capacity, it should sleep on line 155 and exit via KeyboardInterrupt cleanly
     with patch("time.sleep", side_effect=KeyboardInterrupt):
-        worker.worker_loop(
+        dispatcher.dispatcher_loop(
             server_url="http://localhost:8000",
             token="token",
             cpus_total=0,
@@ -220,10 +225,10 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
     mock_proc.terminate.side_effect = RuntimeError("mock terminate error")
     
     # We raise KeyboardInterrupt inside loop via time.sleep mock
-    with patch("snap_workflow.worker.runner.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.dispatcher.runner.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc), \
          patch("time.sleep", side_effect=KeyboardInterrupt):
-        worker.worker_loop(
+        dispatcher.dispatcher_loop(
             server_url="http://localhost:8000",
             token="token",
             cpus_total=4,
@@ -235,19 +240,7 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
     assert mock_proc.terminate.called
 
 def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
-    from snap_workflow.utils.exceptions import ServerNotRunningError
     initialize(env_dir)
-    
-    # 1. ServerNotRunningError when SERVER_INFO is missing
-    with pytest.raises(ServerNotRunningError):
-        worker.launch_remote_workers("Lab_Main", "~/test_snap_setup", "template")
-        
-    # Create SERVER_INFO
-    from snap_workflow.utils.constants import SERVER_INFO
-    server_info = {"port": 1234, "token": "dummy_token"}
-    with open(SERVER_INFO, "w") as f:
-        json.dump(server_info, f)
-        
     from snap_workflow.utils.version import __version__ as local_ver
     check_b64 = base64.b64encode("from snap_workflow.utils.version import __version__; print(__version__)".encode()).decode()
 
@@ -266,7 +259,10 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
 
     with patch("subprocess.run", side_effect=mock_ssh_run_fixme):
         with pytest.raises(ValueError) as exc:
-            worker.launch_remote_workers(
+            reserve_remote_workers(
+                server_port=1234,
+                token="dummy_token",
+                remote_name="Lab_Main",
                 remote_host="Lab_Main",
                 remote_path="~/test_snap_setup",
                 profile="template"
@@ -286,10 +282,10 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
             mock_res.stdout = "workflow_root\n"
         return mock_res
 
-    with patch("time.sleep", side_effect=KeyboardInterrupt), \
-         patch("subprocess.Popen") as mock_popen, \
-         patch("subprocess.run", side_effect=mock_ssh_run_valid) as mock_run:
-        worker.launch_remote_workers(
+    with patch("subprocess.run", side_effect=mock_ssh_run_valid) as mock_run:
+        reserve_remote_workers(
+            server_port=1234,
+            token="dummy_token",
             remote_host="Lab_Main",
             remote_path="~/test_snap_setup",
             profile="valid_prof",
@@ -302,7 +298,7 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
         )
         
         # Verify custom env arguments mapping
-        sbatch_call = next(c for c in mock_run.call_args_list if any("sbatch" in str(arg) for arg in c[0][0]))
+        sbatch_call = next(c for c in mock_run.call_args_list if c[0][0][0] == "ssh" and any("sbatch" in str(arg) for arg in c[0][0]))
         cmd_str = next(arg for arg in sbatch_call[0][0] if "sbatch" in str(arg))
         assert "WORKER_STAGES=stage1" in cmd_str
         assert "WORKER_SWEEPS=sweep1" in cmd_str
@@ -324,51 +320,55 @@ def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
             mock_res.stdout = "workflow_root\n"
         return mock_res
 
-    with patch("time.sleep", side_effect=KeyboardInterrupt), \
-         patch("subprocess.Popen") as mock_popen, \
-         patch("subprocess.run", side_effect=mock_ssh_run_yaml_profile) as mock_run:
-        worker.launch_remote_workers(
+    with patch("subprocess.run", side_effect=mock_ssh_run_yaml_profile) as mock_run:
+        reserve_remote_workers(
+            server_port=1234,
+            token="dummy_token",
             remote_host="Lab_Main",
             remote_path="~/test_snap_setup",
             profile="yaml_prof",
             remote_name="my_remote_node"
         )
-        sbatch_call = next(c for c in mock_run.call_args_list if any("sbatch" in str(arg) for arg in c[0][0]))
+        sbatch_call = next(c for c in mock_run.call_args_list if c[0][0][0] == "ssh" and any("sbatch" in str(arg) for arg in c[0][0]))
+        cmd_str = next(arg for arg in sbatch_call[0][0] if "sbatch" in str(arg))
+        assert "--partition=gpu_test" in cmd_str
+        assert "--cpus-per-task=4" in cmd_str
+        sbatch_call = next(c for c in mock_run.call_args_list if c[0][0][0] == "ssh" and any("sbatch" in str(arg) for arg in c[0][0]))
         cmd_str = next(arg for arg in sbatch_call[0][0] if "sbatch" in str(arg))
         assert "--partition=gpu_test" in cmd_str
         assert "--cpus-per-task=4" in cmd_str
 
 def test_parse_memory_tb_units():
-    assert worker.parse_memory_to_gb("1T") == 1024.0
-    assert worker.parse_memory_to_gb("1TB") == 1024.0
+    assert dispatcher.parse_memory_to_gb("1T") == 1024.0
+    assert dispatcher.parse_memory_to_gb("1TB") == 1024.0
 
 def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
     import sys
     # 1. Test GPU count successfully parsed from CUDA_VISIBLE_DEVICES
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0,1")
     with patch("shutil.which", return_value=None):
-        cpus, gpus, mem = worker.detect_system_resources()
+        cpus, gpus, mem = dispatcher.detect_system_resources()
         assert gpus == 2
     
     # 2. Test GPU count from SLURM_GPUS_ON_NODE when CUDA_VISIBLE_DEVICES not set
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
     monkeypatch.setenv("SLURM_GPUS_ON_NODE", "3")
-    cpus, gpus, mem = worker.detect_system_resources()
+    cpus, gpus, mem = dispatcher.detect_system_resources()
     assert gpus == 3
     
     # 3. Test GPU count fallback to 1 when SLURM variable is malformed
     monkeypatch.setenv("SLURM_GPUS_ON_NODE", "invalid_gpu")
-    cpus, gpus, mem = worker.detect_system_resources()
+    cpus, gpus, mem = dispatcher.detect_system_resources()
     assert gpus == 1
 
     # 4. Test CUDA_VISIBLE_DEVICES "none" -> gpus = -1
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "none")
-    cpus, gpus, mem = worker.detect_system_resources()
+    cpus, gpus, mem = dispatcher.detect_system_resources()
     assert gpus == -1
     
     # 5. Test CUDA_VISIBLE_DEVICES empty -> gpus = 0
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", ",")
-    cpus, gpus, mem = worker.detect_system_resources()
+    cpus, gpus, mem = dispatcher.detect_system_resources()
     assert gpus == 0
     
     # 6. Test CUDA_VISIBLE_DEVICES exception -> gpus = 1
@@ -385,26 +385,25 @@ def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
         return original_getenv(name, default)
         
     with patch("os.getenv", side_effect=mock_getenv):
-        cpus, gpus, mem = worker.detect_system_resources()
+        cpus, gpus, mem = dispatcher.detect_system_resources()
         assert gpus == 1
     
     # 7. Test SLURM_CPUS_ON_NODE valid integer (break block)
     monkeypatch.setenv("SLURM_CPUS_ON_NODE", "4")
-    cpus, gpus, mem = worker.detect_system_resources()
+    cpus, gpus, mem = dispatcher.detect_system_resources()
     assert cpus == 4
     
     # 8. Test SLURM_CPUS_ON_NODE / SLURM_CPUS_PER_TASK parsing errors
     monkeypatch.setenv("SLURM_CPUS_ON_NODE", "malformed")
-    cpus, gpus, mem = worker.detect_system_resources()
+    cpus, gpus, mem = dispatcher.detect_system_resources()
     assert cpus is not None # falls back to cpu_count
     
     # 9. Test SLURM_MEM_PER_NODE malformed
     monkeypatch.setenv("SLURM_MEM_PER_NODE", "malformed")
-    cpus, gpus, mem = worker.detect_system_resources()
+    cpus, gpus, mem = dispatcher.detect_system_resources()
     assert mem is not None
 
     # 10. Test /proc/meminfo exception handling fallback (mock open)
-    # We mock builtins.open to raise an error when "/proc/meminfo" is read
     original_open = open
     def mock_open(file, *args, **kwargs):
         if "/proc/meminfo" in str(file):
@@ -412,14 +411,13 @@ def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
         return original_open(file, *args, **kwargs)
         
     with patch("builtins.open", side_effect=mock_open):
-        cpus, gpus, mem = worker.detect_system_resources()
+        cpus, gpus, mem = dispatcher.detect_system_resources()
         assert mem is not None
         
     # 10. Test sysconf page size error handling fallback
     with patch("os.sysconf", side_effect=ValueError("sysconf not supported")):
-        # We also need to mock open to raise exception to get to the sysconf block
         with patch("builtins.open", side_effect=lambda f, *args, **kwargs: (_ for _ in ()).throw(FileNotFoundError())):
-            cpus, gpus, mem = worker.detect_system_resources()
+            cpus, gpus, mem = dispatcher.detect_system_resources()
             assert mem > 0 # default memory fallback
 
     # 11. Test torch.cuda detection and device count logic
@@ -431,35 +429,27 @@ def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
     mock_torch.cuda.device_count.return_value = 5
     with patch.dict(sys.modules, {"torch": mock_torch}), \
          patch("subprocess.run", side_effect=FileNotFoundError("nvidia-smi missing")):
-        cpus, gpus, mem = worker.detect_system_resources()
+        cpus, gpus, mem = dispatcher.detect_system_resources()
         assert gpus == 5
 
 def test_launch_local_workers_parameters_and_errors(sandbox, env_dir):
-    from snap_workflow.utils.exceptions import ServerNotRunningError
     initialize(env_dir)
-    
-    # 1. ServerNotRunningError when SERVER_INFO is missing
-    with pytest.raises(ServerNotRunningError):
-        worker.launch_local_workers(num_workers=1)
-        
-    # Create SERVER_INFO
-    from snap_workflow.utils.constants import SERVER_INFO
-    server_info = {"port": 1234, "token": "dummy_token"}
-    with open(SERVER_INFO, "w") as f:
-        json.dump(server_info, f)
-        
-    # 2. Launch with exclude parameters
+    controller = DispatcherController(
+        target_name="local",
+        mode="subprocess",
+        server_url="http://localhost:1234",
+        token="dummy_token",
+        num_workers=1,
+        stages="stage1",
+        sweeps="sweep1",
+        exclude_stages="stage2",
+        exclude_sweeps="sweep2"
+    )
     with patch("subprocess.Popen") as mock_popen:
-        worker.launch_local_workers(
-            num_workers=1,
-            stages="stage1",
-            sweeps="sweep1",
-            exclude_stages="stage2",
-            exclude_sweeps="sweep2"
-        )
+        controller.start()
         assert mock_popen.call_count == 1
         args = mock_popen.call_args_list[0][0][0]
-        assert any("snap_workflow.worker" in a for a in args)
+        assert any("snap_workflow.dispatcher" in a for a in args)
         assert "--exclude_stages" in args
         assert "stage2" in args
         assert "--exclude_sweeps" in args
@@ -471,14 +461,14 @@ def test_worker_cli_argparse_and_shutdown():
     import runpy
     
     # 1. Verify help works correctly (SystemExit will be raised by argparse)
-    test_args_help = ["snap_workflow.worker.runner", "--help"]
+    test_args_help = ["snap_workflow.dispatcher.runner", "--help"]
     with patch("sys.argv", test_args_help):
         with pytest.raises(SystemExit):
-            runpy.run_module("snap_workflow.worker.runner", run_name="__main__")
+            runpy.run_module("snap_workflow.dispatcher.runner", run_name="__main__")
             
     # 2. Execute main block using mock sys.argv and runpy, mocking urlopen to return shutdown instantly
     test_args = [
-        "snap_workflow.worker.runner",
+        "snap_workflow.dispatcher.runner",
         "http://localhost:29999",
         "token_val",
         "--stages", "stage1",
@@ -494,7 +484,7 @@ def test_worker_cli_argparse_and_shutdown():
     with patch("urllib.request.urlopen", return_value=mock_response), \
          patch("sys.argv", test_args):
          
-        runpy.run_module("snap_workflow.worker.runner", run_name="__main__")
+        runpy.run_module("snap_workflow.dispatcher.runner", run_name="__main__")
 
 def test_validate_remote_snap_workflow_version():
     from snap_workflow.remote.setup import validate_remote_snap_workflow_version
@@ -518,9 +508,9 @@ def test_setup_remote_cluster_ssh(sandbox, env_dir):
     if not is_ssh_reachable():
         pytest.skip("Lab_Main SSH connection not reachable (VPN may be disconnected)")
         
-    # Attempt to setup directory on Lab_Main
+    from snap_workflow.remote import setup_remote_cluster
     remote_path = "~/test_snap_setup"
-    worker.setup_remote_cluster(
+    setup_remote_cluster(
         remote_host="Lab_Main",
         remote_path=remote_path
     )
@@ -540,18 +530,9 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
         
     remote_path = "~/test_snap_setup"
     
-    # Create a mock SERVER_INFO
-    from snap_workflow.utils.constants import SERVER_INFO
-    server_info = {"port": 1234, "token": "dummy_token"}
-    with open(SERVER_INFO, "w") as f:
-        json.dump(server_info, f)
-        
     from snap_workflow.utils.version import __version__ as local_ver
-
     check_b64 = base64.b64encode("from snap_workflow.utils.version import __version__; print(__version__)".encode()).decode()
 
-    # We patch Popen to mock tunnel, and sleep to raise KeyboardInterrupt to exit loop cleanly.
-    # We patch run to capture and verify sbatch submissions.
     def mock_ssh_run_valid(cmd, **kwargs):
         mock_res = MagicMock()
         mock_res.returncode = 0
@@ -565,35 +546,25 @@ def test_launch_remote_workers_ssh(sandbox, env_dir):
             mock_res.stdout = "workflow_root\n"
         return mock_res
 
-    with patch("time.sleep", side_effect=KeyboardInterrupt), \
-         patch("subprocess.Popen") as mock_popen, \
-         patch("subprocess.run", side_effect=mock_ssh_run_valid) as mock_run:
-         
-        worker.launch_remote_workers(
+    with patch("subprocess.run", side_effect=mock_ssh_run_valid) as mock_run:
+        reserve_remote_workers(
+            server_port=1234,
+            token="dummy_token",
             remote_host="Lab_Main",
+            remote_name="Lab_Main",
             remote_path=remote_path,
             profile="template",
-            num_workers=1,
-            concurrency=1
+            num_workers=1
         )
         
         # Verify rsync was called to sync codebase
         assert any("rsync" in c[0][0][0] for c in mock_run.call_args_list)
-        # Verify tunnel ssh was opened
-        assert any("ssh" in c[0][0][0] and "-R" in c[0][0] for c in mock_popen.call_args_list)
         # Verify sbatch submission command was sent via ssh
         assert any("ssh" in c[0][0][0] and any("sbatch" in str(arg) for arg in c[0][0]) for c in mock_run.call_args_list)
 
 def test_launch_remote_workers_failure_cleans_up_tunnel(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.utils.constants import SERVER_INFO
     from snap_workflow.utils.version import __version__ as local_ver
-    server_info = {"port": 1234, "token": "dummy_token"}
-    with open(SERVER_INFO, "w") as f:
-        json.dump(server_info, f)
-
-    mock_tunnel_proc = MagicMock()
-    mock_tunnel_proc.poll.return_value = None
 
     check_b64 = base64.b64encode("from snap_workflow.utils.version import __version__; print(__version__)".encode()).decode()
 
@@ -613,18 +584,17 @@ def test_launch_remote_workers_failure_cleans_up_tunnel(sandbox, env_dir):
             mock_res.stdout = "workflow_root\n"
         return mock_res
 
-    with patch("subprocess.Popen", return_value=mock_tunnel_proc), \
-         patch("subprocess.run", side_effect=mock_ssh_run_failing):
-         
+    with patch("subprocess.run", side_effect=mock_ssh_run_failing):
         with pytest.raises(RuntimeError, match="Disk quota exceeded"):
-            worker.launch_remote_workers(
+            reserve_remote_workers(
+                server_port=1234,
+                token="dummy_token",
                 remote_host="Lab_Main",
+                remote_name="Lab_Main",
                 remote_path="~/test_snap_setup",
                 profile="template",
                 num_workers=1
             )
-            
-        mock_tunnel_proc.terminate.assert_called_once()
 
 def test_resolve_remote_path(sandbox, env_dir):
     initialize(env_dir)
@@ -720,12 +690,9 @@ def test_remote_preflight_checks(sandbox, env_dir):
         assert "Cannot connect to remote host" in str(exc.value)
 
 
-
-
-
 def test_worker_loop_connect_timeout():
-    with patch("snap_workflow.worker.runner.send_request", return_value=None):
+    with patch("snap_workflow.dispatcher.runner.send_request", return_value=None):
         start = time.time()
-        worker.worker_loop("http://invalid_server:9999", "fake_token", connect_timeout=1.0)
+        dispatcher.dispatcher_loop("http://invalid_server:9999", "fake_token", connect_timeout=1.0)
         duration = time.time() - start
         assert duration >= 0.9

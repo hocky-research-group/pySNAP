@@ -10,7 +10,7 @@ from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep, load_sweeps
 from snap_workflow.utils import path
 from snap_workflow.server import sync
-from snap_workflow import worker
+from snap_workflow import dispatcher
 from snap_workflow.cli.verbs import main_remove, main_reset
 from snap_workflow.cli.remote import main_remote
 
@@ -92,12 +92,11 @@ def test_rsync_no_delete_in_sync_commands():
     # Verify that rsync commands in sync.py never have "--delete"
     assert "--delete" not in sync_code
 
-    worker_code = None
-    with open(worker.__file__, "r") as f:
-        worker_code = f.read()
-
-    # Verify that rsync codebase sync commands in worker.py never have "--delete"
-    assert "--delete" not in worker_code
+    dispatcher_code = None
+    with open(dispatcher.__file__, "r") as f:
+        dispatcher_code = f.read()
+    # Verify that rsync codebase sync commands never have "--delete"
+    assert "--delete" not in dispatcher_code
 
 def test_transit_sync_leaves_local_workspace_untouched(sandbox, env_dir):
     """Verify that remote-to-remote staging does not touch or clean up active local project files."""

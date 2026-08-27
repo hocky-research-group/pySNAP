@@ -9,7 +9,7 @@ Synopsis
 Description
 """"""""""""
 
-Manages worker coordination server start and job submission routines.
+Manages worker coordination server start, autonomous scheduling, and compute allocation reservation routines.
 
 Arguments
 """"""""""
@@ -18,11 +18,13 @@ Arguments
     Can be any of the following:
 
     * :doc:`start <start>`
-    * :doc:`submit <submit>`
+    * :doc:`auto <auto>`
+    * :doc:`reserve <reserve>`
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    start
-   submit
+   auto
+   reserve

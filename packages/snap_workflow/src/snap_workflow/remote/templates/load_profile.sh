@@ -2,15 +2,21 @@
 PROFILE_NAME="{PROFILE_NAME}"
 RESOLVED_PATH="{RESOLVED_PATH}"
 
-PROF_HOME="$HOME/.config/snap_workflow/workers/$PROFILE_NAME"
-PROF_LOCAL="$RESOLVED_PATH/workers/$PROFILE_NAME"
+SEARCH_BASES=(
+    "$HOME/.config/snap_workflow/sbatch_profiles/$PROFILE_NAME"
+    "$RESOLVED_PATH/sbatch_profiles/$PROFILE_NAME"
+    "$HOME/.config/snap_workflow/workers/$PROFILE_NAME"
+    "$RESOLVED_PATH/workers/$PROFILE_NAME"
+)
 
 FOUND=""
-for p in "$PROF_HOME.json" "$PROF_HOME.yml" "$PROF_HOME.yaml" "$PROF_HOME" "$PROF_LOCAL.json" "$PROF_LOCAL.yml" "$PROF_LOCAL.yaml" "$PROF_LOCAL"; do
-    if [ -f "$p" ]; then
-        FOUND="$p"
-        break
-    fi
+for base in "${SEARCH_BASES[@]}"; do
+    for p in "$base.json" "$base.yml" "$base.yaml" "$base"; do
+        if [ -f "$p" ]; then
+            FOUND="$p"
+            break 2
+        fi
+    done
 done
 
 if [ -n "$FOUND" ]; then

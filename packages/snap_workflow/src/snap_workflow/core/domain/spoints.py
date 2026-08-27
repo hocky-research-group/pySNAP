@@ -267,38 +267,57 @@ def check_submittable(sweep_name, stage_name, spoint_dict):
     return True
 
 def get_submission_details(stage_name, stage):
-    sbatch_details = stage["sbatch_details"]
-    if sbatch_details is None:
-        return None
-
-    sbatch_flags = sbatch_details.copy()
+    sbatch_details = stage.get("sbatch_details")
     root = path.get_root()
-    sbatch_flags["-o"] = os.path.join("slurm_out", "%j.out")
-    jobs_per_submit = int(sbatch_flags.pop("num_jobs"))
-    expect_multi = sbatch_flags.pop("multi_submission")
-    sbatch_flags["-J"] = stage_name
-
-    env_base = os.path.join(path.get_root(), stage_name, "env")
+    env_base = os.path.join(root, stage_name, "env")
+    env_data = {}
     try:
         env_data = io.load_config(env_base, full_path=True)
-        custom_flags = env_data.get("sbatch", {})
-        if custom_flags:
-            for k, v in custom_flags.items():
-                dash_key = k if k.startswith("-") else (f"-{k}" if len(k) == 1 else f"--{k}")
-                sbatch_flags[dash_key] = v
     except FileNotFoundError:
         pass
     except Exception as e:
-        print(f"Warning: Failed to load sbatch configuration for stage '{stage_name}': {e}")
+        print(f"Warning: Failed to load environment file for stage '{stage_name}': {e}")
+
+    sbatch_profile = env_data.get("sbatch_profile")
+    profile_flags = {}
+    if sbatch_profile:
+        profile_flags = io.load_sbatch_profile(sbatch_profile, root_dir=root)
+        if not profile_flags:
+            print(f"Warning: Sbatch profile '{sbatch_profile}' referenced by stage '{stage_name}' was not found in 'sbatch_profiles/' or '~/.config/snap_workflow/sbatch_profiles/'.")
+
+    custom_flags = env_data.get("sbatch", {})
+
+    if sbatch_details is None and not profile_flags and not custom_flags:
+        return None
+
+    sbatch_flags = {}
+    if sbatch_details is not None:
+        sbatch_flags.update(sbatch_details.copy())
+
+    if profile_flags:
+        for k, v in profile_flags.items():
+            dash_key = k if k.startswith("-") else (f"-{k}" if len(k) == 1 else f"--{k}")
+            sbatch_flags[dash_key] = v
+
+    if custom_flags:
+        for k, v in custom_flags.items():
+            dash_key = k if k.startswith("-") else (f"-{k}" if len(k) == 1 else f"--{k}")
+            sbatch_flags[dash_key] = v
+
+    sbatch_flags["-o"] = os.path.join("slurm_out", "%j.out")
+    jobs_per_submit = int(sbatch_flags.pop("num_jobs", 1))
+    expect_multi = sbatch_flags.pop("multi_submission", False)
+    sbatch_flags["-J"] = stage_name
 
     submit_script = os.path.join(".workflow", "spoint.sh")
-    return {"sbatch_flags": sbatch_flags,
-            "jobs_per_submit": jobs_per_submit,
-            "expect_multi": expect_multi,
-            "queue": [],
-            "spoint_names": [],
-            "submit_script": submit_script
-            }
+    return {
+        "sbatch_flags": sbatch_flags,
+        "jobs_per_submit": jobs_per_submit,
+        "expect_multi": expect_multi,
+        "queue": [],
+        "spoint_names": [],
+        "submit_script": submit_script
+    }
 
 def queue_is_full(submit_details):
     return len(submit_details["queue"]) == submit_details["jobs_per_submit"]

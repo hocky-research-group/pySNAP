@@ -42,7 +42,7 @@ class ResourcePool:
                     self.all_gpus = []
         else:
             try:
-                from snap_workflow.worker.runner import detect_system_resources
+                from snap_workflow.dispatcher.runner import detect_system_resources
                 _, detected_gpus, _ = detect_system_resources()
                 if detected_gpus > 0:
                     self.all_gpus = list(range(detected_gpus))

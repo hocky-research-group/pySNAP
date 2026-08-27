@@ -250,11 +250,8 @@
 </li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="server/server.html">workflow server</a><input aria-label="Toggle navigation of workflow server" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="server/start.html">workflow server start</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="server/submit.html">workflow server submit</a><input aria-label="Toggle navigation of workflow server submit" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4"><a class="reference internal" href="server/submit_worker.html">workflow server submit worker</a></li>
-<li class="toctree-l4"><a class="reference internal" href="server/submit_auto.html">workflow server submit auto</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="server/auto.html">workflow server auto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/reserve.html">workflow server reserve</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="zip.html">workflow zip</a></li>
@@ -308,17 +305,24 @@
 <h1>Workflow<a class="headerlink" href="#workflow" title="Link to this heading">¶</a></h1>
 <section id="synopsis">
 <h2>Synopsis<a class="headerlink" href="#synopsis" title="Link to this heading">¶</a></h2>
-<p><strong>workflow</strong> &lt;<em>action</em>&gt; …</p>
+<p><strong>workflow</strong> &lt;<em>entity</em>&gt; &lt;<em>action</em>&gt; …
+or <strong>workflow</strong> &lt;<em>action</em>&gt; …</p>
 </section>
 <section id="description">
 <h2>Description<a class="headerlink" href="#description" title="Link to this heading">¶</a></h2>
-<p>Executes &lt;<em>action</em>&gt;.</p>
+<p>Executes a workflow action targeting an entity or system task.</p>
 </section>
 <section id="arguments">
 <h2>Arguments<a class="headerlink" href="#arguments" title="Link to this heading">¶</a></h2>
 <dl class="simple">
-<dt>&lt;<em>main_options</em>&gt;</dt><dd><p>Can be any of the following:</p>
+<dt>&lt;<em>main_options</em>&gt;</dt><dd><p>Can be any of the following entity or top-level commands:</p>
 <ul class="simple">
+<li><p><a class="reference internal" href="add/stage.html"><span class="doc">stage</span></a></p></li>
+<li><p><a class="reference internal" href="add/sweep.html"><span class="doc">sweep</span></a></p></li>
+<li><p><a class="reference internal" href="add/variable.html"><span class="doc">variable</span></a></p></li>
+<li><p><a class="reference internal" href="print/status.html"><span class="doc">status</span></a></p></li>
+<li><p><a class="reference internal" href="remote/remote.html"><span class="doc">remote</span></a></p></li>
+<li><p><a class="reference internal" href="server/server.html"><span class="doc">server</span></a></p></li>
 <li><p><a class="reference internal" href="add/add.html"><span class="doc">add</span></a></p></li>
 <li><p><a class="reference internal" href="collect.html"><span class="doc">collect</span></a></p></li>
 <li><p><a class="reference internal" href="init.html"><span class="doc">init</span></a></p></li>
@@ -328,8 +332,6 @@
 <li><p><a class="reference internal" href="set/set.html"><span class="doc">set</span></a></p></li>
 <li><p><a class="reference internal" href="submit.html"><span class="doc">submit</span></a></p></li>
 <li><p><a class="reference internal" href="update.html"><span class="doc">update</span></a></p></li>
-<li><p><a class="reference internal" href="remote/remote.html"><span class="doc">remote</span></a></p></li>
-<li><p><a class="reference internal" href="server/server.html"><span class="doc">server</span></a></p></li>
 <li><p><a class="reference internal" href="zip.html"><span class="doc">zip</span></a></p></li>
 </ul>
 </dd>

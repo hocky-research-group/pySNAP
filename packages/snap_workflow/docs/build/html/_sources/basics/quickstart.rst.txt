@@ -27,7 +27,7 @@ Variables are parameters whose values you want to sweep or vary during computati
 
 .. code-block:: bash
 
-   workflow add variable --name mesh_size
+   workflow variable add --name mesh_size
 
 Follow the prompts to select a type (e.g., ``int``).
 
@@ -38,7 +38,7 @@ Stages are modular steps in your pipeline (e.g. mesh generation, numerical solvi
 
 .. code-block:: bash
 
-   workflow add stage --name simulation
+   workflow stage add --name simulation
 
 This creates a new stage directory ``simulation/`` containing:
 
@@ -80,7 +80,7 @@ A sweep maps values to variables across stages. Add a new sweep:
 
 .. code-block:: bash
 
-   workflow add sweep --name grid_sweep
+   workflow sweep add --name grid_sweep
 
 Follow the prompts to include the ``simulation`` stage and specify the values of ``mesh_size`` (e.g., ``64, 128, 256``).
 

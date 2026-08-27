@@ -75,6 +75,7 @@ class WorkflowServer(HTTPServer):
         self.spoint_manager = spoint_tools.SPointStatusManager()
         self.schedulers = {}
         self.auto_schedulers = self.schedulers
+        self.dispatchers = {}
         self.active_tunnels = {}
 
 
@@ -108,7 +109,11 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({"status": "running"}).encode())
+            status_payload = {
+                "status": "running",
+                "dispatchers": {k: d.get_status() for k, d in getattr(self.server, "dispatchers", {}).items()}
+            }
+            self.wfile.write(json.dumps(status_payload).encode())
             return
 
         if parsed.path == "/shutdown":
@@ -322,7 +327,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"status": "ok"}).encode())
             return
 
-        if self.path == "/submit_worker":
+        if self.path == "/reserve":
             if not self._check_auth():
                 return
 
@@ -341,20 +346,27 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
 
             try:
                 if name == "local":
-                    from snap_workflow.worker.slurm import launch_local_workers
-                    launch_local_workers(
+                    from snap_workflow.dispatcher.controller import DispatcherController
+                    controller = DispatcherController(
+                        target_name="local",
+                        mode="subprocess",
+                        server_url=f"http://127.0.0.1:{self.server.server_port}",
+                        token=self.server.token,
                         num_workers=num_workers,
                         stages=stages,
                         sweeps=sweeps,
                         exclude_stages=exclude_stages,
                         exclude_sweeps=exclude_sweeps,
-                        profile=profile
+                        profile=profile,
+                        server_instance=self.server
                     )
+                    controller.start()
+                    self.server.dispatchers["local"] = controller
                     msg = f"Successfully spawned {num_workers} local worker process(es)."
                 else:
                     ensure_remote_tunnel(self.server, name)
-                    from snap_workflow.remote.setup import launch_remote_workers_server_side
-                    launch_remote_workers_server_side(
+                    from snap_workflow.remote.reserve import reserve_remote_workers
+                    reserve_remote_workers(
                         server_port=self.server.server_port,
                         token=self.server.token,
                         remote_name=name,
@@ -380,7 +392,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
             return
 
-        if self.path == "/submit_auto":
+        if self.path == "/auto":
             if not self._check_auth():
                 return
 

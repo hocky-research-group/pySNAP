@@ -145,7 +145,7 @@ def get_completions(args=None, prefix="", shell='bash'):
             "status": ["print", "list", "set", "reset", "submit"],
             "spoint": ["print", "list", "set", "reset", "submit"],
             "remote": ["add", "setup", "sync", "connect", "list", "print"],
-            "server": ["start", "submit"],
+            "server": ["start", "auto", "autoschedule", "reserve"],
             "add": ["stage", "sweep", "variable"],
             "remove": ["sweep"],
             "reset": ["stage", "sweep", "spoint"],
@@ -160,7 +160,36 @@ def get_completions(args=None, prefix="", shell='bash'):
     # 4. Level 2+ subcommand completions (when 2 or more positional arguments have been provided)
     second_arg = args[1]
 
-    if first_arg == "remote":
+    if first_arg == "server":
+        if second_arg in ["auto", "autoschedule", "reserve"]:
+            if len(args) == 2:
+                try:
+                    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                    remotes = ["local"] + list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))
+                    if prefix:
+                        remotes = [r for r in remotes if r.startswith(prefix)]
+                    return remotes
+                except Exception:
+                    return ["local"]
+            elif second_arg == "reserve" and len(args) == 3:
+                try:
+                    from snap_workflow.utils import path
+                    profiles = []
+                    for prof_dir in [path.from_root("sbatch_profiles"), os.path.expanduser("~/.config/snap_workflow/sbatch_profiles")]:
+                        if os.path.isdir(prof_dir):
+                            for f in os.listdir(prof_dir):
+                                if f.endswith((".json", ".yaml", ".yml")):
+                                    profiles.append(os.path.splitext(f)[0])
+                    profiles = list(dict.fromkeys(profiles))
+                    if not profiles:
+                        profiles = ["cpu", "gpu"]
+                    if prefix:
+                        profiles = [p for p in profiles if p.startswith(prefix)]
+                    return profiles
+                except Exception:
+                    return ["cpu", "gpu"]
+
+    elif first_arg == "remote":
         if second_arg in ["sync", "connect", "setup", "print"]:
             try:
                 from snap_workflow.utils.io import load_global_remotes, load_local_remotes

@@ -63,3 +63,17 @@ def test_zip_workflow_spoints_iteration(sandbox):
         assert mock_run.called
         calls = [c[0][0] for c in mock_run.call_args_list]
         assert any(any("stage1/spoints" in item for item in cmd) for cmd in calls)
+
+
+def test_initialize_sbatch_profiles_with_slurm(sandbox):
+    with patch("snap_workflow.utils.exec.has_slurm", return_value=True):
+        initialize(force=True)
+        assert os.path.isdir("sbatch_profiles")
+        assert os.path.isfile(os.path.join("sbatch_profiles", "cpu.json"))
+        assert os.path.isfile(os.path.join("sbatch_profiles", "gpu.json"))
+
+
+def test_initialize_sbatch_profiles_without_slurm(sandbox):
+    with patch("snap_workflow.utils.exec.has_slurm", return_value=False):
+        initialize(force=True)
+        assert not os.path.exists("sbatch_profiles")

@@ -98,13 +98,13 @@ def test_validate_remote_workspace_python_environments():
 
 def test_launch_remote_workers_server_side(sandbox, env_dir):
     initialize(env_dir)
-    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
-         patch("snap_workflow.utils.io.load_local_remotes", return_value={"c1": {"path": "~/sims"}}), \
-         patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
-         patch("snap_workflow.remote.setup.validate_remote_workspace_python_environments"), \
-         patch("snap_workflow.remote.setup.validate_remote_stage_resources"), \
-         patch("snap_workflow.remote.setup.run_remote_python", return_value=json.dumps({"cpus-per-task": 4})), \
-         patch("snap_workflow.remote.setup.run_remote_bash", return_value="login01\n"), \
+    with patch("snap_workflow.remote.reserve.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
+         patch("snap_workflow.remote.reserve.load_local_remotes", return_value={"c1": {"path": "~/sims"}}), \
+         patch("snap_workflow.remote.reserve.resolve_remote_path", return_value="~/sims"), \
+         patch("snap_workflow.remote.reserve.validate_remote_workspace_python_environments"), \
+         patch("snap_workflow.remote.reserve.validate_remote_stage_resources"), \
+         patch("snap_workflow.remote.reserve.run_remote_python", return_value=json.dumps({"cpus-per-task": 4})), \
+         patch("snap_workflow.remote.reserve.run_remote_bash", return_value="login01\n"), \
          patch("subprocess.run") as mock_run:
         
         mock_res = MagicMock()
@@ -122,46 +122,46 @@ def test_launch_remote_workers_server_side(sandbox, env_dir):
 
 def test_launch_remote_workers_unregistered_remotes(sandbox, env_dir):
     initialize(env_dir)
-    with patch("snap_workflow.utils.io.load_global_remotes", return_value={}):
+    with patch("snap_workflow.remote.reserve.load_global_remotes", return_value={}):
         with pytest.raises(ValueError) as exc:
             remote_setup.launch_remote_workers_server_side(9000, "token", "unregistered", "cpu")
         assert "not registered globally" in str(exc.value)
 
-    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"c1": {"host": "host"}}), \
-         patch("snap_workflow.utils.io.load_local_remotes", return_value={}):
+    with patch("snap_workflow.remote.reserve.load_global_remotes", return_value={"c1": {"host": "host"}}), \
+         patch("snap_workflow.remote.reserve.load_local_remotes", return_value={}):
         with pytest.raises(ValueError) as exc:
             remote_setup.launch_remote_workers_server_side(9000, "token", "c1", "cpu")
         assert "not been set up locally" in str(exc.value)
 
 def test_launch_remote_workers_fixme_and_missing_profile(sandbox, env_dir):
     initialize(env_dir)
-    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
-         patch("snap_workflow.utils.io.load_local_remotes", return_value={"c1": {"path": "~/sims"}}), \
-         patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
-         patch("snap_workflow.remote.setup.validate_remote_workspace_python_environments"), \
-         patch("snap_workflow.remote.setup.validate_remote_stage_resources"), \
-         patch("snap_workflow.remote.setup.run_remote_python", side_effect=Exception("profile error")), \
-         patch("snap_workflow.remote.setup.run_remote_bash", side_effect=Exception("profile bash error")):
+    with patch("snap_workflow.remote.reserve.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
+         patch("snap_workflow.remote.reserve.load_local_remotes", return_value={"c1": {"path": "~/sims"}}), \
+         patch("snap_workflow.remote.reserve.resolve_remote_path", return_value="~/sims"), \
+         patch("snap_workflow.remote.reserve.validate_remote_workspace_python_environments"), \
+         patch("snap_workflow.remote.reserve.validate_remote_stage_resources"), \
+         patch("snap_workflow.remote.reserve.run_remote_python", side_effect=Exception("profile error")), \
+         patch("snap_workflow.remote.reserve.run_remote_bash", side_effect=Exception("profile bash error")):
         with pytest.raises(ValueError) as exc:
             remote_setup.launch_remote_workers_server_side(9000, "token", "c1", "bad_profile")
         assert "was not found" in str(exc.value)
 
-    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
-         patch("snap_workflow.utils.io.load_local_remotes", return_value={"c1": {"path": "~/sims"}}), \
-         patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
-         patch("snap_workflow.remote.setup.validate_remote_workspace_python_environments"), \
-         patch("snap_workflow.remote.setup.validate_remote_stage_resources"), \
-         patch("snap_workflow.remote.setup.run_remote_python", return_value=json.dumps({"partition": "FIXME_PARTITION"})):
+    with patch("snap_workflow.remote.reserve.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
+         patch("snap_workflow.remote.reserve.load_local_remotes", return_value={"c1": {"path": "~/sims"}}), \
+         patch("snap_workflow.remote.reserve.resolve_remote_path", return_value="~/sims"), \
+         patch("snap_workflow.remote.reserve.validate_remote_workspace_python_environments"), \
+         patch("snap_workflow.remote.reserve.validate_remote_stage_resources"), \
+         patch("snap_workflow.remote.reserve.run_remote_python", return_value=json.dumps({"partition": "FIXME_PARTITION"})):
         with pytest.raises(ValueError) as exc:
             remote_setup.launch_remote_workers_server_side(9000, "token", "c1", "fixme_profile")
         assert "unconfigured 'FIXME'" in str(exc.value)
 
-def test_setup_remote_cluster(sandbox, env_dir):
+def test_setup_remote_cluster_with_slurm(sandbox, env_dir):
     initialize(env_dir)
     with patch("subprocess.run") as mock_run, \
          patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
-         patch("snap_workflow.remote.setup.run_remote_python", return_value="ok"), \
-         patch("snap_workflow.remote.setup.run_remote_bash", return_value="ok"):
+         patch("snap_workflow.utils.exec.has_slurm", return_value=True), \
+         patch("snap_workflow.remote.setup.run_remote_python", return_value="ok"):
         
         mock_res = MagicMock()
         mock_res.stdout = "ok\n"
@@ -170,6 +170,41 @@ def test_setup_remote_cluster(sandbox, env_dir):
         
         res_path = remote_setup.setup_remote_cluster("cluster_host", "~/sims")
         assert res_path == "~/sims"
+        
+        # Verify mkdir commands
+        calls = [c[0][0] for c in mock_run.call_args_list]
+        mkdir_calls = [cmd for cmd in calls if isinstance(cmd, list) and any("mkdir -p" in str(arg) for arg in cmd)]
+        assert len(mkdir_calls) > 0
+        mkdir_cmd_str = " ".join(str(x) for x in mkdir_calls[0])
+        assert "sbatch_profiles" in mkdir_cmd_str
+        assert "slurm_out" in mkdir_cmd_str
+        assert "workers" not in mkdir_cmd_str
+
+
+def test_setup_remote_cluster_without_slurm(sandbox, env_dir):
+    initialize(env_dir)
+    with patch("subprocess.run") as mock_run, \
+         patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
+         patch("snap_workflow.utils.exec.has_slurm", return_value=False), \
+         patch("snap_workflow.remote.setup.run_remote_python", return_value="ok"):
+        
+        mock_res = MagicMock()
+        mock_res.stdout = "ok\n"
+        mock_res.returncode = 0
+        mock_run.return_value = mock_res
+        
+        res_path = remote_setup.setup_remote_cluster("cluster_host", "~/sims")
+        assert res_path == "~/sims"
+        
+        # Verify mkdir commands
+        calls = [c[0][0] for c in mock_run.call_args_list]
+        mkdir_calls = [cmd for cmd in calls if isinstance(cmd, list) and any("mkdir -p" in str(arg) for arg in cmd)]
+        assert len(mkdir_calls) > 0
+        mkdir_cmd_str = " ".join(str(x) for x in mkdir_calls[0])
+        assert "sbatch_profiles" not in mkdir_cmd_str
+        assert "slurm_out" not in mkdir_cmd_str
+        assert "workers" not in mkdir_cmd_str
+
 
 def test_setup_remote_cluster_failures(sandbox, env_dir):
     initialize(env_dir)

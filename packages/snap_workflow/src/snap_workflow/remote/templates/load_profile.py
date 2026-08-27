@@ -32,7 +32,11 @@ def load_prof(p_base):
                         pass
 
 
-load_prof(os.path.expanduser(f"~/.config/snap_workflow/workers/{prof}"))
+load_prof(os.path.expanduser(f"~/.config/snap_workflow/sbatch_profiles/{prof}"))
+if not data:
+    load_prof(os.path.join(r_path, "sbatch_profiles", prof))
+if not data:
+    load_prof(os.path.expanduser(f"~/.config/snap_workflow/workers/{prof}"))
 if not data:
     load_prof(os.path.join(r_path, "workers", prof))
 print(json.dumps(data))

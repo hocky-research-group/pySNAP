@@ -11,7 +11,7 @@ from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.domain import status
 from snap_workflow.core.domain import spoints
-from snap_workflow import worker
+from snap_workflow import dispatcher
 from snap_workflow.server import register_auto_scheduler, OrchestratorScheduler
 
 def is_ssh_reachable():
@@ -184,7 +184,7 @@ def test_remote_worker_tunnel(sandbox, env_dir, workflow_server):
                 "Lab_Main",
                 (
                     f"cd {resolved_path} && "
-                    f"PYTHONPATH=/home/tanner/pySNAP/packages/snap_workflow/src:$PYTHONPATH python3 -u -m snap_workflow.worker.runner http://127.0.0.1:{port} {token} "
+                    f"PYTHONPATH=/home/tanner/pySNAP/packages/snap_workflow/src:$PYTHONPATH python3 -u -m snap_workflow.dispatcher.runner http://127.0.0.1:{port} {token} "
                     f"--stages stage1 --sweeps sweep1 --host Lab_Main_Test"
                 )
             ]

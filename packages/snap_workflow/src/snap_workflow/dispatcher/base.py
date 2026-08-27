@@ -1,0 +1,167 @@
+import os
+import sys
+import time
+import json
+import logging
+import urllib.request
+import urllib.parse
+import urllib.error
+from abc import ABC, abstractmethod
+from typing import Dict, Any, Optional
+
+logger = logging.getLogger("snap_workflow.dispatcher.base")
+
+
+class BaseDispatcher(ABC):
+    """Abstract base class for task dispatchers communicating with the workflow server."""
+
+    def __init__(
+        self,
+        server_url: str,
+        token: str,
+        stages: str = "",
+        sweeps: str = "",
+        exclude_stages: str = "",
+        exclude_sweeps: str = "",
+        idle_delay: float = 1.0,
+        connect_timeout: float = 5.0,
+        host: Optional[str] = None
+    ):
+        self.server_url = server_url.rstrip("/")
+        self.token = token
+        self.stages = stages
+        self.sweeps = sweeps
+        self.exclude_stages = exclude_stages
+        self.exclude_sweeps = exclude_sweeps
+        self.idle_delay = idle_delay
+        self.connect_timeout = connect_timeout
+        self.host = host
+        self.shutdown_requested = False
+        self.active_jobs: Dict[str, Any] = {}
+
+    def send_request(
+        self,
+        url: str,
+        data: Optional[Dict[str, Any]] = None,
+        retries: int = 5,
+        backoff: float = 1.0
+    ) -> Optional[Dict[str, Any]]:
+        """Sends an authenticated HTTP request to the workflow server."""
+        from snap_workflow.dispatcher.runner import send_request as runner_send_request
+        import inspect
+        try:
+            sig = inspect.signature(runner_send_request)
+            if "retries" in sig.parameters or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+                return runner_send_request(url, self.token, data=data, retries=retries, backoff=backoff)
+        except Exception:
+            pass
+        return runner_send_request(url, self.token, data=data)
+
+    def request_work(self) -> Optional[Dict[str, Any]]:
+        """Polls the server for an unlocked SPoint task matching filter criteria."""
+        params = {}
+        if self.stages:
+            params["stages"] = self.stages
+        if self.sweeps:
+            params["sweeps"] = self.sweeps
+        if self.exclude_stages:
+            params["exclude_stages"] = self.exclude_stages
+        if self.exclude_sweeps:
+            params["exclude_sweeps"] = self.exclude_sweeps
+        if self.host:
+            params["host"] = self.host
+
+        query = urllib.parse.urlencode(params)
+        url = f"{self.server_url}/request_work"
+        if query:
+            url += f"?{query}"
+
+        return self.send_request(url)
+
+    def notify_completion(
+        self,
+        spoint_path: str,
+        success: bool = True,
+        returncode: int = 0,
+        extra_data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """Notifies the workflow server that an SPoint task has completed."""
+        url = f"{self.server_url}/notify_completion"
+        payload = {
+            "spoint_path": spoint_path,
+            "status": "COMPLETED" if success else "FAILED",
+            "returncode": returncode
+        }
+        if extra_data:
+            payload.update(extra_data)
+
+        resp = self.send_request(url, data=payload)
+        return resp is not None and resp.get("status") == "success"
+
+    def notify_shutdown(self) -> None:
+        """Notifies the server that this dispatcher is shutting down."""
+        url = f"{self.server_url}/notify_worker_shutdown"
+        payload = {
+            "worker_id": self.worker_id or self.host or "unknown",
+            "host": self.host or "unknown",
+            "active_tasks": list(self.active_jobs.keys())
+        }
+        try:
+            from snap_workflow.dispatcher.runner import send_request as runner_send_request
+            runner_send_request(url, self.token, data=payload, retries=1, timeout=1)
+        except Exception:
+            pass
+
+    def run(self) -> None:
+        """Main template method loop executing the dispatcher lifecycle."""
+        logger.info(f"Starting dispatcher targeting {self.server_url} (host: {self.host or 'local'})")
+        last_contact = time.time()
+        try:
+            while not self.shutdown_requested:
+                self.reap_finished()
+
+                if self.has_capacity():
+                    task = self.request_work()
+                    if task:
+                        last_contact = time.time()
+                        status_val = task.get("status")
+                        if status_val == "shutdown":
+                            logger.info("Server requested dispatcher shutdown.")
+                            self.shutdown_requested = True
+                            break
+                        elif status_val == "spoint":
+                            self.dispatch_task(task)
+                    else:
+                        # Server unreachable or error
+                        if self.connect_timeout and (time.time() - last_contact >= self.connect_timeout):
+                            logger.error(f"Failed to communicate with server for {self.connect_timeout}s. Exiting.")
+                            self.shutdown_requested = True
+                            break
+
+                time.sleep(self.idle_delay)
+        except KeyboardInterrupt:
+            logger.info("Dispatcher interrupted by user.")
+        finally:
+            self.cleanup()
+            self.notify_shutdown()
+            logger.info("Dispatcher terminated.")
+
+    @abstractmethod
+    def has_capacity(self) -> bool:
+        """Returns True if this dispatcher can accept and run another task."""
+        pass
+
+    @abstractmethod
+    def dispatch_task(self, task: Dict[str, Any]) -> None:
+        """Dispatches an SPoint task for execution."""
+        pass
+
+    @abstractmethod
+    def reap_finished(self) -> None:
+        """Checks the status of active in-flight tasks and reclaims resources."""
+        pass
+
+    @abstractmethod
+    def cleanup(self) -> None:
+        """Terminates or cancels any remaining active tasks upon shutdown."""
+        pass

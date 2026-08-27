@@ -4,19 +4,26 @@ Workflow
 Synopsis
 """""""""
 
-**workflow** <*action*> ...
+**workflow** <*entity*> <*action*> ...
+or **workflow** <*action*> ...
 
 Description
 """""""""""""""
 
-Executes <*action*>.
+Executes a workflow action targeting an entity or system task.
 
 Arguments
-""""""""""
+"""""""""
 
 <*main_options*>
-   Can be any of the following:
+   Can be any of the following entity or top-level commands:
 
+   * :doc:`stage <add/stage>`
+   * :doc:`sweep <add/sweep>`
+   * :doc:`variable <add/variable>`
+   * :doc:`status <print/status>`
+   * :doc:`remote <remote/remote>`
+   * :doc:`server <server/server>`
    * :doc:`add <add/add>`
    * :doc:`collect <collect>`
    * :doc:`init <init>`
@@ -26,8 +33,6 @@ Arguments
    * :doc:`set <set/set>`
    * :doc:`submit <submit>`
    * :doc:`update <update>`
-   * :doc:`remote <remote/remote>`
-   * :doc:`server <server/server>`
    * :doc:`zip <zip>`
 
 .. toctree::

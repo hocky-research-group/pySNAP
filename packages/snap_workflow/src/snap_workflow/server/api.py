@@ -3,7 +3,7 @@ import json
 from snap_workflow.utils import io, path
 from snap_workflow.utils.constants import SERVER_INFO
 from snap_workflow.server.tunnels import ensure_remote_tunnel
-from snap_workflow import worker
+from snap_workflow.dispatcher.runner import send_request
 from snap_workflow.remote import setup as remote_setup
 
 
@@ -18,9 +18,20 @@ def _get_server_info():
     return url, token
 
 
-def submit_worker(remote, profile, num_workers=1, sbatch_args="", stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
-    """Submits worker(s) to a local or remote target through the running workflow server."""
+def reserve_workers(remote, profile, num_workers=1, sbatch_args="", stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
+    """
+    Submits worker allocation reservation to Slurm on a local or remote target.
+    Requires Slurm (sbatch) on target; otherwise raises ValueError directing to auto.
+    """
     url, token = _get_server_info()
+
+    from snap_workflow.utils.exec import has_slurm
+    if not has_slurm(remote):
+        raise ValueError(
+            f"Target system '{remote}' does not have Slurm ('sbatch'). "
+            f"'workflow server reserve' is dedicated to reserving Slurm (sbatch) worker allocations. "
+            f"For non-Slurm systems, please use 'workflow server auto {remote}'."
+        )
 
     if remote != "local":
         global_remotes = io.load_global_remotes()
@@ -44,12 +55,12 @@ def submit_worker(remote, profile, num_workers=1, sbatch_args="", stages="", swe
         "exclude_sweeps": exclude_sweeps
     }
 
-    res = worker.send_request(f"{url}/submit_worker", token, data=payload)
+    res = send_request(f"{url}/reserve", token, data=payload)
     return res
 
 
-def submit_auto(remote, stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
-    """Submits an auto-scheduling request for a remote host to the running workflow server."""
+def auto(remote, stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
+    """Submits an auto-scheduling request for a remote host or local workstation to the running workflow server."""
     url, token = _get_server_info()
 
     if remote != "local":
@@ -71,5 +82,5 @@ def submit_auto(remote, stages="", sweeps="", exclude_stages="", exclude_sweeps=
         "exclude_sweeps": exclude_sweeps
     }
 
-    res = worker.send_request(f"{url}/submit_auto", token, data=payload)
+    res = send_request(f"{url}/auto", token, data=payload)
     return res

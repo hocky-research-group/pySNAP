@@ -12,7 +12,7 @@ from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.domain import status
 from snap_workflow.server import start_server
-from snap_workflow.worker import send_request
+from snap_workflow.dispatcher import send_request
 
 def configure_stage_resources(stage_name, cpus=1, gpus=0, mem="2G"):
     import yaml
@@ -159,7 +159,7 @@ def test_unauthorized_endpoints(sandbox, env_dir, workflow_server):
         urllib.request.urlopen(req)
     assert cm.value.code == 401
 
-    req = urllib.request.Request(f"{url}/submit_auto", headers={"Authorization": "Bearer badtoken"}, method="POST")
+    req = urllib.request.Request(f"{url}/auto", headers={"Authorization": "Bearer badtoken"}, method="POST")
     with pytest.raises(urllib.error.HTTPError) as cm:
         urllib.request.urlopen(req)
     assert cm.value.code == 401
@@ -180,6 +180,41 @@ def test_http_get_404(sandbox, env_dir, workflow_server):
         urllib.request.urlopen(req_shutdown_unauth)
     assert cm.value.code == 401
 
+def test_notify_and_submit_worker_success(sandbox, env_dir, workflow_server):
+    initialize(env_dir)
+    _, server_info = workflow_server("127.0.0.1", port=0)
+    url = server_info["url"]
+    token = server_info["token"]
+
+    # 1. notify_completion
+    payload1 = {
+        "status": "complete",
+        "stage": "st1",
+        "sweep": "sw1",
+        "spoint_rel_path": "st1/spoints/x_1",
+        "log_path": "/tmp/dummy.log"
+    }
+    with patch("subprocess.run"):
+        resp1 = send_request(f"{url}/notify_completion", token, data=payload1)
+        assert resp1["status"] == "ok"
+
+    # 2. notify_shutdown
+    payload2 = {
+        "worker_id": "worker_1",
+        "host": "local"
+    }
+    resp2 = send_request(f"{url}/notify_shutdown", token, data=payload2)
+    assert resp2["status"] == "ok"
+
+    # 3. reserve
+    payload3 = {
+        "name": "local",
+        "num_workers": 1,
+        "profile": "cpu"
+    }
+    with patch("snap_workflow.dispatcher.controller.DispatcherController.start"):
+        resp3 = send_request(f"{url}/reserve", token, data=payload3)
+        assert resp3["status"] == "success"
     req_shutdown = urllib.request.Request(f"{url}/shutdown", headers={"Authorization": f"Bearer {token}"}, method="GET")
     resp_shutdown = urllib.request.urlopen(req_shutdown)
     assert json.loads(resp_shutdown.read().decode())["status"] == "shutdown"
@@ -248,7 +283,7 @@ def test_request_work_stage_resources_exception_handling(sandbox, env_dir, workf
         assert resp["status"] == "spoint"
 
 def test_parse_memory_to_gb_edge_cases():
-    from snap_workflow.server import parse_memory_to_gb
+    from snap_workflow.dispatcher import parse_memory_to_gb
     assert parse_memory_to_gb("") == 0.0
     assert parse_memory_to_gb("16K") == 16.0 / (1024 * 1024)
     assert parse_memory_to_gb("16KB") == 16.0 / (1024 * 1024)
@@ -290,14 +325,14 @@ def test_notify_completion_spoint_path_and_shutdown(sandbox, env_dir, workflow_s
     resp2 = send_request(f"{url}/notify_shutdown", token, data=payload2)
     assert resp2["status"] == "ok"
 
-    # 3. submit_worker
+    # 3. reserve
     payload3 = {
         "name": "local",
         "num_workers": 1,
         "profile": "cpu"
     }
-    with patch("snap_workflow.worker.slurm.launch_local_workers"):
-        resp3 = send_request(f"{url}/submit_worker", token, data=payload3)
+    with patch("snap_workflow.dispatcher.controller.DispatcherController.start"):
+        resp3 = send_request(f"{url}/reserve", token, data=payload3)
         assert resp3["status"] == "success"
 
 def test_run_server_foreground(sandbox, env_dir):

@@ -37,17 +37,33 @@ for env_f in (
         except Exception:
             pass
 
-w_dir = os.path.join(r_path, "workers")
-os.makedirs(w_dir, exist_ok=True)
-tmpl_f = os.path.join(w_dir, "template.json")
-if not os.path.isfile(tmpl_f):
-    tmpl_data = {
-        "partition": "FIXME",
-        "nodes": 1,
-        "ntasks-per-node": 1,
-        "cpus-per-task": 8,
-        "mem": "16G",
-        "time": "04:00:00",
-    }
-    with open(tmpl_f, "w") as f:
-        json.dump(tmpl_data, f, indent=4)
+import shutil
+
+if shutil.which("sbatch") is not None:
+    prof_dir = os.path.join(r_path, "sbatch_profiles")
+    os.makedirs(prof_dir, exist_ok=True)
+    cpu_f = os.path.join(prof_dir, "cpu.json")
+    if not os.path.isfile(cpu_f) and not os.path.isfile(os.path.join(prof_dir, "cpu.yaml")) and not os.path.isfile(os.path.join(prof_dir, "cpu.yml")):
+        cpu_data = {
+            "partition": "FIXME",
+            "time": "02:00:00",
+            "nodes": 1,
+            "ntasks-per-node": 1,
+            "cpus-per-task": 8,
+            "mem": "16G"
+        }
+        with open(cpu_f, "w") as f:
+            json.dump(cpu_data, f, indent=4)
+    gpu_f = os.path.join(prof_dir, "gpu.json")
+    if not os.path.isfile(gpu_f) and not os.path.isfile(os.path.join(prof_dir, "gpu.yaml")) and not os.path.isfile(os.path.join(prof_dir, "gpu.yml")):
+        gpu_data = {
+            "partition": "FIXME",
+            "time": "02:00:00",
+            "nodes": 1,
+            "ntasks-per-node": 1,
+            "cpus-per-task": 8,
+            "gpus-per-node": 1,
+            "mem": "32G"
+        }
+        with open(gpu_f, "w") as f:
+            json.dump(gpu_data, f, indent=4)

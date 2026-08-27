@@ -7,8 +7,8 @@ import subprocess
 import logging
 from snap_workflow.utils import path, io
 from snap_workflow.core.domain import stages as stage_tools, sweeps as sweep_tools
-from snap_workflow.worker.runner import parse_memory_to_gb, detect_system_resources
-from snap_workflow.worker.resource_allocator import ResourcePool
+from snap_workflow.dispatcher.runner import parse_memory_to_gb, detect_system_resources
+from snap_workflow.dispatcher.resource_allocator import ResourcePool
 import shutil
 from snap_workflow.server.tunnels import ensure_remote_tunnel
 from snap_workflow.remote.ssh import is_remote_ssh_connected, trigger_alert_sound
@@ -82,16 +82,8 @@ class OrchestratorScheduler(threading.Thread):
             logger.error("Stage resource validation failed for remote '%s': %s", self.remote, e)
             return
 
-        has_slurm = False
-        try:
-            if self.remote == "local":
-                res = subprocess.run(["which", "sbatch"], capture_output=True, text=True)
-                has_slurm = (res.returncode == 0)
-            else:
-                res = subprocess.run(["ssh", host, "which sbatch"], capture_output=True, text=True)
-                has_slurm = (res.returncode == 0)
-        except Exception:
-            pass
+        from snap_workflow.utils.exec import has_slurm as check_has_slurm, detect_target_resources, run_command
+        has_slurm = check_has_slurm(self.remote)
 
         logger.info("Remote '%s' Slurm detection: has_slurm=%s", self.remote, has_slurm)
 
@@ -100,13 +92,8 @@ class OrchestratorScheduler(threading.Thread):
             detected_cmd = None
             for cmd in ["qsub", "bsub", "qstat"]:
                 try:
-                    if self.remote == "local":
-                        check_res = subprocess.run(["which", cmd], capture_output=True, text=True)
-                        exists = (check_res.returncode == 0)
-                    else:
-                        check_res = subprocess.run(["ssh", host, f"which {cmd}"], capture_output=True, text=True)
-                        exists = (check_res.returncode == 0)
-                    if exists:
+                    check_res = run_command(self.remote, f"which {cmd}", capture_output=True, text=True)
+                    if check_res.returncode == 0:
                         other_scheduler_detected = True
                         detected_cmd = cmd
                         break
@@ -152,16 +139,7 @@ class OrchestratorScheduler(threading.Thread):
         slurm_submitted_jobs = []
 
         if not has_slurm:
-            if self.remote == "local":
-                cpus_total, gpus_total, mem_total = detect_system_resources()
-            else:
-                try:
-                    cmd = ["ssh", host, "python3 -c \"import json; from snap_workflow.worker.runner import detect_system_resources; print(json.dumps(detect_system_resources()))\" || python -c \"import json; from snap_workflow.worker.runner import detect_system_resources; print(json.dumps(detect_system_resources()))\""]
-                    res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                    if res.returncode == 0:
-                        cpus_total, gpus_total, mem_total = json.loads(res.stdout.strip())
-                except Exception as e:
-                    logger.warning("Failed to auto-detect remote resources: %s. Using default baseline constraints.", e)
+            cpus_total, gpus_total, mem_total = detect_target_resources(self.remote)
             logger.info("[SCHEDULER] Workstation capacity for remote '%s': CPUs=%s, GPUs=%s, Memory=%.2f GB",
                         self.remote, cpus_total, gpus_total, mem_total)
 

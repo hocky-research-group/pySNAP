@@ -156,42 +156,44 @@ workflow sweep reset -w sweepA
 ```
 *(Note: Legacy verb-first commands like `workflow add stage` and `workflow print status` remain fully supported as aliases).*
 
-#### Option B: Remote Cluster / Server Model
-Set up the manager server and submit worker/SPoint allocations on remote systems:
+#### Option B: Slurm Cluster Allocation Reservation
+Set up the manager server and reserve Slurm worker compute allocations on remote HPC clusters:
 
 ```bash
 # 1. Register a remote workstation/cluster host connection; accepts standard SSH configurations or user@hostname format
-workflow remote add my_remote --host user@cluster.domain.edu
+workflow remote add my_cluster --host user@cluster.domain.edu
 
-# 2. Initializes the workflow on the remote system (overwrites at the path except for env/worker profiles)
-workflow remote setup my_remote --path /scratch/user/my_experiment
+# 2. Initializes the workflow on the remote system (overwrites at the path except for env/sbatch profiles)
+workflow remote setup my_cluster --path /scratch/user/my_experiment
 # Note: After initialization, configure the stage runtime requirements (env.json/env.yaml) on the remote system.
 
 # 3. Start the local server
 workflow server start
 
-# 4. Launch persistent GPU workers to run SPoints on the remote system
-workflow server submit worker my_remote --profile gpu --num-workers 4
+# 4. Reserve persistent GPU compute allocations on the remote cluster
+workflow server reserve my_cluster gpu --num-workers 4
 ```
 
 #### Option C: Workstation / Slurm Auto-Scheduling
-Run auto-scheduling directly on the remote system (dynamically runs via sbatch if Slurm is available on the remote system, or falls back to background workstation process execution to the remote system):
+Run auto-scheduling directly on the local machine or a remote workstation (dynamically runs via sbatch if Slurm is available on the target, or executes as managed workstation subprocesses):
 
 ```bash
 workflow server start
-workflow server submit auto my_remote
+workflow server auto local
+# Or for a remote workstation:
+workflow server auto my_workstation
 ```
 
 ### Execution Model Differences:
-* **Direct Slurm queueing**: Submits SPoints as separate Slurm batch jobs in the cluster queue.
-* **Worker-pull model (Server + Persistent Workers)**: Submits one or more long-running Slurm allocations that run a worker loop. These workers pull and receive SPoints dynamically from a central manager server, bypassing the Slurm scheduler overhead, queue latency, and run SPoints until all are complete or time out.
-* **Auto-scheduling mode**: The manager server automatically runs a thread that handles execution. If Slurm is available, it submits sbatch tasks; if not, it runs as workstation subprocesses.
+* **Direct Slurm queueing**: Submits SPoints as separate Slurm batch jobs in the cluster queue (`workflow submit`).
+* **Cluster Reservation Model (Server + Worker Reservations)**: Submits long-running Slurm compute allocations via `workflow server reserve <remote> <profile>`. Compute nodes connect back to the central manager server over reverse SSH tunnels using `.workflow/server`, pulling and executing SPoints dynamically while surviving temporary connection drops.
+* **Auto-scheduling mode (`workflow server auto <target>`)**: The manager server autonomously pushes tasks to the target machine's CPU/GPU resources as upstream dependencies in the DAG complete.
 
 ## Configuration Files
 
 ### `env.yaml` (per-stage)
 
-Controls the execution environment, CPU/GPU/Memory requirements, and nested Slurm sbatch flags:
+Controls the execution environment, CPU/GPU/Memory requirements, optional sbatch profile reference, and nested Slurm sbatch flags:
 
 ```yaml
 # Path to Python interpreter used to run simulation scripts.
@@ -214,6 +216,9 @@ resources:
   gpus: 1
   mem: 16G
 
+# Optional reference to a shared sbatch profile from sbatch_profiles/
+sbatch_profile: gpu
+
 # Optional Slurm directives used when submitting jobs directly via `workflow submit`.
 sbatch:
   partition: gpu-batch
@@ -222,9 +227,9 @@ sbatch:
   ntasks-per-node: 1
 ```
 
-### `workers/*.yaml` (worker profiles)
+### `sbatch_profiles/*.yaml` (allocation profiles)
 
-Slurm allocation templates for worker nodes:
+Slurm allocation templates for worker reservations (only generated on Slurm-enabled systems):
 
 ```yaml
 partition: cpu-batch
@@ -250,8 +255,8 @@ time: 04:00:00
 | `workflow zip` | Package the workflow for transfer |
 | `workflow remove sweep` | Remove a sweep and its SPoint folders |
 | `workflow server start` | Start the worker coordination server |
-| `workflow server submit worker` | Submit persistent worker allocations to a remote node |
-| `workflow server submit auto` | Trigger unified remote Slurm/workstation auto-scheduling |
+| `workflow server auto <remote>` | Trigger autonomous task execution on a local or remote target |
+| `workflow server reserve <remote> <profile>` | Reserve Slurm worker compute allocations on a cluster |
 | `workflow remote add` | Register a remote host connection |
 | `workflow remote setup` | Sync workflow structure to a remote host mapping |
 | `workflow autocomplete [shell]` | Get autocomplete installation instructions for Bash or Zsh |
@@ -268,10 +273,10 @@ my_experiment/
 │   ├── stages.json         # Stage definitions
 │   ├── sweeps.json         # Sweep definitions
 │   ├── variables.json      # Variable registry
-│   └── workers/            # Worker templates (run_worker.sh, run_worker.py)
+│   └── server              # Running server connection details (auto-generated)
 ├── params/
 │   └── variables.yaml      # Define workflow parameters available in all stages
-├── workers/
+├── sbatch_profiles/        # Slurm sbatch allocation profiles (on Slurm systems)
 │   ├── cpu.yaml            # CPU worker Slurm profile
 │   └── gpu.yaml            # GPU worker Slurm profile
 ├── stage_A/

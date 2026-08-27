@@ -427,3 +427,45 @@ def save_global_config(cfg):
         os.makedirs(constants.GLOBAL_CONFIG_DIR, exist_ok=True)
     global_config_file = os.path.join(constants.GLOBAL_CONFIG_DIR, "config.json")
     save_json(global_config_file, cfg, full_path=True)
+
+
+def load_sbatch_profile(profile_name, root_dir=None):
+    """
+    Loads an sbatch profile by name from root_dir/sbatch_profiles/,
+    ~/.config/snap_workflow/sbatch_profiles/, or legacy root_dir/workers/.
+    """
+    if not profile_name:
+        return {}
+    if root_dir is None:
+        root_dir = os.getcwd()
+        try:
+            from snap_workflow.utils import path
+            root_dir = path.get_root()
+        except Exception:
+            pass
+
+    exts = ["", ".json", ".yaml", ".yml"]
+    search_dirs = [
+        os.path.join(root_dir, "sbatch_profiles"),
+        os.path.expanduser("~/.config/snap_workflow/sbatch_profiles"),
+        os.path.join(root_dir, "workers"),
+        os.path.expanduser("~/.config/snap_workflow/workers"),
+    ]
+    for d in search_dirs:
+        for ext in exts:
+            fn = f"{profile_name}{ext}" if (ext and not profile_name.endswith(ext)) else profile_name
+            candidate = os.path.join(d, fn)
+            if os.path.isfile(candidate):
+                try:
+                    with open(candidate, "r") as f:
+                        content = f.read()
+                    try:
+                        return json.loads(content)
+                    except Exception:
+                        import yaml
+                        loaded = yaml.safe_load(content)
+                        if isinstance(loaded, dict):
+                            return loaded
+                except Exception:
+                    pass
+    return {}

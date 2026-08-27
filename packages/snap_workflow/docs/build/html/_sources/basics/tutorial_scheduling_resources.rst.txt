@@ -58,18 +58,18 @@ To execute multiple SPoints concurrently on a single workstation without overloa
 
       workflow server start
 
-3. **Submit a local workstation auto-scheduler**:
+3. **Run a local workstation auto-scheduler**:
 
    .. code-block:: bash
 
-      workflow server submit auto local
+      workflow server auto local
 
 The auto-scheduler checks the workstation's total hardware resources, maps the SPoint resource requirements, packs as many concurrent processes as fit within the limits, and queues subsequent SPoints.
 
-Remote Coordination & Slurm Worker Pools
------------------------------------------
+Remote Coordination & Slurm Worker Reservations
+------------------------------------------------
 
-When running on cluster systems, you can coordination-schedule runs from your local workstation:
+When running on cluster systems, you can coordinate and reserve compute allocations directly from your local workstation:
 
 1. **Register and setup the remote cluster**:
 
@@ -84,12 +84,12 @@ When running on cluster systems, you can coordination-schedule runs from your lo
 
       workflow server start
 
-3. **Submit a persistent Slurm worker allocation to the cluster**:
+3. **Reserve Slurm worker allocations on the cluster**:
 
-   Submit worker processes using a defined worker profile (e.g. ``gpu``):
+   Submit worker reservations using a defined sbatch profile (e.g. ``gpu``):
 
    .. code-block:: bash
 
-      workflow server submit worker my_cluster --profile gpu --num-workers 4
+      workflow server reserve my_cluster gpu --num-workers 4
 
-These allocations launch on the cluster, connect back to your local server, pull pending SPoint tasks, execute them on their assigned GPU nodes, and sync outputs back.
+These compute node allocations launch on the cluster, connect back to your local server over the reverse SSH tunnel using ``.workflow/server``, execute pending SPoint tasks on their assigned GPU nodes, survive temporary connection drops, and sync outputs back.

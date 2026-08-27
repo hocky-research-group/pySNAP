@@ -81,6 +81,7 @@ def setup_agent_skills():
         pass
 
 def setup_blank_workflow():
+    from snap_workflow.utils.exec import has_slurm
     os.mkdir(".workflow")
     os.makedirs("params", exist_ok=True)
     os.makedirs("data", exist_ok=True)
@@ -103,6 +104,39 @@ def setup_blank_workflow():
             with open(var_json, 'w') as f:
                 json.dump(variables_template_data, f, indent=4)
         
+    # Only generate sbatch_profiles if Slurm (sbatch) is available locally
+    if has_slurm("local"):
+        os.makedirs("sbatch_profiles", exist_ok=True)
+        cpu_prof = {
+            "partition": "FIXME",
+            "time": "02:00:00",
+            "nodes": 1,
+            "ntasks-per-node": 1,
+            "cpus-per-task": 8,
+            "mem": "16G"
+        }
+        gpu_prof = {
+            "partition": "FIXME",
+            "time": "02:00:00",
+            "nodes": 1,
+            "ntasks-per-node": 1,
+            "cpus-per-task": 8,
+            "gpus-per-node": 1,
+            "mem": "32G"
+        }
+        for prof_name, prof_data in [("cpu", cpu_prof), ("gpu", gpu_prof)]:
+            f_json = os.path.join("sbatch_profiles", f"{prof_name}.json")
+            f_yaml = os.path.join("sbatch_profiles", f"{prof_name}.yaml")
+            f_yml = os.path.join("sbatch_profiles", f"{prof_name}.yml")
+            if not os.path.isfile(f_json) and not os.path.isfile(f_yaml) and not os.path.isfile(f_yml):
+                if fmt == "yaml":
+                    import yaml
+                    with open(f_yaml, 'w') as f:
+                        yaml.safe_dump(prof_data, f, default_flow_style=False)
+                else:
+                    with open(f_json, 'w') as f:
+                        json.dump(prof_data, f, indent=4)
+
     run_worker_sh = os.path.join(".workflow", "workers", "run_worker.sh")
     if not os.path.isfile(run_worker_sh):
         shutil.copy(os.path.join(os.path.dirname(__file__), "templates", "run_worker.sh"), run_worker_sh)
@@ -152,7 +186,9 @@ def zip_workflow(zip_name, sweep_names=None, stage_names=None, include_spoints=F
     subprocess.run(["zip", "-ryq", zip_name, ".workflow"], cwd=root)
     print("\tparams")
     subprocess.run(["zip", "-ryq", zip_name, "params"], cwd=root)
-    if path.exists("workers"):
+    if path.exists("sbatch_profiles"):
+        subprocess.run(["zip", "-ryq", zip_name, "sbatch_profiles"], cwd=root)
+    elif path.exists("workers"):
         subprocess.run(["zip", "-ryq", zip_name, "workers"], cwd=root)
     if path.exists("data"):
         subprocess.run(["zip", "-ryq", zip_name, "data"], cwd=root)

@@ -18,18 +18,34 @@ for env_f in "$RESOLVED_PATH"/*/env.json "$RESOLVED_PATH"/*/env.yaml "$RESOLVED_
     fi
 done
 
-WORKERS_DIR="$RESOLVED_PATH/workers"
-mkdir -p "$WORKERS_DIR"
-TMPL_FILE="$WORKERS_DIR/template.json"
-if [ ! -f "$TMPL_FILE" ]; then
-    cat << 'EOF' > "$TMPL_FILE"
+if command -v sbatch &>/dev/null; then
+    PROF_DIR="$RESOLVED_PATH/sbatch_profiles"
+    mkdir -p "$PROF_DIR"
+    CPU_FILE="$PROF_DIR/cpu.json"
+    if [ ! -f "$CPU_FILE" ] && [ ! -f "$PROF_DIR/cpu.yaml" ] && [ ! -f "$PROF_DIR/cpu.yml" ]; then
+        cat << 'EOF' > "$CPU_FILE"
 {
     "partition": "FIXME",
+    "time": "02:00:00",
     "nodes": 1,
     "ntasks-per-node": 1,
     "cpus-per-task": 8,
-    "mem": "16G",
-    "time": "04:00:00"
+    "mem": "16G"
 }
 EOF
+    fi
+    GPU_FILE="$PROF_DIR/gpu.json"
+    if [ ! -f "$GPU_FILE" ] && [ ! -f "$PROF_DIR/gpu.yaml" ] && [ ! -f "$PROF_DIR/gpu.yml" ]; then
+        cat << 'EOF' > "$GPU_FILE"
+{
+    "partition": "FIXME",
+    "time": "02:00:00",
+    "nodes": 1,
+    "ntasks-per-node": 1,
+    "cpus-per-task": 8,
+    "gpus-per-node": 1,
+    "mem": "32G"
+}
+EOF
+    fi
 fi

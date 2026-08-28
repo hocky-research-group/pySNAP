@@ -283,7 +283,8 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
 
                 if sweep_name and stage_name and spoint_dict:
                     self.server.spoint_manager.set_status(sweep_name, stage_name, spoint_dict, status_val, host=host)
-                    logger.info("Manager updated status of spoint %s %s to '%s' (reported by %s)", stage_name, spoint_dict, status_val, host)
+                    vars_str = ", ".join(f"{k}={v}" for k, v in spoint_dict.items()) if isinstance(spoint_dict, dict) else str(spoint_dict)
+                    logger.info("[DISPATCHER:%s] Report | Status: %s | Stage : %s | Spoint : %s", host, status_val, stage_name, vars_str)
 
                 if host != "local" and stage_name and spoint_dict:
                     try:

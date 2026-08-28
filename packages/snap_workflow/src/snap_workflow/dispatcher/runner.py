@@ -245,8 +245,8 @@ class SubprocessDispatcher(BaseDispatcher):
                 else:
                     status_val = "complete" if poll == 0 else "error"
 
-                logger.info("[SPOINT] Finished: %s %s with status %s (exit code %s)", job['stage'], job['spoint_dict'], status_val, poll)
-                print(f"[Worker Action] Stop executing spoint {job['stage']} with variables {job['spoint_dict']} (status: {status_val}, exit code: {poll})")
+                vars_str = ", ".join(f"{k}={v}" for k, v in job['spoint_dict'].items()) if isinstance(job['spoint_dict'], dict) else str(job['spoint_dict'])
+                logger.info("[DISPATCHER:%s] Report | Status: %s | Stage : %s | Spoint : %s", self.host or "local", status_val, job['stage'], vars_str)
 
                 payload = {
                     "sweep": job["sweep"],

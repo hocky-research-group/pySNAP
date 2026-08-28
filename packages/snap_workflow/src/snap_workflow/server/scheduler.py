@@ -159,6 +159,8 @@ class SPointScheduler:
 
                     if deps_satisfied:
                         self.set_status(sweep_name, stage_name, spoint_dict, "submitted", host=host)
+                        vars_str = ", ".join(f"{k}={v}" for k, v in spoint_dict.items()) if isinstance(spoint_dict, dict) else str(spoint_dict)
+                        logger.info("[SCHEDULER] Assignment | Dispatcher : %s | Stage : %s | Spoint : %s", host, stage_name, vars_str)
                         return (sweep_name, stage_name, spoint_dict, sp_path)
 
         return None

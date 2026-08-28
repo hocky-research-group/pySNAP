@@ -17,6 +17,8 @@ def main_sweep(parsed_command, args):
 
 def add_sweep_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
+    if len(args) > 0 and "name" not in kwargs and "n" not in kwargs:
+        kwargs["name"] = args.pop(0)
     sweep_name = get_sweep_name(kwargs)
     include_stages = kwargs.pop("s", kwargs.pop("stages", None))
     if include_stages is not None and not isinstance(include_stages, list):

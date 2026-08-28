@@ -62,13 +62,17 @@ def print_remotes_info(name=None):
 
 def remote_add_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
-    if len(args) != 1:
-        raise ValueError("Usage: 'workflow remote add name --host USER@HOST'")
+    if len(args) == 2:
+        name = args[0]
+        host = args[1]
+    elif len(args) == 1:
+        name = args[0]
+        host = kwargs.pop("host", None)
+    else:
+        raise ValueError("Usage: 'workflow remote add <name> <host>'")
 
-    name = args[0]
-    host = kwargs.pop("host", None)
-    if host is None:
-        raise ValueError("Missing required keyword argument '--host'.")
+    if not host:
+        raise ValueError("Missing required host. Usage: 'workflow remote add <name> <host>'")
 
     io.warn_unused_kwargs(kwargs)
 

@@ -23,6 +23,8 @@ def print_variable_cmd(parsed_command, args):
 
 def add_variable_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
+    if len(args) > 0 and "name" not in kwargs and "n" not in kwargs:
+        kwargs["name"] = args.pop(0)
     name = get_variable_name(kwargs, args)
     var_type = get_variable_type(kwargs)
 

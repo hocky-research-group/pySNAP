@@ -15,6 +15,8 @@ def main_stage(parsed_command, args):
 
 def add_stage_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
+    if len(args) > 0 and "name" not in kwargs and "n" not in kwargs:
+        kwargs["name"] = args.pop(0)
     stage_name = get_new_stage_name(kwargs)
     has_sbatch = kwargs.pop("sbatch", kwargs.pop("b", None))
     if has_sbatch is not None:

@@ -14,7 +14,10 @@ exclude_sweeps = os.getenv("WORKER_EXCLUDE_SWEEPS", "")
 worker_host = os.getenv("WORKER_HOST", "local")
 worker_id = os.getenv("WORKER_ID")
 
+port = os.getenv("SERVER_PORT")
 server_url = os.getenv("SERVER_URL")
+if not server_url and port:
+    server_url = f"http://127.0.0.1:{port}"
 token = os.getenv("SERVER_TOKEN")
 
 if not server_url or not token:
@@ -23,10 +26,14 @@ if not server_url or not token:
         try:
             with open(server_file, "r") as f:
                 data = json.load(f)
-                server_url = server_url or data.get("url") or f"http://{data.get('host', '127.0.0.1')}:{data.get('port', 8080)}"
+                p = data.get("port", 8080)
+                server_url = server_url or f"http://127.0.0.1:{p}"
                 token = token or data.get("token")
         except Exception:
             pass
+
+if not server_url:
+    server_url = "http://127.0.0.1:8080"
 
 dispatcher_loop(
     server_url=server_url,

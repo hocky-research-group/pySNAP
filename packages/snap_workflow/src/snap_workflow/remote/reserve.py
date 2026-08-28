@@ -128,7 +128,7 @@ def reserve_remote_workers(server_port, token, remote_name, profile, num_workers
     except Exception:
         login_node = None
 
-    export_vars = f"ALL,SERVER_PORT={server_port},SERVER_TOKEN={token}"
+    export_vars = f"ALL,SERVER_PORT={server_port},SERVER_URL=http://127.0.0.1:{server_port},SERVER_TOKEN={token}"
     if login_node:
         export_vars += f",TUNNEL_HOST={login_node}"
     if remote_name:

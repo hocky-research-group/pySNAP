@@ -170,8 +170,9 @@ class SubprocessDispatcher(BaseDispatcher):
         print(f"[Server Instruction] Execute stage {stage} with sweep variables {spoint_dict}")
         print(f"[Worker Action] Start executing spoint {stage} with variables {spoint_dict}")
 
-        spoint_sh_script = os.path.join(".workflow", "spoint.sh")
-        env_base = os.path.join(self.root if self.root is not None else ".", stage, "env")
+        root_dir = self.root if self.root is not None else os.getcwd()
+        spoint_sh_script = os.path.join(root_dir, ".workflow", "spoint.sh")
+        env_base = os.path.join(root_dir, stage, "env")
         req_cpus = 1
         req_gpus = 0
         try:
@@ -208,10 +209,7 @@ class SubprocessDispatcher(BaseDispatcher):
                 core_str = ",".join(map(str, assigned_cpus))
             cmd = ["taskset", "-c", core_str] + cmd
 
-        if self.log_file is not None:
-            proc = subprocess.Popen(cmd, env=proc_env, stdin=subprocess.DEVNULL, stdout=self.log_file, stderr=self.log_file)
-        else:
-            proc = subprocess.Popen(cmd, env=proc_env, stdin=subprocess.DEVNULL)
+        proc = subprocess.Popen(cmd, env=proc_env, cwd=root_dir, stdin=subprocess.DEVNULL)
 
         self.active_jobs[spoint_path] = {
             "proc": proc,
@@ -342,46 +340,33 @@ def dispatcher_loop(
     if not server_url or not token:
         raise ValueError("Manager server connection details not found. Please specify server_url and token, or ensure .workflow/server exists.")
 
-    log_file = None
     try:
+        from snap_workflow.utils.logging import setup_logging
         root = path.get_root()
         log_dir = os.path.join(root, "workers", "logs")
         os.makedirs(log_dir, exist_ok=True)
         w_id = worker_id or f"{host}_{int(time.time())}"
         log_file_path = os.path.join(log_dir, f"worker_{w_id}.log")
-        log_file = open(log_file_path, "a", buffering=1)
+        setup_logging(log_file=log_file_path)
     except Exception:
         pass
 
-    original_stdout = sys.stdout
-    original_stderr = sys.stderr
-    try:
-        if log_file is not None:
-            sys.stdout = log_file
-            sys.stderr = log_file
-
-        dispatcher = SubprocessDispatcher(
-            server_url=server_url,
-            token=token,
-            cpus_total=cpus_total,
-            gpus_total=gpus_total,
-            mem_total=mem_total,
-            stages=stages,
-            sweeps=sweeps,
-            exclude_stages=exclude_stages,
-            exclude_sweeps=exclude_sweeps,
-            host=host,
-            worker_id=worker_id,
-            idle_delay=idle_delay,
-            connect_timeout=connect_timeout,
-            log_file=log_file
-        )
-        dispatcher.run()
-    finally:
-        sys.stdout = original_stdout
-        sys.stderr = original_stderr
-        if log_file is not None:
-            log_file.close()
+    dispatcher = SubprocessDispatcher(
+        server_url=server_url,
+        token=token,
+        cpus_total=cpus_total,
+        gpus_total=gpus_total,
+        mem_total=mem_total,
+        stages=stages,
+        sweeps=sweeps,
+        exclude_stages=exclude_stages,
+        exclude_sweeps=exclude_sweeps,
+        host=host,
+        worker_id=worker_id,
+        idle_delay=idle_delay,
+        connect_timeout=connect_timeout,
+    )
+    dispatcher.run()
 
 
 worker_loop = dispatcher_loop

@@ -163,6 +163,11 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             exclude_stages = {x.strip() for x in exclude_stages_str.split(",") if x.strip()} if exclude_stages_str else None
             exclude_sweeps = {x.strip() for x in exclude_sweeps_str.split(",") if x.strip()} if exclude_sweeps_str else None
 
+            logger.info(
+                "[REQUEST_WORK] Dispatcher : %s | CPUs : %s | GPUs : %s | Mem : %.1f GB",
+                host, cpus_avail, gpu_avail, mem_avail
+            )
+
             try:
                 candidate = self.server.spoint_manager.acquire_next_available(
                     cpus_avail=cpus_avail,

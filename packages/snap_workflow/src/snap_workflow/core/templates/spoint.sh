@@ -40,8 +40,10 @@ for spoint in "$@"; do
             if [ -f "$env_file" ]; then
                 parsed_path=$(sed -nE 's/^[[:space:]]*["'\''#]*python_path["'\''#]*[[:space:]]*:[[:space:]]*["'\'']?([^"'\'',[:space:]]+)["'\'']?.*/\1/p' "$env_file" 2>/dev/null | head -n 1)
                 if [ -n "$parsed_path" ] && [ "$parsed_path" != "FIXME" ]; then
-                    python_path="$parsed_path"
-                    break 2
+                    if [ -x "$parsed_path" ] || command -v "$parsed_path" &>/dev/null; then
+                        python_path="$parsed_path"
+                        break 2
+                    fi
                 fi
             fi
         done
@@ -52,7 +54,9 @@ for spoint in "$@"; do
         if [ -f "$WF_ROOT/.workflow/config.json" ]; then
             parsed_path=$(sed -nE 's/^[[:space:]]*["'\''#]*default_python_env["'\''#]*[[:space:]]*:[[:space:]]*["'\'']?([^"'\'',[:space:]]+)["'\'']?.*/\1/p' "$WF_ROOT/.workflow/config.json" 2>/dev/null | head -n 1)
             if [ -n "$parsed_path" ] && [ "$parsed_path" != "FIXME" ]; then
-                python_path="$parsed_path"
+                if [ -x "$parsed_path" ] || command -v "$parsed_path" &>/dev/null; then
+                    python_path="$parsed_path"
+                fi
             fi
         fi
     fi
@@ -62,7 +66,9 @@ for spoint in "$@"; do
         if [ -f "$HOME/.config/snap_workflow/default_python" ]; then
             parsed_path=$(cat "$HOME/.config/snap_workflow/default_python" 2>/dev/null | tr -d '\r\n ')
             if [ -n "$parsed_path" ] && [ "$parsed_path" != "FIXME" ]; then
-                python_path="$parsed_path"
+                if [ -x "$parsed_path" ] || command -v "$parsed_path" &>/dev/null; then
+                    python_path="$parsed_path"
+                fi
             fi
         fi
     fi

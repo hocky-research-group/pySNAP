@@ -19,11 +19,16 @@ TARGET_HOST="${TUNNEL_HOST:-$SLURM_SUBMIT_HOST}"
 echo "Establishing local port forward back to $TARGET_HOST on port $SERVER_PORT..."
 ssh -i ~/.ssh/id_rsa -o BatchMode=yes -o StrictHostKeyChecking=no -L $SERVER_PORT:127.0.0.1:$SERVER_PORT $TARGET_HOST -N -f 2>/dev/null || ssh -o BatchMode=yes -o StrictHostKeyChecking=no -L $SERVER_PORT:127.0.0.1:$SERVER_PORT $TARGET_HOST -N -f 2>/dev/null
 
-#---- Start Worker Client ----
 # Parse python interpreter path from .workflow/config.json
 python_path=$(grep -o '"default_python_env"[[:space:]]*:[[:space:]]*"[^"]*' ".workflow/config.json" | cut -d'"' -f4 2>/dev/null)
+if [ -n "$python_path" ] && [ ! -x "$python_path" ] && ! command -v "$python_path" &>/dev/null; then
+    python_path=""
+fi
 if [ -z "$python_path" ] && [ -f "$HOME/.config/snap_workflow/default_python" ]; then
-    python_path=$(cat "$HOME/.config/snap_workflow/default_python" 2>/dev/null | tr -d '\r\n ')
+    parsed_path=$(cat "$HOME/.config/snap_workflow/default_python" 2>/dev/null | tr -d '\r\n ')
+    if [ -x "$parsed_path" ] || command -v "$parsed_path" &>/dev/null; then
+        python_path="$parsed_path"
+    fi
 fi
 if [ -z "$python_path" ]; then
     if command -v python3 &>/dev/null; then

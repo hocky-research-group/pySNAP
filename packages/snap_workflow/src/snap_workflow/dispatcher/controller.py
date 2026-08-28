@@ -173,6 +173,24 @@ class DispatcherController:
 
     def stop(self, force: bool = False) -> None:
         """Terminates managed dispatcher processes (gracefully by default, or immediately if force=True)."""
+        if self.target_name != "local":
+            try:
+                from snap_workflow.remote.ssh import get_control_path_args
+                from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                g_remotes = load_global_remotes()
+                l_remotes = load_local_remotes()
+                remote_host = self.target_name
+                if self.target_name in l_remotes:
+                    remote_host = l_remotes[self.target_name].get("host", remote_host)
+                elif self.target_name in g_remotes:
+                    remote_host = g_remotes[self.target_name].get("host", remote_host)
+
+                kill_cmd = f"pkill -f 'snap_workflow.dispatcher.runner.*{self.target_name}' || pkill -f 'snap_workflow.dispatcher.runner'"
+                ssh_kill = ["ssh"] + get_control_path_args() + [remote_host, kill_cmd]
+                subprocess.run(ssh_kill, capture_output=True, timeout=5)
+            except Exception as e:
+                logger.debug("Failed to terminate remote runner on %s: %s", self.target_name, e)
+
         for proc in self.procs:
             if proc.poll() is None:
                 if force:

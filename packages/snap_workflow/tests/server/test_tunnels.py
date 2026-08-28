@@ -84,9 +84,12 @@ def test_ensure_remote_tunnel_terminated_process_restart():
 
     mock_new_proc = MagicMock()
     mock_new_proc.poll.return_value = None
+    mock_new_proc.communicate.return_value = ("", "")
+    mock_new_proc.returncode = 1
 
     with patch("snap_workflow.utils.io.load_global_remotes", return_value={"my_remote": {"host": "example.com"}}), \
          patch("snap_workflow.utils.io.load_local_remotes", return_value={}), \
+         patch("snap_workflow.server.tunnels.subprocess.run", return_value=MagicMock(returncode=1, stdout="")), \
          patch("snap_workflow.server.tunnels.subprocess.Popen", return_value=mock_new_proc), \
          patch("snap_workflow.server.tunnels.provision_remote_server_info") as mock_prov, \
          patch("snap_workflow.server.tunnels.time.sleep"):
@@ -102,6 +105,7 @@ def test_ensure_remote_tunnel_single_arg_without_server():
 
     with patch("snap_workflow.utils.io.load_global_remotes", return_value={"my_remote": {"host": "example.com"}}), \
          patch("snap_workflow.utils.io.load_local_remotes", return_value={}), \
+         patch("snap_workflow.server.tunnels.subprocess.run", return_value=MagicMock(returncode=1, stdout="")), \
          patch("snap_workflow.server.tunnels.subprocess.Popen", return_value=mock_new_proc), \
          patch("snap_workflow.server.tunnels.provision_remote_server_info") as mock_prov, \
          patch("snap_workflow.server.tunnels.time.sleep"):

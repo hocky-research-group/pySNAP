@@ -658,16 +658,16 @@ def test_set_python_config(sandbox, env_dir):
 
 def test_cli_set_python(sandbox, env_dir):
     initialize(env_dir)
-    from snap_workflow.cli.params import main_set
+    from snap_workflow.cli.python import main_python
     from snap_workflow.core.domain.stages import add_stage
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
-    main_set("workflow set", ["python", "/bin/my_py", "--global"])
+    main_python("workflow python", ["set", "/bin/my_py"])
     with open(".workflow/config.json") as f:
         cfg = json.load(f)
     assert cfg["default_python_env"] == "/bin/my_py"
     
-    main_set("workflow set", ["python", "/bin/stage_py", "-s", "stage1"])
+    main_python("workflow python", ["set", "/bin/stage_py", "-s", "stage1"])
     with open("stage1/env.json") as f:
         scfg = json.load(f)
     assert scfg["python_path"] == "/bin/stage_py"

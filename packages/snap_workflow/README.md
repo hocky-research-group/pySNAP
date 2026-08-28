@@ -164,7 +164,7 @@ Set up the manager server and reserve Slurm worker compute allocations on remote
 workflow remote add my_cluster user@cluster.domain.edu
 
 # 2. Initializes the workflow on the remote system (overwrites at the path except for env/sbatch profiles)
-workflow remote setup my_cluster --path /scratch/user/my_experiment
+workflow remote setup my_cluster /scratch/user/my_experiment
 # Note: After initialization, configure the stage runtime requirements (env.json/env.yaml) on the remote system.
 
 # 3. Start the local server

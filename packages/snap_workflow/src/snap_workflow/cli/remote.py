@@ -28,7 +28,7 @@ def help_remote_cmd(parsed_command, args):
     print("Available subcommands for 'workflow remote':")
     print("  print [name]                      Print registered remote cluster configurations")
     print("  add <name> <host>                 Register a remote host (SSH connection tested)")
-    print("  setup <name> [--path /path]       Provision workspace and validate remote resources")
+    print("  setup <name> <path>               Provision workspace and validate remote resources")
     print("  sync <name> [--pull|--push|--both] Sync files, statuses, and auto-sync outputs")
     print("  connect <name>                    Open an interactive SSH session to remote host")
 
@@ -54,26 +54,19 @@ def print_remotes_info(name=None):
         r = matched[0]
         g_remotes = load_global_remotes()
         l_remotes = load_local_remotes()
-        is_global = "Yes" if name in g_remotes else "No"
-        is_local = "Yes" if name in l_remotes else "No"
-        conn_str = "connected" if r["connected"] else "disconnected"
+        path_str = r['path'] if r['path'] else "(not configured in local workflow)"
+        print(f"Remote: {r['name']}")
+        print(f"  Host:   {r['host']}")
+        print(f"  Path:   {path_str}")
+        print(f"  Status: {'connected' if r['connected'] else 'disconnected'}")
+        return
 
-        print(f"Remote Configuration: '{r['name']}'")
-        print("-" * 50)
-        print(f"  Name:       {r['name']}")
-        print(f"  Host:       {r['host']}")
-        print(f"  Path:       {r['path']}")
-        print(f"  Status:     {conn_str}")
-        print(f"  Global:     {is_global}")
-        print(f"  Local:      {is_local}")
-        print("-" * 50)
-    else:
-        print(f"{'NAME':<20} {'HOST':<30} {'PATH':<30} {'STATUS'}")
-        print("-" * 90)
-        for r in remotes_info:
-            path_str = r['path'] if r['path'] else "(not set)"
-            conn_str = "connected" if r['connected'] else "disconnected"
-            print(f"{r['name']:<20} {r['host']:<30} {path_str:<30} {conn_str}")
+    print(f"{'NAME':<20} {'HOST':<30} {'PATH':<30} {'STATUS'}")
+    print("-" * 90)
+    for r in remotes_info:
+        path_str = r['path'] if r['path'] else "(not set)"
+        conn_str = "connected" if r['connected'] else "disconnected"
+        print(f"{r['name']:<20} {r['host']:<30} {path_str:<30} {conn_str}")
 
 
 def remote_add_cmd(parsed_command, args):
@@ -108,12 +101,17 @@ def remote_add_cmd(parsed_command, args):
 
 def remote_setup_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
-    if len(args) < 1:
-        raise ValueError("Usage: 'workflow remote setup name [--path /remote/path]'")
+    if len(args) == 2:
+        name = args[0]
+        remote_path = args[1]
+    elif len(args) == 1:
+        name = args[0]
+        remote_path = kwargs.pop("path", None)
+    else:
+        raise ValueError("Usage: 'workflow remote setup <name> <path>'")
 
-    name = args[0]
-    remote_path = kwargs.pop("path", None)
-    python_env = kwargs.pop("python", None)
+    if not remote_path:
+        raise ValueError("Missing required remote directory path. Usage: 'workflow remote setup <name> <path>'")
 
     global_remotes = load_global_remotes()
     local_remotes = load_local_remotes()
@@ -124,15 +122,7 @@ def remote_setup_cmd(parsed_command, args):
         host = global_remotes[name]["host"]
 
     if not host:
-        raise ValueError(f"Remote '{name}' is not registered. Add it first using 'workflow remote add {name} --host USER@HOST'.")
-
-    if not remote_path:
-        if name in local_remotes and "path" in local_remotes[name]:
-            remote_path = local_remotes[name]["path"]
-        else:
-            root_dir = path.get_root()
-            dirname = os.path.basename(os.path.abspath(root_dir))
-            remote_path = f"~/{dirname}"
+        raise ValueError(f"Remote '{name}' is not registered. Add it first using 'workflow remote add {name} USER@HOST'.")
 
     resolved_path = remote_setup.setup_remote_cluster(host, remote_path)
     if resolved_path:

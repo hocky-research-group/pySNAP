@@ -442,7 +442,7 @@ def test_reset_spoint_cli(sandbox):
     sp_path = spoints.get_spoint_path("stage1", {"x": 15})
 
     with pytest.raises(SystemExit) as exc_info:
-        main_spoint("workflow spoint", ["reset"])
+        main_spoint("workflow spoint", ["reset", "nonexistent_path"])
     assert exc_info.value.code == 1
 
     start_dir = os.getcwd()

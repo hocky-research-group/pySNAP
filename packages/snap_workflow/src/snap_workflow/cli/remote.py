@@ -8,14 +8,29 @@ from snap_workflow.cli.utils import parse_remaining, execute_option
 
 
 def main_remote(parsed_command, args):
+    if not args or args[0].startswith("-"):
+        return remote_print_cmd(parsed_command, args)
+
     remote_options = {
         "add": remote_add_cmd,
         "setup": remote_setup_cmd,
         "sync": remote_sync_cmd,
         "connect": remote_connect_cmd,
         "print": remote_print_cmd,
+        "help": help_remote_cmd,
+        "--help": help_remote_cmd,
+        "-h": help_remote_cmd,
     }
     execute_option("remote_option", remote_options, parsed_command=parsed_command, args=args)
+
+
+def help_remote_cmd(parsed_command, args):
+    print("Available subcommands for 'workflow remote':")
+    print("  print [name]                      Print registered remote cluster configurations")
+    print("  add <name> <host>                 Register a remote host (SSH connection tested)")
+    print("  setup <name> [--path /path]       Provision workspace and validate remote resources")
+    print("  sync <name> [--pull|--push|--both] Sync files, statuses, and auto-sync outputs")
+    print("  connect <name>                    Open an interactive SSH session to remote host")
 
 
 def remote_print_cmd(parsed_command, args):
@@ -23,6 +38,7 @@ def remote_print_cmd(parsed_command, args):
     name = args[0] if len(args) > 0 else kwargs.pop("name", kwargs.pop("r", None))
     io.warn_unused_kwargs(kwargs)
     print_remotes_info(name)
+    print("\n(For a list of all remote subcommands, run 'workflow remote help')")
 
 
 def print_remotes_info(name=None):

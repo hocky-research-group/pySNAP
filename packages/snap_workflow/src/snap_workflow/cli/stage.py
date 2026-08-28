@@ -4,13 +4,12 @@ from snap_workflow.cli.utils import parse_remaining, execute_option
 from snap_workflow.cli.prompts import get_new_stage_name, get_existing_stage_name, get_sbatch_details, prompt_each_stage, prompt_each_variable
 
 
-def main_stage(parsed_command, args):
-    stage_options = {
-        "add": add_stage_cmd,
-        "print": print_stages_cmd,
-        "set": set_stage_cmd,
-    }
-    execute_option("stage_option", stage_options, parsed_command=parsed_command, args=args)
+def print_stages_cmd(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    stage_name = get_existing_stage_name(kwargs, include_all=True, get_input=False, default='all')
+    io.warn_unused_kwargs(kwargs)
+    stage_tools.print_stages(stage_name)
+    print("\n(For a list of all stage subcommands, run 'workflow stage help')")
 
 
 def add_stage_cmd(parsed_command, args):
@@ -30,28 +29,21 @@ def add_stage_cmd(parsed_command, args):
     stage_tools.add_stage(stage_name, sbatch_details, stage_variables, stage_dependencies)
 
 
-def print_stages_cmd(parsed_command, args):
-    args, kwargs = parse_remaining(args)
-    stage_name = get_existing_stage_name(kwargs, include_all=True, get_input=False, default='all')
-    io.warn_unused_kwargs(kwargs)
-    stage_tools.print_stages(stage_name)
+def help_stages_cmd(parsed_command, args):
+    print("Available subcommands for 'workflow stage':")
+    print("  print [-s S]                      Print registered stages and dependencies")
+    print("  add [name] [--sbatch]             Create a new stage (interactive wizard)")
 
 
-def set_stage_cmd(parsed_command, args):
-    if args and args[0] == "python":
-        args.pop(0)
-        return set_stage_python_cmd(parsed_command, args)
-    raise ValueError("Usage: 'workflow stage set python <py_path>'")
+def main_stage(parsed_command, args):
+    if not args or args[0].startswith("-"):
+        return print_stages_cmd(parsed_command, args)
 
-
-def set_stage_python_cmd(parsed_command, args):
-    args, kwargs = parse_remaining(args)
-    if len(args) == 0:
-        raise ValueError("Must provide python path")
-    py_path = args.pop(0)
-    is_project = kwargs.pop("project", kwargs.pop("p", kwargs.pop("global", False)))
-    stage_names = kwargs.pop("s", kwargs.pop("stage", kwargs.pop("stages", None)))
-    if stage_names is not None and not isinstance(stage_names, list):
-        stage_names = [stage_names]
-    io.warn_unused_kwargs(kwargs)
-    stage_tools.set_python_config(py_path, is_global=is_project, stage_names=stage_names)
+    stage_options = {
+        "print": print_stages_cmd,
+        "add": add_stage_cmd,
+        "help": help_stages_cmd,
+        "--help": help_stages_cmd,
+        "-h": help_stages_cmd,
+    }
+    execute_option("stage_option", stage_options, parsed_command=parsed_command, args=args)

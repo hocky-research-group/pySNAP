@@ -126,9 +126,9 @@ def get_completions(args=None, prefix="", shell='bash'):
     # 2. Top-level completion (no positional command arguments provided yet)
     if not args:
         commands = [
-            "init", "build", "stage", "sweep", "variable", "status",
-            "spoint", "params", "data", "remote", "server", "zip",
-            "update", "completions", "autocomplete"
+            "init", "stage", "sweep", "variable", "status",
+            "spoint", "params", "data", "python", "remote", "server", "zip",
+            "completions", "autocomplete"
         ]
         if prefix:
             commands = [c for c in commands if c.startswith(prefix)]
@@ -138,13 +138,14 @@ def get_completions(args=None, prefix="", shell='bash'):
     first_arg = args[0]
     if len(args) == 1:
         mapping = {
-            "stage": ["add", "print", "set"],
-            "sweep": ["add", "print", "reset", "remove"],
+            "stage": ["add", "print"],
+            "sweep": ["add", "print", "remove"],
             "variable": ["add", "print"],
             "status": ["print", "set", "reset"],
             "spoint": ["reset", "submit"],
             "params": ["set", "convert"],
             "data": ["collect"],
+            "python": ["print", "set"],
             "remote": ["add", "setup", "sync", "connect", "print"],
             "server": ["start", "auto", "autoschedule", "reserve", "stop", "shutdown"],
         }

@@ -12,6 +12,7 @@ from snap_workflow.cli.status import main_status
 from snap_workflow.cli.spoint import main_spoint
 from snap_workflow.cli.params import main_params
 from snap_workflow.cli.data import main_data
+from snap_workflow.cli.python import main_python
 from snap_workflow.cli.remote import main_remote
 from snap_workflow.cli.server import main_server
 
@@ -39,23 +40,6 @@ def main_init(parsed_command, args):
     script_path = get_script_path(kwargs)
     io.warn_unused_kwargs(kwargs)
     initialize(script_path)
-    sys.exit(0)
-
-
-def main_build(parsed_command, args):
-    args, kwargs = parse_remaining(args)
-    io.warn_unused_kwargs(kwargs)
-    build_workflow()
-
-
-def build_workflow():
-    print("Workflow build completed.")
-
-
-def main_update(parsed_command, args):
-    args, kwargs = parse_remaining(args)
-    io.warn_unused_kwargs(kwargs)
-    print("Workflow updated.")
     sys.exit(0)
 
 
@@ -117,8 +101,6 @@ def main(command_name=None, args=None):
     cmd_map = {
         # Workflow-as-object lifecycle commands
         "init": main_init,
-        "build": main_build,
-        "update": main_update,
         "zip": main_zip,
         "autocomplete": main_autocomplete,
         "completions": main_autocomplete,
@@ -131,6 +113,7 @@ def main(command_name=None, args=None):
         "status": main_status,
         "params": main_params,
         "data": main_data,
+        "python": main_python,
         "spoint": main_spoint,
         "remote": main_remote,
         "server": main_server,

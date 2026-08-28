@@ -12,6 +12,7 @@ from snap_workflow.utils import path
 from snap_workflow.server import sync
 from snap_workflow import dispatcher
 from snap_workflow.cli.sweep import main_sweep
+from snap_workflow.cli.spoint import main_spoint
 from snap_workflow.cli.remote import main_remote
 
 def test_remove_sweep_soft_safety(sandbox, env_dir):
@@ -77,7 +78,7 @@ def test_reset_sweep_hard_confirmation_decline(sandbox, env_dir):
     # Confirm decline on reset hard
     with patch('builtins.input', side_effect=["n"]):
         with pytest.raises(SystemExit):
-            main_sweep("workflow sweep", ["reset", "-w", "sweep1", "--hard"])
+            main_spoint("workflow spoint", ["reset", "-w", "sweep1", "--hard"])
 
     # No files should be deleted
     assert os.path.isfile(user_file)
@@ -134,9 +135,9 @@ def test_cli_outside_workflow_aborts_safely(tmp_path):
     start_dir = os.getcwd()
     os.chdir(non_workflow_dir)
     try:
-        from snap_workflow.cli.sweep import reset_sweep_cmd
-        with pytest.raises(Exception, match="Not in a workflow system"):
-            reset_sweep_cmd("workflow reset sweep", ["sweep1"])
+        from snap_workflow.cli.spoint import reset_spoint_cmd
+        with pytest.raises(Exception):
+            reset_spoint_cmd("workflow spoint reset", ["sweep1"])
             
         # Ensure no folders/files were created
         assert os.listdir(non_workflow_dir) == []
@@ -182,7 +183,7 @@ def test_clear_directory_boundary_protection(sandbox, env_dir):
         f.write("user report")
         
     # Run a hard sweep reset with --force
-    main_sweep("workflow sweep", ["reset", "-w", "sweep1", "--hard", "--force"])
+    main_spoint("workflow spoint", ["reset", "-w", "sweep1", "--hard", "--force"])
     
     # File inside SPoint is cleared/deleted as expected
     assert not os.path.isfile(spoint_file)

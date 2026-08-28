@@ -4,11 +4,12 @@ from unittest.mock import patch
 
 from snap_workflow.core import initialize, load_stages, add_stage, add_variable, add_sweep
 from snap_workflow.core.domain.sweeps import load_sweeps
-from snap_workflow.cli.workflow import main_init, main_update, main_zip, main_autocomplete, main_variable
+from snap_workflow.cli.workflow import main_init, main_zip, main_autocomplete, main_variable
 from snap_workflow.cli.stage import main_stage
 from snap_workflow.cli.sweep import main_sweep
 from snap_workflow.cli.status import main_status
 from snap_workflow.cli.spoint import main_spoint
+from snap_workflow.cli.python import main_python
 from snap_workflow.cli.utils import get_completions
 
 
@@ -100,12 +101,6 @@ def test_cli_autocomplete(sandbox):
         main_autocomplete("workflow autocomplete", ["fish"])
 
 
-def test_cli_update(sandbox, env_dir):
-    initialize(env_dir)
-    with pytest.raises(SystemExit):
-        main_update("workflow update", [])
-
-
 def test_cli_zip(sandbox, env_dir):
     initialize(env_dir)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
@@ -132,20 +127,33 @@ def test_cli_reset(sandbox, env_dir):
         main_status("workflow status", ["reset", "errors"])
         
     with patch('builtins.input', side_effect=["sweep1"]):
-        main_sweep("workflow sweep", ["reset"])
+        main_spoint("workflow spoint", ["reset"])
 
     with patch('builtins.input', side_effect=["sweep1", "y"]):
-        main_sweep("workflow sweep", ["reset", "--hard"])
+        main_spoint("workflow spoint", ["reset", "--hard"])
 
     with patch('builtins.input', side_effect=["sweep1", "n"]):
         with pytest.raises(SystemExit):
-            main_sweep("workflow sweep", ["reset", "--hard"])
+            main_spoint("workflow spoint", ["reset", "--hard"])
 
-    main_sweep("workflow sweep", ["reset", "-w", "sweep1", "--hard", "--force"])
-    main_sweep("workflow sweep", ["reset", "-w", "sweep1", "--hard", "-f"])
+    main_spoint("workflow spoint", ["reset", "-w", "sweep1", "--hard", "--force"])
+    main_spoint("workflow spoint", ["reset", "-w", "sweep1", "--hard", "-f"])
 
-    main_sweep("workflow sweep", ["reset", "sweep1"])
-    main_sweep("workflow sweep", ["reset", "sweep1", "--hard", "--force"])
+    main_spoint("workflow spoint", ["reset", "sweep1"])
+    main_spoint("workflow spoint", ["reset", "sweep1", "--hard", "--force"])
+
+
+def test_cli_python(sandbox, env_dir, capsys):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=[], stage_dependencies=[])
+
+    main_python("workflow python", [])
+    captured = capsys.readouterr()
+    assert "Global Fallback" in captured.out
+    assert "Project Default" in captured.out
+
+    main_python("workflow python", ["set"])
+    main_python("workflow python", ["set", "-s", "stage1"])
 
 
 def test_cli_remove_force(sandbox, env_dir):
@@ -169,12 +177,16 @@ def test_get_completions_noun_verb():
     assert "variable" in get_completions([], "")
     assert "status" in get_completions([], "")
     assert "spoint" in get_completions([], "")
+    assert "python" in get_completions([], "")
+    assert "build" not in get_completions([], "")
+    assert "update" not in get_completions([], "")
 
-    assert get_completions(["stage"], "") == ["add", "print", "set"]
-    assert get_completions(["sweep"], "") == ["add", "print", "reset", "remove"]
+    assert get_completions(["stage"], "") == ["add", "print"]
+    assert get_completions(["sweep"], "") == ["add", "print", "remove"]
     assert get_completions(["variable"], "") == ["add", "print"]
     assert get_completions(["status"], "") == ["print", "set", "reset"]
     assert get_completions(["spoint"], "") == ["reset", "submit"]
+    assert get_completions(["python"], "") == ["print", "set"]
 
 
 def test_cli_status_and_spoint(sandbox, env_dir, capsys):

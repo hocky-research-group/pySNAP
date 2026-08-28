@@ -68,8 +68,9 @@ def pull_spoint_data(remote, host, remote_path, spoint_rel_path, stage_name, ver
     local_dest = os.path.join(root, spoint_rel_path)
     os.makedirs(local_dest, exist_ok=True)
 
+    from snap_workflow.remote.ssh import get_control_path_args
     rsync_flag = "-avz" if verbose else "-az"
-    rsync_cmd = ["rsync", rsync_flag]
+    rsync_cmd = ["rsync", rsync_flag, "-e", "ssh " + " ".join(get_control_path_args())]
     rsync_cmd.append('--include=*/')
     for pat in patterns:
         rsync_cmd.append(f'--include={pat}')
@@ -133,10 +134,15 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
 
     rsync_flag = "-avz" if verbose else "-az"
 
+    from snap_workflow.remote.ssh import get_control_path_args
     if source_remote != "local":
         os.makedirs(local_temp, exist_ok=True)
         source_uri = f"{source_host}:{source_path}/{dep_rel_path}/"
-        pull_cmd = ["rsync", rsync_flag, source_uri, f"{local_temp}/"]
+        pull_cmd = [
+            "rsync", rsync_flag,
+            "-e", "ssh " + " ".join(get_control_path_args()),
+            source_uri, f"{local_temp}/"
+        ]
         if verbose:
             logger.info("[SYNC] Transit pull: %s", " ".join(pull_cmd))
         try:
@@ -149,13 +155,17 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
     if dest_remote != "local":
         parent_remote_dir = os.path.dirname(f"{dest_path}/{dep_rel_path}")
         try:
-            subprocess.run(["ssh", dest_host, f"mkdir -p {parent_remote_dir}"], check=True, timeout=10, capture_output=not verbose)
+            subprocess.run(["ssh"] + get_control_path_args() + [dest_host, f"mkdir -p {parent_remote_dir}"], check=True, timeout=10, capture_output=not verbose)
         except Exception as e:
             logger.error("Failed transit remote mkdir %s: %s", parent_remote_dir, e)
             return
 
         dest_uri = f"{dest_host}:{dest_path}/{dep_rel_path}/"
-        push_cmd = ["rsync", rsync_flag, f"{local_temp}/", dest_uri]
+        push_cmd = [
+            "rsync", rsync_flag,
+            "-e", "ssh " + " ".join(get_control_path_args()),
+            f"{local_temp}/", dest_uri
+        ]
         if verbose:
             logger.info("[SYNC] Transit push: %s", " ".join(push_cmd))
         try:
@@ -181,8 +191,13 @@ def pull_worker_logs(remote_type, host, remote_path, verbose=False):
     local_dest = os.path.join(root, "workers", "logs")
     os.makedirs(local_dest, exist_ok=True)
 
+    from snap_workflow.remote.ssh import get_control_path_args
     rsync_flag = "-avz" if verbose else "-az"
-    rsync_cmd = ["rsync", rsync_flag, f"{host}:{remote_path}/workers/logs/", f"{local_dest}/"]
+    rsync_cmd = [
+        "rsync", rsync_flag,
+        "-e", "ssh " + " ".join(get_control_path_args()),
+        f"{host}:{remote_path}/workers/logs/", f"{local_dest}/"
+    ]
     if verbose:
         logger.info("[SYNC] Pulling worker logs: %s", " ".join(rsync_cmd))
     try:

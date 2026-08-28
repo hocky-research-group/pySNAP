@@ -89,6 +89,7 @@ def reserve_remote_workers(server_port, token, remote_name, profile, num_workers
     logger.info("[REMOTE:WORKER] Syncing codebase to remote cluster %s:%s...", remote_host, remote_path)
     sync_command = [
         "rsync", "-avz",
+        "-e", "ssh " + " ".join(get_control_path_args()),
         "--exclude", f"{SPOINTS}/",
         "--exclude", ".git/",
         "--exclude", "slurm_out/",

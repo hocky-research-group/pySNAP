@@ -15,9 +15,17 @@ def print_status_cmd(parsed_command, args):
 def set_status_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
     if len(args) == 0:
-        raise ValueError("Must provide status value")
-    new_status = args.pop(0)
+        raise ValueError("Usage: 'workflow status set [from_status] <to_status> [-w sweep] [-s stage]'")
+
     old_status = kwargs.pop("from", kwargs.pop("old", kwargs.pop("old_status", None)))
+    if len(args) == 1:
+        new_status = args.pop(0)
+    else:
+        from_arg = args.pop(0)
+        to_arg = args.pop(0)
+        old_status = old_status if old_status is not None else from_arg
+        new_status = to_arg
+
     sweep_name = get_existing_sweep_name(kwargs, include_all=True, get_input=False, default='all')
     stage_name = get_existing_stage_name(kwargs, include_all=True, is_list=False, get_input=False, default='all')
     io.warn_unused_kwargs(kwargs)

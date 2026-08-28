@@ -213,6 +213,17 @@ def test_cli_status_and_spoint(sandbox, env_dir, capsys):
     captured = capsys.readouterr()
     assert "initialized" in captured.out
 
+    # 'workflow status set <from_status> <to_status>' (2 positional args)
+    main_status("workflow status", ["set", "initialized", "running"])
+    main_status("workflow status", ["print"])
+    captured = capsys.readouterr()
+    assert "running" in captured.out
+
+    main_status("workflow status", ["set", "running", "complete"])
+    main_status("workflow status", ["print"])
+    captured = capsys.readouterr()
+    assert "complete" in captured.out
+
 
 def test_cli_variable_print(sandbox, env_dir, capsys):
     initialize(env_dir)

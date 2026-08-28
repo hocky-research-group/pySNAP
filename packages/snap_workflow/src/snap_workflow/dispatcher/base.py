@@ -57,6 +57,10 @@ class BaseDispatcher(ABC):
             pass
         return runner_send_request(url, self.token, data=data)
 
+    def get_available_resources(self) -> Dict[str, Any]:
+        """Returns currently available hardware resources (e.g. cpus_avail, gpu_avail, mem_avail)."""
+        return {}
+
     def request_work(self) -> Optional[Dict[str, Any]]:
         """Polls the server for an unlocked SPoint task matching filter criteria."""
         params = {}
@@ -70,6 +74,10 @@ class BaseDispatcher(ABC):
             params["exclude_sweeps"] = self.exclude_sweeps
         if self.host:
             params["host"] = self.host
+
+        res_info = self.get_available_resources()
+        if res_info:
+            params.update(res_info)
 
         query = urllib.parse.urlencode(params)
         url = f"{self.server_url}/request_work"

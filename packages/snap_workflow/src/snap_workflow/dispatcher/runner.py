@@ -125,8 +125,8 @@ class SubprocessDispatcher(BaseDispatcher):
         except Exception:
             pass
 
-    def has_capacity(self) -> bool:
-        """Returns True if there is remaining CPU/memory capacity to accept another task."""
+    def get_available_resources(self) -> Dict[str, Any]:
+        """Calculates currently available CPUs, GPUs, and Memory capacity."""
         cpus_running = 0
         gpus_running = 0
         mem_running = 0.0
@@ -150,8 +150,18 @@ class SubprocessDispatcher(BaseDispatcher):
             mem_running += req_mem
 
         cpus_avail = max(0, self.cpus_total - cpus_running)
+        gpu_avail = max(-1, self.gpus_total - gpus_running) if self.gpus_total != -1 else -1
         mem_avail = max(0.0, self.mem_total - mem_running)
-        return cpus_avail > 0 and mem_avail > 0
+        return {
+            "cpus_avail": cpus_avail,
+            "gpu_avail": gpu_avail,
+            "mem_avail": mem_avail
+        }
+
+    def has_capacity(self) -> bool:
+        """Returns True if there is remaining CPU/memory capacity to accept another task."""
+        res = self.get_available_resources()
+        return res["cpus_avail"] > 0 and res["mem_avail"] > 0
 
     def dispatch_task(self, task: Dict[str, Any]) -> None:
         """Acquires hardware resources and spawns the SPoint subprocess."""

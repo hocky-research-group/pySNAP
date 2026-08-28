@@ -98,16 +98,22 @@ def push_dependency_data(remote, host, remote_path, dep_spoint_rel_path, verbose
         logger.warning("Local dependency directory %s does not exist. Skipping push.", local_src)
         return
 
+    from snap_workflow.remote.ssh import get_control_path_args
     parent_remote_dir = os.path.dirname(f"{remote_path}/{dep_spoint_rel_path}")
     try:
-        subprocess.run(["ssh", host, f"mkdir -p {parent_remote_dir}"], check=True, timeout=10, capture_output=not verbose)
+        ssh_cmd = ["ssh"] + get_control_path_args() + [host, f"mkdir -p {parent_remote_dir}"]
+        subprocess.run(ssh_cmd, check=True, timeout=10, capture_output=not verbose)
     except Exception as e:
         logger.error("Failed to create remote parent directory %s: %s", parent_remote_dir, e)
         return
 
     dest_uri = f"{host}:{remote_path}/{dep_spoint_rel_path}/"
     rsync_flag = "-avz" if verbose else "-az"
-    rsync_cmd = ["rsync", rsync_flag, f"{local_src}/", dest_uri]
+    rsync_cmd = [
+        "rsync", rsync_flag,
+        "-e", "ssh " + " ".join(get_control_path_args()),
+        f"{local_src}/", dest_uri
+    ]
     if verbose:
         logger.info("[SYNC] Pushing dependency data for %s: %s", dep_spoint_rel_path, " ".join(rsync_cmd))
     try:

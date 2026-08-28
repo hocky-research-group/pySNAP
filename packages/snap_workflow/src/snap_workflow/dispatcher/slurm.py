@@ -71,6 +71,14 @@ class SlurmDispatcher(BaseDispatcher):
         """Returns True if this dispatcher manages a remote Slurm cluster over SSH."""
         return bool(self.remote_host and self.remote_host != "local")
 
+    def get_available_resources(self) -> Dict[str, Any]:
+        """Slurm delegates node-level scheduling to the cluster, offering virtually unlimited capacity."""
+        return {
+            "cpus_avail": 999999,
+            "gpu_avail": 999999,
+            "mem_avail": 999999.0
+        }
+
     def has_capacity(self) -> bool:
         """Returns True if the number of in-flight Slurm jobs is below max_queued_jobs."""
         return len(self.active_jobs) < self.max_queued_jobs

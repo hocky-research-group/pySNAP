@@ -127,9 +127,8 @@ def get_completions(args=None, prefix="", shell='bash'):
     if not args:
         commands = [
             "init", "build", "stage", "sweep", "variable", "status",
-            "reset", "convert", "set", "remove", "collect", "zip",
-            "submit", "remote", "server", "spoint", "add", "print",
-            "update", "plot", "clean", "completions", "autocomplete"
+            "spoint", "params", "data", "remote", "server", "zip",
+            "update", "completions", "autocomplete"
         ]
         if prefix:
             commands = [c for c in commands if c.startswith(prefix)]
@@ -139,18 +138,15 @@ def get_completions(args=None, prefix="", shell='bash'):
     first_arg = args[0]
     if len(args) == 1:
         mapping = {
-            "stage": ["add", "print", "list"],
+            "stage": ["add", "print", "list", "set"],
             "sweep": ["add", "print", "list", "reset", "remove"],
             "variable": ["add", "print", "list"],
-            "status": ["print", "list", "set", "reset", "submit"],
-            "spoint": ["print", "list", "set", "reset", "submit"],
+            "status": ["print", "list", "set", "reset", "reset-errors", "submit"],
+            "spoint": ["print", "list", "set", "reset", "reset-errors", "submit"],
+            "params": ["set", "convert"],
+            "data": ["collect"],
             "remote": ["add", "setup", "sync", "connect", "list", "print"],
-            "server": ["start", "auto", "autoschedule", "reserve"],
-            "add": ["stage", "sweep", "variable"],
-            "remove": ["sweep"],
-            "reset": ["stage", "sweep", "spoint"],
-            "print": ["stage", "sweep", "variable", "spoint", "status", "remote"],
-            "set": ["status", "spoint", "params", "python"]
+            "server": ["start", "auto", "autoschedule", "reserve", "stop", "shutdown"],
         }
         cmds = mapping.get(first_arg, [])
         if prefix:

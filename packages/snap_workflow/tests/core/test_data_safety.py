@@ -11,7 +11,7 @@ from snap_workflow.core.domain.sweeps import add_sweep, load_sweeps
 from snap_workflow.utils import path
 from snap_workflow.server import sync
 from snap_workflow import dispatcher
-from snap_workflow.cli.verbs import main_remove, main_reset
+from snap_workflow.cli.sweep import main_sweep
 from snap_workflow.cli.remote import main_remote
 
 def test_remove_sweep_soft_safety(sandbox, env_dir):
@@ -30,7 +30,7 @@ def test_remove_sweep_soft_safety(sandbox, env_dir):
 
     # Perform soft removal (no --hard)
     with patch('builtins.input', return_value="y"):
-        main_remove("workflow remove", ["sweep", "-w", "sweep1"])
+        main_sweep("workflow sweep", ["remove", "-w", "sweep1"])
 
     # Sweep configuration should be gone
     assert "sweep1" not in load_sweeps()
@@ -55,7 +55,7 @@ def test_remove_sweep_hard_confirmation_decline(sandbox, env_dir):
     # Or 'n' on the first prompt
     with patch('builtins.input', side_effect=["y", "n"]):
         with pytest.raises(SystemExit):
-            main_remove("workflow remove", ["sweep", "-w", "sweep1", "--hard"])
+            main_sweep("workflow sweep", ["remove", "-w", "sweep1", "--hard"])
 
     # No files should be deleted
     assert os.path.isfile(user_file)
@@ -77,7 +77,7 @@ def test_reset_sweep_hard_confirmation_decline(sandbox, env_dir):
     # Confirm decline on reset hard
     with patch('builtins.input', side_effect=["n"]):
         with pytest.raises(SystemExit):
-            main_reset("workflow reset", ["sweep", "-w", "sweep1", "--hard"])
+            main_sweep("workflow sweep", ["reset", "-w", "sweep1", "--hard"])
 
     # No files should be deleted
     assert os.path.isfile(user_file)
@@ -182,7 +182,7 @@ def test_clear_directory_boundary_protection(sandbox, env_dir):
         f.write("user report")
         
     # Run a hard sweep reset with --force
-    main_reset("workflow reset", ["sweep", "-w", "sweep1", "--hard", "--force"])
+    main_sweep("workflow sweep", ["reset", "-w", "sweep1", "--hard", "--force"])
     
     # File inside SPoint is cleared/deleted as expected
     assert not os.path.isfile(spoint_file)

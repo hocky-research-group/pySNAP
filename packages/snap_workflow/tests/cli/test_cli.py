@@ -5,7 +5,6 @@ from unittest.mock import patch
 from snap_workflow.core import initialize, load_stages, add_stage, add_variable, add_sweep
 from snap_workflow.core.domain.sweeps import load_sweeps
 from snap_workflow.cli.workflow import main_init, main_update, main_zip, main_autocomplete, main_variable
-from snap_workflow.cli.verbs import main_add, main_print, main_set, main_remove, main_reset
 from snap_workflow.cli.stage import main_stage
 from snap_workflow.cli.sweep import main_sweep
 from snap_workflow.cli.spoint import main_status, main_spoint
@@ -25,18 +24,18 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
     
     # 2. Test CLI add stage
     mock_input.side_effect = ["n", ""]
-    main_add("workflow add", ["stage", "-n", "stageA"])
+    main_stage("workflow stage", ["add", "-n", "stageA"])
     
     stages = load_stages()
     assert "stageA" in stages
     
     # 3. Test CLI add variable
     mock_input.side_effect = ["y"]
-    main_add("workflow add", ["variable", "-n", "x", "-t", "int"])
+    main_variable("workflow variable", ["add", "-n", "x", "-t", "int"])
     
     # 4. Test CLI add sweep
     mock_input.side_effect = ["y", "10 20"]
-    main_add("workflow add", ["sweep", "-n", "sweepA"])
+    main_sweep("workflow sweep", ["add", "-n", "sweepA"])
     
     sweeps = load_sweeps()
     assert "sweepA" in sweeps
@@ -44,14 +43,14 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
     
     # 5. Test CLI print sweeps
     with patch('sys.stdout'):
-        main_print("workflow print", ["sweeps"])
+        main_sweep("workflow sweep", ["print"])
         
     # 6. Test CLI set status
-    main_set("workflow set", ["status", "submitted", "-w", "sweepA", "-s", "stageA"])
+    main_spoint("workflow spoint", ["set", "submitted", "-w", "sweepA", "-s", "stageA"])
     
     # 7. Test CLI remove sweep
     mock_input.side_effect = ["y"]
-    main_remove("workflow remove", ["sweep", "-w", "sweepA"])
+    main_sweep("workflow sweep", ["remove", "-w", "sweepA"])
     
     sweeps = load_sweeps()
     assert "sweepA" not in sweeps
@@ -129,26 +128,23 @@ def test_cli_reset(sandbox, env_dir):
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
     
     with patch('builtins.input', side_effect=["sweep1", "stage1"]):
-        main_reset("workflow reset", ["errors"])
-        
-    with patch('builtins.input', side_effect=["sweep1", "stage1"]):
-        main_reset("workflow reset", ["params"])
+        main_spoint("workflow spoint", ["reset", "errors"])
         
     with patch('builtins.input', side_effect=["sweep1"]):
-        main_reset("workflow reset", ["sweep"])
+        main_sweep("workflow sweep", ["reset"])
 
     with patch('builtins.input', side_effect=["sweep1", "y"]):
-        main_reset("workflow reset", ["sweep", "--hard"])
+        main_sweep("workflow sweep", ["reset", "--hard"])
 
     with patch('builtins.input', side_effect=["sweep1", "n"]):
         with pytest.raises(SystemExit):
-            main_reset("workflow reset", ["sweep", "--hard"])
+            main_sweep("workflow sweep", ["reset", "--hard"])
 
-    main_reset("workflow reset", ["sweep", "-w", "sweep1", "--hard", "--force"])
-    main_reset("workflow reset", ["sweep", "-w", "sweep1", "--hard", "-f"])
+    main_sweep("workflow sweep", ["reset", "-w", "sweep1", "--hard", "--force"])
+    main_sweep("workflow sweep", ["reset", "-w", "sweep1", "--hard", "-f"])
 
-    main_reset("workflow reset", ["sweep", "sweep1"])
-    main_reset("workflow reset", ["sweep", "sweep1", "--hard", "--force"])
+    main_sweep("workflow sweep", ["reset", "sweep1"])
+    main_sweep("workflow sweep", ["reset", "sweep1", "--hard", "--force"])
 
 
 def test_cli_remove_force(sandbox, env_dir):
@@ -158,11 +154,11 @@ def test_cli_remove_force(sandbox, env_dir):
     
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
-    main_remove("workflow remove", ["sweep", "-w", "sweep1", "--force"])
+    main_sweep("workflow sweep", ["remove", "-w", "sweep1", "--force"])
     assert "sweep1" not in load_sweeps()
 
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-    main_remove("workflow remove", ["sweep", "-w", "sweep1", "-f"])
+    main_sweep("workflow sweep", ["remove", "-w", "sweep1", "-f"])
     assert "sweep1" not in load_sweeps()
 
 
@@ -173,11 +169,11 @@ def test_get_completions_noun_verb():
     assert "status" in get_completions([], "")
     assert "spoint" in get_completions([], "")
 
-    assert get_completions(["stage"], "") == ["add", "print", "list"]
+    assert get_completions(["stage"], "") == ["add", "print", "list", "set"]
     assert get_completions(["sweep"], "") == ["add", "print", "list", "reset", "remove"]
     assert get_completions(["variable"], "") == ["add", "print", "list"]
-    assert get_completions(["status"], "") == ["print", "list", "set", "reset", "submit"]
-    assert get_completions(["spoint"], "") == ["print", "list", "set", "reset", "submit"]
+    assert get_completions(["status"], "") == ["print", "list", "set", "reset", "reset-errors", "submit"]
+    assert get_completions(["spoint"], "") == ["print", "list", "set", "reset", "reset-errors", "submit"]
 
 
 def test_cli_spoint_consolidated(sandbox, env_dir, capsys):
@@ -227,11 +223,6 @@ def test_cli_variable_print(sandbox, env_dir, capsys):
     assert "y" in captured.out
 
     main_variable("workflow variable", ["list"])
-    captured = capsys.readouterr()
-    assert "NAME" in captured.out
-    assert "x" in captured.out
-
-    main_print("workflow print", ["variable"])
     captured = capsys.readouterr()
     assert "NAME" in captured.out
     assert "x" in captured.out

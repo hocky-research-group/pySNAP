@@ -10,8 +10,8 @@ from snap_workflow.core.workflow import initialize
 from snap_workflow.core.domain import stages, sweeps, variables, spoints, params, status
 from snap_workflow.core.params.system_params import System_Params
 from snap_workflow.core.params.tools import dict_defines, decode, get_options, recursive_print
-from snap_workflow.cli.verbs import main_reset
-from snap_workflow.cli.params import main_convert
+from snap_workflow.cli.spoint import main_spoint
+from snap_workflow.cli.params import main_params
 
 # --- Params Tools Tests ---
 
@@ -442,7 +442,7 @@ def test_reset_spoint_cli(sandbox):
     sp_path = spoints.get_spoint_path("stage1", {"x": 15})
 
     with pytest.raises(SystemExit) as exc_info:
-        main_reset("workflow reset", ["spoint"])
+        main_spoint("workflow spoint", ["reset"])
     assert exc_info.value.code == 1
 
     start_dir = os.getcwd()
@@ -451,11 +451,11 @@ def test_reset_spoint_cli(sandbox):
         with open("result.dat", "w") as f:
             f.write("12345")
 
-        main_reset("workflow reset", ["spoint"])
+        main_spoint("workflow spoint", ["reset"])
         assert status.load_status(".") == "initialized"
         assert os.path.isfile("result.dat")
 
-        main_reset("workflow reset", ["spoint", "--hard", "--force"])
+        main_spoint("workflow spoint", ["reset", "--hard", "--force"])
         assert status.load_status(".") == "initialized"
         assert not os.path.exists("result.dat")
     finally:
@@ -481,7 +481,7 @@ def test_reset_spoint_relinks_dependencies(sandbox):
         assert status.load_status(".") == "initialized"
         assert os.path.islink(dep_link) or os.path.exists(dep_link)
 
-        main_convert("workflow convert", ["params", "--format", "json"])
+        main_params("workflow params", ["convert", "--format", "json"])
         assert os.path.isfile("params.json")
     finally:
         os.chdir(start_dir)

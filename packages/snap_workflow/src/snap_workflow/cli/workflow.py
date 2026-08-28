@@ -9,12 +9,10 @@ from snap_workflow.cli.stage import main_stage
 from snap_workflow.cli.sweep import main_sweep
 from snap_workflow.cli.variable import main_variable
 from snap_workflow.cli.spoint import main_status, main_spoint
-from snap_workflow.cli.params import main_params, main_set, main_convert
+from snap_workflow.cli.params import main_params
 from snap_workflow.cli.data import main_data
 from snap_workflow.cli.remote import main_remote
 from snap_workflow.cli.server import main_server
-
-from snap_workflow.cli import verbs
 
 
 def main_init(parsed_command, args):
@@ -135,16 +133,6 @@ def main(command_name=None, args=None):
         "spoint": main_spoint,
         "remote": main_remote,
         "server": main_server,
-
-        # Legacy verb-first routes (delegated directly to cli/verbs.py)
-        "add": verbs.main_add,
-        "print": verbs.main_print,
-        "reset": verbs.main_reset,
-        "set": verbs.main_set,
-        "convert": verbs.main_convert,
-        "remove": verbs.main_remove,
-        "collect": verbs.main_collect,
-        "submit": verbs.main_submit,
     }
 
     if command_name in cmd_map:

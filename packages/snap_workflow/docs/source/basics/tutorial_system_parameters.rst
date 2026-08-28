@@ -127,4 +127,4 @@ Within your stage's ``simulation.py`` script, parameter files are accessed via t
        print(f"Active Sweep Variables: {active_vars}")
 
 .. note::
-   Parameters are resolved and pickled inside each SPoint directory when running ``workflow submit``. Any modifications made to ``params`` during script execution are in-memory overrides for that specific run and do not overwrite the static files under ``params/``.
+   Parameters are resolved and pickled inside each SPoint directory when running ``workflow spoint submit``. Any modifications made to ``params`` during script execution are in-memory overrides for that specific run and do not overwrite the static files under ``params/``.

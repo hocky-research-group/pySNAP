@@ -4,25 +4,20 @@ workflow remote
 Synopsis
 """"""""
 
-**workflow remote** <*action*> ...
+.. code-block:: bash
+
+   workflow remote <action> [arguments...] [flags...]
 
 Description
-""""""""""""
+"""""""""""
 
-Registers and configures remote systems for synchronization and job execution.
+Registers, provisions, and synchronizes remote HPC systems and workstations for distributed execution and Slurm worker allocation.
 
-Arguments
-""""""""""
+Subcommands
+"""""""""""
 
-<*action*>
-    Can be any of the following:
-
-    * :doc:`add <add>`
-    * :doc:`setup <setup>`
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-
-   add
-   setup
+* **add <name> <host>**: Registers a remote cluster host connection globally.
+* **setup <name> [--path /path]**: Provisions remote directory structure and validates remote Python and Slurm capabilities.
+* **sync <name> [--pull|--push|--both]**: Synchronizes code, parameters, worker logs, statuses, and auto-sync outputs between local and remote environments. Defaults to bidirectional (``both``).
+* **connect <name>**: Establishes an interactive SSH session to the remote cluster login node, automatically establishing reverse SSH tunnels if the manager server is active.
+* **print [name]**: Displays registered remote host configurations, paths, and connectivity status.

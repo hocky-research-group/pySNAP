@@ -1,53 +1,60 @@
-Workflow
-======================
+Workflow CLI
+============
 
 Synopsis
-"""""""""
+""""""""
 
-**workflow** <*entity*> <*action*> ...
-or **workflow** <*action*> ...
+.. code-block:: bash
+
+   workflow <noun> [verb] [arguments...] [flags...]
 
 Description
-"""""""""""""""
+"""""""""""
 
-Executes a workflow action targeting an entity or system task.
+``snap_workflow`` uses a clean, predictable **Noun-First** command structure. Running any viewing noun bare (e.g. ``workflow status`` or ``workflow stage``) automatically defaults to displaying formatted tables with a helpful discovery footer.
 
-Arguments
-"""""""""
+Available Commands
+""""""""""""""""""
 
-<*main_options*>
-   Can be any of the following entity or top-level commands:
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
 
-   * :doc:`stage <add/stage>`
-   * :doc:`sweep <add/sweep>`
-   * :doc:`variable <add/variable>`
-   * :doc:`status <print/status>`
-   * :doc:`remote <remote/remote>`
-   * :doc:`server <server/server>`
-   * :doc:`add <add/add>`
-   * :doc:`collect <collect>`
-   * :doc:`init <init>`
-   * :doc:`print <print/print>`
-   * :doc:`remove <remove/remove>`
-   * :doc:`reset <reset/reset>`
-   * :doc:`set <set/set>`
-   * :doc:`submit <submit>`
-   * :doc:`update <update>`
-   * :doc:`zip <zip>`
+   * - Command
+     - Description
+   * - ``workflow init``
+     - Initialize a new workflow in the current working directory.
+   * - ``workflow stage``
+     - Manage workflow stages (``add``, ``print``).
+   * - ``workflow sweep``
+     - Manage parametric sweeps (``add``, ``print``, ``remove``).
+   * - ``workflow variable``
+     - Manage sweep variables (``add``, ``print``).
+   * - ``workflow status``
+     - View and manage execution states across SPoints (``print``, ``set``, ``reset``).
+   * - ``workflow spoint``
+     - Manage physical workspace directories and dispatch execution (``reset``, ``submit``).
+   * - ``workflow python``
+     - View and configure Python interpreter paths across global, project, and stage scopes (``print``, ``set``).
+   * - ``workflow params``
+     - Configure project parameter format or migrate existing files (``set``, ``convert``).
+   * - ``workflow data``
+     - Execute stage data aggregation routines (``collect``).
+   * - ``workflow remote``
+     - Manage remote HPC clusters and synchronization (``add``, ``setup``, ``sync``, ``connect``, ``print``).
+   * - ``workflow server``
+     - Manage central manager daemon, auto-schedulers, and Slurm worker allocations (``start``, ``auto``, ``reserve``, ``stop``, ``shutdown``).
+   * - ``workflow zip``
+     - Compress and bundle workflow state into a ``.zip`` archive.
+   * - ``workflow autocomplete``
+     - Output shell auto-completion installation scripts for Bash or Zsh.
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   workflow add <add/add>
-   workflow collect <collect>
-   workflow init <init>
-   workflow print <print/print>
-   workflow remove <remove/remove>
-   workflow reset <reset/reset>
-   workflow set <set/set>
-   workflow submit <submit>
-   workflow update <update>
-   workflow remote <remote/remote>
-   workflow server <server/server>
-   workflow zip <zip>
+   init
+   collect
+   zip
+   remote/remote
+   server/server

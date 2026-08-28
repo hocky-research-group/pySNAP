@@ -31,7 +31,7 @@ Here is a comprehensive ``env.yaml`` example:
      gpus: 1
      mem: 8G
 
-   # Nested Slurm batch directives (used during direct 'workflow submit' or by the auto-scheduler when Slurm is available)
+   # Nested Slurm batch directives (used during direct 'workflow spoint submit' or by the auto-scheduler when Slurm is available)
    sbatch:
      partition: gpu-batch
      time: 04:00:00

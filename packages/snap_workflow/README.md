@@ -144,24 +144,24 @@ You can run/submit Slurm jobs on the current system, or set up the coordination 
 
 #### Option A: Direct Submission (on the current system)
 
-Submit SPoints directly to Slurm:
+Submit SPoints directly:
 ```bash
-workflow submit
+workflow spoint submit
 ```
 
-Or view status and manage sweeps using standardized Noun-Verb syntax:
+Or view status and manage sweeps using standardized Noun-First syntax:
 ```bash
-workflow status print
-workflow sweep reset -w sweepA
+workflow status
+workflow status set complete -s simulation
+workflow spoint reset -w grid_sweep
 ```
-*(Note: Legacy verb-first commands like `workflow add stage` and `workflow print status` remain fully supported as aliases).*
 
 #### Option B: Slurm Cluster Allocation Reservation
 Set up the manager server and reserve Slurm worker compute allocations on remote HPC clusters:
 
 ```bash
-# 1. Register a remote workstation/cluster host connection; accepts standard SSH configurations or user@hostname format
-workflow remote add my_cluster --host user@cluster.domain.edu
+# 1. Register a remote workstation/cluster host connection (accepts standard SSH format)
+workflow remote add my_cluster user@cluster.domain.edu
 
 # 2. Initializes the workflow on the remote system (overwrites at the path except for env/sbatch profiles)
 workflow remote setup my_cluster --path /scratch/user/my_experiment
@@ -185,8 +185,8 @@ workflow server auto my_workstation
 ```
 
 ### Execution Model Differences:
-* **Direct Slurm queueing**: Submits SPoints as separate Slurm batch jobs in the cluster queue (`workflow submit`).
-* **Cluster Reservation Model (Server + Worker Reservations)**: Submits long-running Slurm compute allocations via `workflow server reserve <remote> <profile>`. Compute nodes connect back to the central manager server over reverse SSH tunnels using `.workflow/server`, pulling and executing SPoints dynamically while surviving temporary connection drops.
+* **Direct SPoint dispatch (`workflow spoint submit`)**: Executes ready SPoints on the local machine or queue.
+* **Cluster Reservation Model (`workflow server reserve <remote> <profile>`)**: Submits long-running Slurm compute allocations on HPC compute nodes. Compute nodes connect back to the central manager server over reverse SSH tunnels, dynamically pulling and executing SPoints while surviving temporary connection drops.
 * **Auto-scheduling mode (`workflow server auto <target>`)**: The manager server autonomously pushes tasks to the target machine's CPU/GPU resources as upstream dependencies in the DAG complete.
 
 ## Configuration Files
@@ -219,7 +219,7 @@ resources:
 # Optional reference to a shared sbatch profile from sbatch_profiles/
 sbatch_profile: gpu
 
-# Optional Slurm directives used when submitting jobs directly via `workflow submit`.
+# Optional Slurm directives used when submitting jobs directly via `workflow spoint submit`.
 sbatch:
   partition: gpu-batch
   time: 08:00:00
@@ -244,22 +244,18 @@ time: 04:00:00
 | Command | Description |
 | :--- | :--- |
 | `workflow init` | Initialize a new workflow in the current directory |
-| `workflow add stage` | Add a new simulation stage |
-| `workflow add sweep` | Add a parametric sweep |
-| `workflow add variable` | Register a new variable |
-| `workflow submit` | Submit SPoints directly to Slurm |
-| `workflow print status` | Display status of all sweep points |
-| `workflow set status` | Manually set SPoint status |
-| `workflow reset` | Reset sweep point statuses |
-| `workflow collect [stage_name ...]` | Run data collectors across specified stages (or all stages if none specified) |
-| `workflow zip` | Package the workflow for transfer |
-| `workflow remove sweep` | Remove a sweep and its SPoint folders |
-| `workflow server start` | Start the worker coordination server |
-| `workflow server auto <remote>` | Trigger autonomous task execution on a local or remote target |
-| `workflow server reserve <remote> <profile>` | Reserve Slurm worker compute allocations on a cluster |
-| `workflow remote add` | Register a remote host connection |
-| `workflow remote setup` | Sync workflow structure to a remote host mapping |
-| `workflow autocomplete [shell]` | Get autocomplete installation instructions for Bash or Zsh |
+| `workflow stage [add\|print]` | Create a new stage (wizard) or print registered stages and dependencies |
+| `workflow sweep [add\|print\|remove]` | Create a sweep (wizard), display sweeps table, or remove a sweep definition |
+| `workflow variable [add\|print]` | Register a new parameter variable (wizard) or display variable types and defaults |
+| `workflow status [print\|set\|reset]` | Display execution status table, update status values in bulk, or reset status strings |
+| `workflow spoint [reset\|submit]` | Reset an SPoint directory or entire sweep, or submit ready SPoints for execution |
+| `workflow python [print\|set]` | Display or configure Python interpreter paths across global, project, and stage scopes |
+| `workflow params [set\|convert]` | Configure default parameter format or migrate existing files between JSON and YAML |
+| `workflow data collect [stage]` | Execute stage data aggregation routines across SPoints |
+| `workflow remote [add\|setup\|sync\|connect\|print]` | Register remote clusters, provision workspaces, sync files/statuses, or open SSH shells |
+| `workflow server [start\|auto\|reserve\|stop\|shutdown]` | Launch central coordinator server, start auto-schedulers, or reserve Slurm workers |
+| `workflow zip <filename>` | Package the workflow and parameter state into a `.zip` archive |
+| `workflow autocomplete [shell]` | Generate shell auto-completion installation instructions for Bash or Zsh |
 
 ## Workspace Layout
 

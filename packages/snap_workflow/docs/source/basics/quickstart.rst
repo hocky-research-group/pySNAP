@@ -99,4 +99,4 @@ Submit or run all ready SPoints:
 
 .. code-block:: bash
 
-   workflow submit
+   workflow spoint submit

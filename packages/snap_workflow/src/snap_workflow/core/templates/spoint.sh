@@ -141,30 +141,38 @@ for k, v in cfg.get(\"env_vars\", {}).items():
     print(f\"export {k}={q}{v}{q}\")
 " 2>/dev/null)
 
+    pids=()
     if [ -n "$REPORT_TO" ]; then
         $python_path "$WF_ROOT/$stage_name/$stage_name.py" "$spoint" --report-to "$REPORT_TO" >> spoint.log 2>&1 &
+        pids+=($!)
     else
         $python_path "$WF_ROOT/$stage_name/$stage_name.py" "$spoint" >> spoint.log 2>&1 &
+        pids+=($!)
     fi
     count=$((count+1))
-    cd -
+    cd - > /dev/null 2>&1
 done
 
 #---- Overtime interruption ----
 #The following code catches an interrupt sent by sbatch with 60 
 #seconds left and propagates it to all running scripts. The SPoint_Manager handles this propagated signal.
 kill_spoints () {
-    echo START
-    for id in "$@"; do
-        echo kill $id
-        kill -SIGINT $id
+    for id in "${pids[@]}"; do
+        kill -SIGINT "$id" 2>/dev/null
     done
-    echo END
-    wait "$@"
+    wait "${pids[@]}" 2>/dev/null
 }   
 
-trap 'kill_spoints $(jobs -p)' INT SIGINT
+trap 'kill_spoints' INT SIGINT
 
 #---- Wait ----
 # waits for all spoints to be finished (or killed)
-wait $(jobs -p)
+overall_status=0
+for pid in "${pids[@]}"; do
+    wait "$pid"
+    exit_code=$?
+    if [ $exit_code -ne 0 ] && [ $overall_status -eq 0 ]; then
+        overall_status=$exit_code
+    fi
+done
+exit $overall_status

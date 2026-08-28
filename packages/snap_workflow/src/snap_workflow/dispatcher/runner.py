@@ -225,9 +225,23 @@ class SubprocessDispatcher(BaseDispatcher):
             poll = job["proc"].poll()
             if poll is not None:
                 finished_paths.append(spoint_path)
-                status_val = "complete" if poll == 0 else "error"
-                logger.info("[SPOINT] Finished: %s %s with status %s", job['stage'], job['spoint_dict'], status_val)
-                print(f"[Worker Action] Stop executing spoint {job['stage']} with variables {job['spoint_dict']} (exit status: {status_val})")
+
+                # Prioritize authoritative status written by SPointManager in .spoint_info/status
+                disk_status = None
+                try:
+                    from snap_workflow.core.domain import status as status_module
+                    target_dir = spoint_path if os.path.isabs(spoint_path) else os.path.join(self.root if self.root else ".", spoint_path)
+                    disk_status = status_module.load_status(target_dir)
+                except Exception:
+                    pass
+
+                if disk_status in ("complete", "incomplete", "error"):
+                    status_val = disk_status
+                else:
+                    status_val = "complete" if poll == 0 else "error"
+
+                logger.info("[SPOINT] Finished: %s %s with status %s (exit code %s)", job['stage'], job['spoint_dict'], status_val, poll)
+                print(f"[Worker Action] Stop executing spoint {job['stage']} with variables {job['spoint_dict']} (status: {status_val}, exit code: {poll})")
 
                 payload = {
                     "sweep": job["sweep"],

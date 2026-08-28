@@ -288,6 +288,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 if host != "local" and stage_name and spoint_dict:
                     try:
                         from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                        from snap_workflow.remote.ssh import get_control_path_args
                         g_remotes = load_global_remotes()
                         l_remotes = load_local_remotes()
                         r_path = (l_remotes.get(host) or {}).get("path") or (g_remotes.get(host) or {}).get("path")
@@ -297,8 +298,17 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                             local_sp = rel_sp
                             r_path_clean = r_path.rstrip('/')
                             remote_sp = f"{r_path_clean}/{os.path.relpath(rel_sp, path.get_root())}"
-                            sync_cmd = ["rsync", "-avz", f"{r_host}:{remote_sp}/", f"{local_sp}/"]
+                            sync_cmd = [
+                                "rsync", "-avz",
+                                "-e", "ssh " + " ".join(get_control_path_args()),
+                                f"{r_host}:{remote_sp}/", f"{local_sp}/"
+                            ]
                             subprocess.run(sync_cmd, capture_output=True)
+                            # Re-assert status on disk in case remote status differed
+                            try:
+                                status_module.write_status(status_val, local_sp)
+                            except Exception:
+                                pass
                     except Exception as sync_e:
                         logger.warning("Failed to sync back outputs on completion for %s: %s", stage_name, sync_e)
             except Exception as e:

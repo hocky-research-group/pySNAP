@@ -155,8 +155,6 @@ class SubprocessDispatcher(BaseDispatcher):
     def has_capacity(self) -> bool:
         """Returns True if there is remaining CPU/memory capacity to accept another task."""
         res = self.get_available_resources()
-        if getattr(self, "gpus_total", 0) > 0 and res.get("gpu_avail", 0) <= 0:
-            return False
         return res["cpus_avail"] > 0 and res["mem_avail"] > 0
 
     def dispatch_task(self, task: Dict[str, Any]) -> None:

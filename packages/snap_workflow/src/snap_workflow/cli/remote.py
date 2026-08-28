@@ -110,11 +110,13 @@ def remote_setup_cmd(parsed_command, args):
             dirname = os.path.basename(os.path.abspath(root_dir))
             remote_path = f"~/{dirname}"
 
+    resolved_path = remote_setup.setup_remote_cluster(host, remote_path)
+    if resolved_path:
+        remote_path = resolved_path
+
     local_remotes[name] = {"host": host, "path": remote_path}
     save_local_remotes(local_remotes)
     print(f"Updated local path for remote '{name}' to: {remote_path}")
-
-    remote_setup.setup_remote_cluster(host, remote_path)
     io.warn_unused_kwargs(kwargs)
 
 

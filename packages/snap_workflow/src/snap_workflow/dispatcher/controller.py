@@ -46,6 +46,7 @@ class DispatcherController:
         self.sbatch_args = sbatch_args
         self.server_instance = server_instance
         self.procs: List[subprocess.Popen] = []
+        self._log_fps: List[Any] = []
         self.created_at = time.time()
 
     @property
@@ -153,14 +154,22 @@ class DispatcherController:
             flags_str = " ".join(flags)
             remote_cmd = (
                 f"cd {remote_path} && "
-                f"PY_EXE=$(python3 -c \"import json, os; print(json.load(open('.workflow/config.json')).get('python_path', 'python3')) if os.path.exists('.workflow/config.json') else print('python3')\" 2>/dev/null || echo python3); "
+                f"PY_EXE=$(python3 -c \"import json, os; "
+                f"cfg = json.load(open('.workflow/config.json')) if os.path.exists('.workflow/config.json') else {{}}; "
+                f"print(cfg.get('python_path') or cfg.get('default_python_env') or 'python3')\" 2>/dev/null || echo python3); "
                 f"$PY_EXE -u -m snap_workflow.dispatcher.runner http://127.0.0.1:{port} {self.token or ''} {flags_str}"
             )
             full_ssh_cmd = ["ssh"] + get_control_path_args() + [remote_host, remote_cmd]
 
-            proc = subprocess.Popen(full_ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            logs_dir = os.path.expanduser("~/.config/snap_workflow/logs")
+            os.makedirs(logs_dir, exist_ok=True)
+            log_file = os.path.join(logs_dir, f"dispatcher_{self.target_name}.log")
+            log_fp = open(log_file, "a")
+            self._log_fps.append(log_fp)
+
+            proc = subprocess.Popen(full_ssh_cmd, stdout=log_fp, stderr=subprocess.STDOUT)
             self.procs.append(proc)
-            logger.info("Spawned remote subprocess dispatcher on %s (%s) (SSH PID: %s)", self.target_name, remote_host, proc.pid)
+            logger.info("Spawned remote subprocess dispatcher on %s (%s) (SSH PID: %s, Log: %s)", self.target_name, remote_host, proc.pid, log_file)
 
     def stop(self, force: bool = False) -> None:
         """Terminates managed dispatcher processes (gracefully by default, or immediately if force=True)."""
@@ -178,6 +187,12 @@ class DispatcherController:
                     except Exception:
                         proc.kill()
         self.procs.clear()
+        for fp in self._log_fps:
+            try:
+                fp.close()
+            except Exception:
+                pass
+        self._log_fps.clear()
 
     def get_status(self) -> Dict[str, Any]:
         """Returns a structured status dictionary for CLI/API monitoring."""

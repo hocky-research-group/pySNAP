@@ -9,14 +9,23 @@ from snap_workflow.utils.logging import logger
 
 def get_remote_host(target: str) -> str:
     """
-    Returns the SSH host string for a target ('local' or configured remote name).
+    Returns the SSH host string for a target ('local', configured remote name, or host string).
     """
     if target == "local":
         return "local"
     global_remotes = io.load_global_remotes()
-    if target not in global_remotes:
-        raise ValueError(f"Remote '{target}' is not registered globally. Register it first using 'workflow remote add'.")
-    return global_remotes[target]["host"]
+    local_remotes = io.load_local_remotes()
+
+    if target in local_remotes and "host" in local_remotes[target]:
+        return local_remotes[target]["host"]
+    if target in global_remotes and "host" in global_remotes[target]:
+        return global_remotes[target]["host"]
+
+    for r in list(local_remotes.values()) + list(global_remotes.values()):
+        if isinstance(r, dict) and r.get("host") == target:
+            return target
+
+    raise ValueError(f"Remote '{target}' is not registered globally. Register it first using 'workflow remote add'.")
 
 
 def get_remote_path(target: str) -> str:
@@ -26,9 +35,14 @@ def get_remote_path(target: str) -> str:
     if target == "local":
         return "."
     local_remotes = io.load_local_remotes()
-    if target not in local_remotes:
-        raise ValueError(f"Remote '{target}' has not been set up locally. Set it up using 'workflow remote setup'.")
-    return local_remotes[target]["path"]
+    if target in local_remotes and "path" in local_remotes[target]:
+        return local_remotes[target]["path"]
+
+    for r in local_remotes.values():
+        if isinstance(r, dict) and r.get("host") == target and "path" in r:
+            return r["path"]
+
+    raise ValueError(f"Remote '{target}' has not been set up locally. Set it up using 'workflow remote setup'.")
 
 
 def run_command(target: str, cmd, **kwargs) -> subprocess.CompletedProcess:

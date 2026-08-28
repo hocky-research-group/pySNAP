@@ -6,6 +6,9 @@ import importlib.util
 import logging
 from snap_workflow.utils import path, io
 from snap_workflow.utils.constants import SPOINTS, SPOINT_INFO
+from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+from snap_workflow.core.domain import spoints as spoint_tools
+from snap_workflow.remote.ssh import get_control_path_args, ensure_remote_ssh_master
 
 logger = logging.getLogger("snap_workflow.core.sync")
 
@@ -43,7 +46,6 @@ def measure_directory_size(remote, host, remote_path, spoint_rel_path):
         # Measure remotely using ssh + du -sb
         target_path = f"{remote_path}/{spoint_rel_path}"
         try:
-            from snap_workflow.remote.ssh import get_control_path_args
             cmd = ["ssh"] + get_control_path_args() + [host, f"du -sb {target_path}"]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             if res.returncode == 0 and res.stdout.strip():
@@ -69,7 +71,6 @@ def pull_spoint_data(remote, host, remote_path, spoint_rel_path, stage_name, ver
     local_dest = os.path.join(root, spoint_rel_path)
     os.makedirs(local_dest, exist_ok=True)
 
-    from snap_workflow.remote.ssh import get_control_path_args
     rsync_flag = "-avz" if verbose else "-az"
     rsync_cmd = ["rsync", rsync_flag, "-e", "ssh " + " ".join(get_control_path_args())]
     rsync_cmd.append('--include=*/')
@@ -100,7 +101,6 @@ def push_dependency_data(remote, host, remote_path, dep_spoint_rel_path, verbose
         logger.warning("Local dependency directory %s does not exist. Skipping push.", local_src)
         return
 
-    from snap_workflow.remote.ssh import get_control_path_args
     parent_remote_dir = os.path.dirname(f"{remote_path}/{dep_spoint_rel_path}")
     try:
         ssh_cmd = ["ssh"] + get_control_path_args() + [host, f"mkdir -p {parent_remote_dir}"]
@@ -135,7 +135,6 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
 
     rsync_flag = "-avz" if verbose else "-az"
 
-    from snap_workflow.remote.ssh import get_control_path_args
     if source_remote != "local":
         os.makedirs(local_temp, exist_ok=True)
         source_uri = f"{source_host}:{source_path}/{dep_rel_path}/"
@@ -192,7 +191,6 @@ def pull_worker_logs(remote_type, host, remote_path, verbose=False):
     local_dest = os.path.join(root, "workers", "logs")
     os.makedirs(local_dest, exist_ok=True)
 
-    from snap_workflow.remote.ssh import get_control_path_args
     rsync_flag = "-avz" if verbose else "-az"
     rsync_cmd = [
         "rsync", rsync_flag,
@@ -209,9 +207,6 @@ def pull_worker_logs(remote_type, host, remote_path, verbose=False):
 
 def push_workflow_structure(remote_name_or_host, remote_path=None, verbose=False):
     """Pushes the complete workflow directory structure (including .workflow, params, and SPoint metadata) to remote, excluding simulation output binaries."""
-    from snap_workflow.remote.ssh import get_control_path_args, ensure_remote_ssh_master
-    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
-
     if not remote_name_or_host or remote_name_or_host == "local":
         return
 
@@ -270,9 +265,6 @@ def push_workflow_structure(remote_name_or_host, remote_path=None, verbose=False
 
 def pull_spoint_statuses(host, remote_path, stages=None, sweeps=None, verbose=False):
     """Pulls SPoint info and status files from remote to local."""
-    from snap_workflow.remote.ssh import get_control_path_args, ensure_remote_ssh_master
-    from snap_workflow.core.domain import spoints as spoint_tools
-
     try:
         ensure_remote_ssh_master(host)
     except Exception as e:
@@ -303,8 +295,6 @@ def pull_spoint_statuses(host, remote_path, stages=None, sweeps=None, verbose=Fa
 
 def sync_remote(remote_name_or_host, direction="push", stages=None, sweeps=None, verbose=False):
     """Syncs workflow structure, SPoints, worker logs, or statuses between local and remote."""
-    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
-
     if not remote_name_or_host or remote_name_or_host == "local":
         print("Remote is 'local'. Nothing to sync.")
         return

@@ -1,5 +1,6 @@
 import os
 import json
+import yaml
 import subprocess
 import logging
 import importlib.resources
@@ -11,7 +12,7 @@ from snap_workflow.remote.setup import (
     validate_remote_stage_resources,
 )
 from snap_workflow.utils.constants import SPOINTS
-from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+from snap_workflow.utils.io import load_global_remotes, load_local_remotes, load_server_info
 
 logger = logging.getLogger("snap_workflow.remote.reserve")
 
@@ -44,8 +45,6 @@ def reserve_remote_workers(server_port, token, remote_name, profile, num_workers
         try:
             profile_data = json.loads(out.strip())
         except Exception:
-            import yaml
-
             profile_data = yaml.safe_load(out.strip()) or {}
     except Exception as e:
         try:
@@ -55,8 +54,6 @@ def reserve_remote_workers(server_port, token, remote_name, profile, num_workers
             try:
                 profile_data = json.loads(out.strip())
             except Exception:
-                import yaml
-
                 profile_data = yaml.safe_load(out.strip()) or {}
         except Exception as be:
             profile_data = {}
@@ -155,3 +152,39 @@ def reserve_remote_workers(server_port, token, remote_name, profile, num_workers
         if ret_sbatch != 0:
             err_str = (res_sbatch.stderr or res_sbatch.stdout or "").strip()
             raise RuntimeError(f"Failed to submit Slurm worker job on remote '{remote_host}': {err_str}")
+
+
+def run_remote_reserve(remote, profile, num_workers=1, sbatch_args="",
+                       stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
+    """
+    Submits worker reservation jobs for a remote Slurm cluster.
+    """
+    import urllib.parse
+    url, token = load_server_info()
+    parsed = urllib.parse.urlparse(url)
+    server_port = parsed.port or 8080
+
+    from snap_workflow.remote.exec import has_slurm
+    if not has_slurm(remote):
+        raise ValueError(
+            f"Target system '{remote}' does not have Slurm ('sbatch'). "
+            f"'workflow remote reserve' is dedicated to reserving Slurm (sbatch) worker allocations. "
+            f"For non-Slurm systems, please use 'workflow remote auto {remote}'."
+        )
+
+    if remote != "local":
+        from snap_workflow.remote.tunnels import ensure_remote_tunnel
+        ensure_remote_tunnel(remote)
+
+    reserve_remote_workers(
+        server_port=server_port,
+        token=token,
+        remote_name=remote,
+        profile=profile,
+        num_workers=num_workers,
+        sbatch_args=sbatch_args,
+        stages=stages,
+        sweeps=sweeps,
+        exclude_stages=exclude_stages,
+        exclude_sweeps=exclude_sweeps
+    )

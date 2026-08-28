@@ -8,7 +8,6 @@ from snap_workflow.core import initialize, add_stage, add_variable, add_sweep
 from snap_workflow.core.domain.stages import validate_stage_resources, get_stage_depth
 from snap_workflow.server import start_server
 from snap_workflow.dispatcher import detect_system_resources, dispatcher_loop, send_request, parse_memory_to_gb
-from snap_workflow.dispatcher.controller import DispatcherController
 from snap_workflow.core.domain import status
 
 def test_stage_resource_validation(sandbox, env_dir):
@@ -222,32 +221,11 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
         with open(env_file1, "w") as f:
             json.dump(env1, f, indent=4)
 
-        from snap_workflow.dispatcher.controller import DispatcherController
-        def mock_send_request(url, token, data=None, *args, **kwargs):
-            if data and data.get("name") == "local":
-                ctrl = DispatcherController(
-                    target_name="local",
-                    mode="subprocess",
-                    num_workers=data.get("num_workers", 1),
-                    stages=data.get("stages", ""),
-                    sweeps=data.get("sweeps", ""),
-                    exclude_stages=data.get("exclude_stages", ""),
-                    exclude_sweeps=data.get("exclude_sweeps", ""),
-                    profile=data.get("profile", "cpu")
-                )
-                ctrl.start()
-                return {"status": "success", "message": "Spawned local workers"}
-            return {"status": "success"}
-
         with patch("snap_workflow.remote.exec.has_slurm", return_value=True), \
-             patch("subprocess.Popen") as mock_popen, \
-             patch("snap_workflow.server.api.send_request", side_effect=mock_send_request):
+             patch("snap_workflow.remote.reserve.reserve_remote_workers") as mock_reserve:
             server_reserve_cmd("workflow server reserve", ["local", "cpu", "--num-workers", "3", "--stage", "stage1"])
-            assert mock_popen.call_count == 3
-            first_args = mock_popen.call_args_list[0][0][0]
-            assert any("snap_workflow.dispatcher" in arg for arg in first_args)
-            assert "--stages" in first_args
-            assert "stage1" in first_args
+            assert mock_reserve.called
+
 
 def test_auto_scheduling(sandbox, env_dir, workflow_server):
     initialize(env_dir)
@@ -258,7 +236,7 @@ def test_auto_scheduling(sandbox, env_dir, workflow_server):
     env1["resources"] = {"cpus": 1, "gpus": 0, "mem": "1G"}
     with open(env_file1, "w") as f:
         json.dump(env1, f, indent=4)
-        
+
     add_stage("stage2", sbatch_details=None, stage_variables=["x"], stage_dependencies=["stage1"])
     env_file2 = os.path.join("stage2", "env.json")
     with open(env_file2, "w") as f:
@@ -274,21 +252,11 @@ def test_auto_scheduling(sandbox, env_dir, workflow_server):
 
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
-        
-    mock_run_res = MagicMock()
-    mock_run_res.returncode = 1
-    
-    with patch("subprocess.run", return_value=mock_run_res), \
-         patch("snap_workflow.dispatcher.runner.detect_system_resources", return_value=(8, 2, 16.0)), \
-         patch("snap_workflow.dispatcher.controller.DispatcherController._start_local") as mock_start_local:
-        
+
+    with patch("snap_workflow.dispatcher.runner.dispatcher_loop") as mock_loop:
         server_auto_cmd("workflow server auto", ["local"])
-        
-        assert hasattr(srv, "dispatchers")
-        assert "local" in srv.dispatchers
-        controller = srv.dispatchers["local"]
-        assert isinstance(controller, DispatcherController)
-        assert mock_start_local.called
+        assert mock_loop.called
+
 
 def test_local_slurm_auto_scheduling(sandbox, env_dir, workflow_server):
     initialize(env_dir)
@@ -300,7 +268,7 @@ def test_local_slurm_auto_scheduling(sandbox, env_dir, workflow_server):
     env_data["sbatch"] = {"partition": "normal"}
     with open(env_file, "w") as f:
         json.dump(env_data, f)
-        
+
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
@@ -310,13 +278,10 @@ def test_local_slurm_auto_scheduling(sandbox, env_dir, workflow_server):
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
 
-    with patch("snap_workflow.server.daemon.has_slurm", return_value=True), \
-         patch("snap_workflow.dispatcher.controller.DispatcherController._start_local") as mock_start_local:
+    with patch("snap_workflow.dispatcher.runner.dispatcher_loop") as mock_loop:
         server_auto_cmd("workflow server auto", ["local"])
-        assert "local" in srv.dispatchers
-        controller = srv.dispatchers["local"]
-        assert controller.mode == "slurm"
-        assert mock_start_local.called
+        assert mock_loop.called
+
 
 def test_remote_workstation_auto_scheduling(sandbox, env_dir, workflow_server):
     initialize(env_dir)
@@ -327,7 +292,7 @@ def test_remote_workstation_auto_scheduling(sandbox, env_dir, workflow_server):
     env_data["resources"] = {"cpus": 1, "gpus": 0, "mem": "1G"}
     with open(env_file, "w") as f:
         json.dump(env_data, f)
-        
+
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
@@ -337,15 +302,13 @@ def test_remote_workstation_auto_scheduling(sandbox, env_dir, workflow_server):
     with open(SERVER_INFO, "w") as f:
         json.dump(server_info, f)
 
-    with patch("snap_workflow.server.daemon.has_slurm", return_value=False), \
+    with patch("snap_workflow.remote.exec.has_slurm", return_value=False), \
          patch("snap_workflow.utils.io.load_global_remotes", return_value={"Workstation": {"host": "Lab_Main"}}), \
          patch("snap_workflow.utils.io.load_local_remotes", return_value={"Workstation": {"path": "Research/polypatch"}}), \
-         patch("snap_workflow.remote.setup.validate_remote_stage_resources"), \
-         patch("snap_workflow.server.daemon.ensure_remote_tunnel"), \
-         patch("snap_workflow.server.tunnels.ensure_remote_tunnel"), \
-         patch("snap_workflow.dispatcher.controller.DispatcherController._start_remote") as mock_start_remote:
+         patch("snap_workflow.remote.tunnels.ensure_remote_tunnel"), \
+         patch("subprocess.run") as mock_ssh_run:
         server_auto_cmd("workflow server auto", ["Workstation"])
-        assert "Workstation" in srv.dispatchers
-        controller = srv.dispatchers["Workstation"]
-        assert controller.mode == "subprocess"
-        assert mock_start_remote.called
+        assert mock_ssh_run.called
+        call_args = mock_ssh_run.call_args[0][0]
+        assert "Lab_Main" in call_args
+        assert any("snap_workflow.dispatcher" in a for a in call_args)

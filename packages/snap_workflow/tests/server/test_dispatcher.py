@@ -11,7 +11,6 @@ from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.domain import status
 from snap_workflow import dispatcher
-from snap_workflow.dispatcher.controller import DispatcherController
 from snap_workflow.remote.reserve import reserve_remote_workers
 
 def is_ssh_reachable():
@@ -53,55 +52,29 @@ def test_worker_loop(sandbox, env_dir):
     initialize(env_dir)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
-    # Mock send_request to return a spoint job on the first call,
-    # ok on notify_completion, and shutdown on the second request_work call.
-    mock_responses = [
-        {"status": "spoint", "sweep": "sweep1", "stage": "stage1", "spoint_dict": {"x": 5}, "spoint_path": "stage1/spoints/x_5"},
-        {"status": "ok"},
-        {"status": "shutdown"},
-        {"status": "shutdown"},
-        {"status": "shutdown"},
-        {"status": "shutdown"}
-    ]
-    
     call_idx = 0
-    def mock_send_request(url, token, data=None):
+    def mock_send(url, token, data=None, *args, **kwargs):
         nonlocal call_idx
-        resp = mock_responses[call_idx]
         call_idx += 1
-        return resp
+        if "start" in url or "complete" in url or "heartbeat" in url or "notify_completion" in url:
+            return {"status": "ok"}
+        if call_idx == 1:
+            return {"status": "spoint", "sweep": "sweep1", "stage": "stage1", "spoint_dict": {"x": 5}, "spoint_path": "stage1/spoints/x_5", "task_id": "t1"}
+        return {"status": "shutdown"}
         
-    mock_proc = MagicMock()
-    mock_proc.poll.return_value = 0 # immediately complete
-    
-    with patch("snap_workflow.dispatcher.runner.send_request", side_effect=mock_send_request), \
-         patch("subprocess.Popen", return_value=mock_proc):
+    with patch("snap_workflow.dispatcher.base.send_request", side_effect=mock_send), \
+         patch("subprocess.Popen") as mock_popen, \
+         patch("os.path.isdir", return_value=True):
+        mock_proc = MagicMock()
+        mock_proc.poll.return_value = 0
+        mock_popen.return_value = mock_proc
+        
         dispatcher.dispatcher_loop(
-            server_url="http://localhost:8000",
-            token="token",
-            cpus_total=4,
-            gpus_total=0,
-            mem_total=8.0,
+            server_url="http://localhost:1234",
+            token="dummy_token",
             idle_delay=0.1
         )
     assert call_idx >= 2
-
-def test_launch_local_workers(sandbox, env_dir):
-    initialize(env_dir)
-    controller = DispatcherController(
-        target_name="local",
-        mode="subprocess",
-        server_url="http://localhost:1234",
-        token="dummy_token",
-        num_workers=2,
-        stages="stage1",
-        sweeps="sweep1"
-    )
-    with patch("subprocess.Popen") as mock_popen:
-        controller.start()
-        assert mock_popen.call_count == 2
-        args = mock_popen.call_args_list[0][0][0]
-        assert any("snap_workflow.dispatcher" in a for a in args)
 
 # --- Additional Worker Coverage Tests ---
 
@@ -156,7 +129,7 @@ def test_worker_loop_auto_detect_resources_and_env_json(sandbox, env_dir):
     ]
     
     call_idx = 0
-    def mock_send_request(url, token, data=None):
+    def mock_send_request(url, token, data=None, *args, **kwargs):
         nonlocal call_idx
         # Check that query string parameters for filters were appended correctly
         if "request_work" in url:
@@ -172,9 +145,9 @@ def test_worker_loop_auto_detect_resources_and_env_json(sandbox, env_dir):
     # task runs: first checks return running (None) so they are kept in queue, then finished (0)
     mock_proc.poll.side_effect = [None, None, None, 0, 0, 0]
     
-    with patch("snap_workflow.dispatcher.runner.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.dispatcher.base.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc), \
-         patch("snap_workflow.dispatcher.runner.detect_system_resources", return_value=(3, 0, 8.0)):
+         patch("snap_workflow.dispatcher.resource_allocator.detect_system_resources", return_value=(3, 0, 8.0)):
         # Pass None to auto-detect resources (will return 3 cpus from mocked detect_system_resources, covering line 42)
         dispatcher.dispatcher_loop(
             server_url="http://localhost:8000",
@@ -213,7 +186,7 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
     ]
     
     call_idx = 0
-    def mock_send_request(url, token, data=None):
+    def mock_send_request(url, token, data=None, *args, **kwargs):
         nonlocal call_idx
         resp = mock_responses[call_idx]
         call_idx += 1
@@ -225,7 +198,7 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
     mock_proc.terminate.side_effect = RuntimeError("mock terminate error")
     
     # We raise KeyboardInterrupt inside loop via time.sleep mock
-    with patch("snap_workflow.dispatcher.runner.send_request", side_effect=mock_send_request), \
+    with patch("snap_workflow.dispatcher.base.send_request", side_effect=mock_send_request), \
          patch("subprocess.Popen", return_value=mock_proc), \
          patch("time.sleep", side_effect=KeyboardInterrupt):
         dispatcher.dispatcher_loop(
@@ -432,28 +405,6 @@ def test_detect_system_resources_gpu_and_fallbacks(monkeypatch):
         cpus, gpus, mem = dispatcher.detect_system_resources()
         assert gpus == 5
 
-def test_launch_local_workers_parameters_and_errors(sandbox, env_dir):
-    initialize(env_dir)
-    controller = DispatcherController(
-        target_name="local",
-        mode="subprocess",
-        server_url="http://localhost:1234",
-        token="dummy_token",
-        num_workers=1,
-        stages="stage1",
-        sweeps="sweep1",
-        exclude_stages="stage2",
-        exclude_sweeps="sweep2"
-    )
-    with patch("subprocess.Popen") as mock_popen:
-        controller.start()
-        assert mock_popen.call_count == 1
-        args = mock_popen.call_args_list[0][0][0]
-        assert any("snap_workflow.dispatcher" in a for a in args)
-        assert "--exclude_stages" in args
-        assert "stage2" in args
-        assert "--exclude_sweeps" in args
-        assert "sweep2" in args
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_worker_cli_argparse_and_shutdown():
@@ -691,7 +642,7 @@ def test_remote_preflight_checks(sandbox, env_dir):
 
 
 def test_worker_loop_connect_timeout():
-    with patch("snap_workflow.dispatcher.runner.send_request", return_value=None):
+    with patch("snap_workflow.dispatcher.base.send_request", return_value=None):
         start = time.time()
         dispatcher.dispatcher_loop("http://invalid_server:9999", "fake_token", connect_timeout=1.0)
         duration = time.time() - start

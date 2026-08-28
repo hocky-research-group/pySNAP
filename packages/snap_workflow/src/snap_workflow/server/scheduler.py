@@ -9,6 +9,7 @@ from snap_workflow.utils.constants import PARAMS
 from snap_workflow.utils.io import parse_memory_to_gb
 from snap_workflow.core.domain import stages as stage_tools, sweeps as sweep_tools, status
 from snap_workflow.core.domain.spoints import iter_spoints, get_spoint_path, create_spoint, create_spoint_dict
+from snap_workflow.core.params import params as params_tools
 
 logger = logging.getLogger("snap_workflow.server.scheduler")
 
@@ -147,7 +148,6 @@ class SPointScheduler:
         params_file = os.path.join(sp_path, PARAMS)
         if not os.path.isfile(params_file):
             try:
-                from snap_workflow.core.params import params as params_tools
                 params_tools.set_spoint_params(sweep_name, stage_name, spoint_dict)
             except Exception as e:
                 logger.warning("Failed to generate params.pkl for %s: %s", sp_path, e)

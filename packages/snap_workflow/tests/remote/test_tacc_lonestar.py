@@ -12,8 +12,7 @@ from snap_workflow.core.domain.stages import add_stage
 from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.domain import status, spoints
-from snap_workflow import dispatcher
-from snap_workflow.server import register_auto_scheduler, ensure_remote_tunnel
+from snap_workflow.remote import ensure_remote_tunnel
 from snap_workflow.remote.setup import setup_remote_cluster, launch_remote_workers_server_side
 from snap_workflow.remote.ssh import run_remote_python, run_remote_bash
 

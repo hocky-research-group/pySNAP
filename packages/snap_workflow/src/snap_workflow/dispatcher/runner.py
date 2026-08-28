@@ -10,69 +10,12 @@ from typing import Dict, Any, List, Optional
 from snap_workflow.utils.constants import SERVER_INFO
 from snap_workflow.utils import path, io
 from snap_workflow.utils.io import parse_memory_to_gb
-from snap_workflow.dispatcher.base import BaseDispatcher
-from snap_workflow.dispatcher.resource_allocator import ResourcePool
+from snap_workflow.utils.logging import setup_logging
+from snap_workflow.core.domain import spoints as spoint_tools, status as status_module
+from snap_workflow.dispatcher.base import BaseDispatcher, send_request
+from snap_workflow.dispatcher.resource_allocator import ResourcePool, detect_system_resources
 
 logger = logging.getLogger("snap_workflow.dispatcher.runner")
-
-
-def detect_system_resources():
-    """Detects available CPU cores, GPUs, and system memory in GB."""
-    cpus = os.cpu_count() or 1
-    slurm_cpus = os.getenv("SLURM_CPUS_ON_NODE")
-    if slurm_cpus is not None:
-        try:
-            cpus = int(slurm_cpus)
-        except ValueError:
-            pass
-    gpus = 0
-    try:
-        cuda_vis_env = os.getenv("CUDA_VISIBLE_DEVICES")
-        slurm_gpus_env = os.getenv("SLURM_GPUS_ON_NODE")
-        if cuda_vis_env is not None:
-            cuda_vis = str(cuda_vis_env).strip()
-            if cuda_vis.lower() in ("none", "void", "-1"):
-                gpus = -1
-            elif cuda_vis:
-                gpus = len([x for x in cuda_vis.split(",") if x.strip()])
-        elif slurm_gpus_env is not None:
-            try:
-                gpus = int(slurm_gpus_env)
-            except ValueError:
-                gpus = 1
-        else:
-            try:
-                res = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True)
-                if res.returncode == 0:
-                    lines = [line for line in res.stdout.strip().split("\n") if line.strip()]
-                    gpus = len(lines)
-            except Exception:
-                gpus = 0
-
-            if gpus == 0:
-                try:
-                    import torch
-                    if torch.cuda.is_available():
-                        gpus = torch.cuda.device_count()
-                except Exception:
-                    pass
-    except Exception:
-        gpus = 1
-
-    mem_gb = 16.0
-    try:
-        if sys.platform != "win32":
-            res = subprocess.run(["free", "-b"], capture_output=True, text=True)
-            if res.returncode == 0:
-                lines = res.stdout.strip().split("\n")
-                if len(lines) > 1:
-                    tokens = lines[1].split()
-                    total_bytes = int(tokens[1])
-                    mem_gb = total_bytes / (1024 ** 3)
-    except Exception:
-        pass
-
-    return cpus, gpus, mem_gb
 
 
 class SubprocessDispatcher(BaseDispatcher):
@@ -196,7 +139,6 @@ class SubprocessDispatcher(BaseDispatcher):
         proc_env["VECLIB_MAXIMUM_THREADS"] = str(req_cpus)
         proc_env["NUMEXPR_NUM_THREADS"] = str(req_cpus)
 
-        from snap_workflow.core.domain import spoints as spoint_tools
         spoint_rel_path = os.path.join(stage, "spoints", spoint_tools.get_spoint_string(spoint_dict))
 
         cmd = ["bash", spoint_sh_script, spoint_rel_path]
@@ -235,7 +177,6 @@ class SubprocessDispatcher(BaseDispatcher):
                 # Prioritize authoritative status written by SPointManager in .spoint_info/status
                 disk_status = None
                 try:
-                    from snap_workflow.core.domain import status as status_module
                     rel_p = job.get("spoint_rel_path")
                     target_dir = os.path.join(self.root if self.root else ".", rel_p) if rel_p else (spoint_path if os.path.isabs(spoint_path) else os.path.join(self.root if self.root else ".", spoint_path))
                     disk_status = status_module.load_status(target_dir)
@@ -273,31 +214,6 @@ class SubprocessDispatcher(BaseDispatcher):
                 job["proc"].terminate()
             except Exception:
                 pass
-
-
-def send_request(url, token, data=None, retries=1, backoff=2, timeout=300, *args, **kwargs):
-    """Convenience helper for authenticated HTTP requests with exponential backoff."""
-    import urllib.request
-    import urllib.error
-    timeout = kwargs.get("timeout", timeout)
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    encoded_data = json.dumps(data).encode("utf-8") if data is not None else None
-
-    for attempt in range(retries):
-        try:
-            req = urllib.request.Request(url, data=encoded_data, headers=headers, method="POST" if data is not None else "GET")
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
-        except Exception as e:
-            if attempt < retries - 1:
-                time.sleep(backoff * (2 ** attempt))
-            else:
-                logger.debug("send_request failed after %s attempts: %s", retries, e)
-                return None
-    return None
 
 
 def dispatcher_loop(
@@ -343,7 +259,6 @@ def dispatcher_loop(
         raise ValueError("Manager server connection details not found. Please specify server_url and token, or ensure .workflow/server exists.")
 
     try:
-        from snap_workflow.utils.logging import setup_logging
         root = path.get_root()
         log_dir = os.path.join(root, "workers", "logs")
         os.makedirs(log_dir, exist_ok=True)

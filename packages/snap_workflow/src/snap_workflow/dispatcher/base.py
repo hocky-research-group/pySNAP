@@ -12,6 +12,29 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger("snap_workflow.dispatcher.base")
 
 
+def send_request(url: str, token: str, data: Optional[Dict[str, Any]] = None, retries: int = 1, backoff: float = 2.0, timeout: float = 300.0, *args, **kwargs) -> Optional[Dict[str, Any]]:
+    """Convenience helper for authenticated HTTP requests with exponential backoff."""
+    timeout = kwargs.get("timeout", timeout)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    encoded_data = json.dumps(data).encode("utf-8") if data is not None else None
+
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, data=encoded_data, headers=headers, method="POST" if data is not None else "GET")
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(backoff * (2 ** attempt))
+            else:
+                logger.debug("send_request failed after %s attempts: %s", retries, e)
+                return None
+    return None
+
+
 class BaseDispatcher(ABC):
     """Abstract base class for task dispatchers communicating with the workflow server."""
 
@@ -44,18 +67,13 @@ class BaseDispatcher(ABC):
         url: str,
         data: Optional[Dict[str, Any]] = None,
         retries: int = 5,
-        backoff: float = 1.0
+        backoff: float = 1.0,
+        timeout: float = 300.0,
+        *args,
+        **kwargs
     ) -> Optional[Dict[str, Any]]:
         """Sends an authenticated HTTP request to the workflow server."""
-        from snap_workflow.dispatcher.runner import send_request as runner_send_request
-        import inspect
-        try:
-            sig = inspect.signature(runner_send_request)
-            if "retries" in sig.parameters or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
-                return runner_send_request(url, self.token, data=data, retries=retries, backoff=backoff)
-        except Exception:
-            pass
-        return runner_send_request(url, self.token, data=data)
+        return send_request(url, self.token, data=data, retries=retries, backoff=backoff, timeout=timeout, *args, **kwargs)
 
     def get_available_resources(self) -> Dict[str, Any]:
         """Returns currently available hardware resources (e.g. cpus_avail, gpu_avail, mem_avail)."""
@@ -148,8 +166,7 @@ class BaseDispatcher(ABC):
             "active_tasks": list(self.active_jobs.keys())
         }
         try:
-            from snap_workflow.dispatcher.runner import send_request as runner_send_request
-            runner_send_request(url, self.token, data=payload, retries=1, timeout=1)
+            send_request(url, self.token, data=payload, retries=1, timeout=1)
         except Exception:
             pass
 

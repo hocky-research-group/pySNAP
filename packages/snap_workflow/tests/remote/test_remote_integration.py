@@ -9,9 +9,7 @@ from snap_workflow.core.workflow import initialize
 from snap_workflow.core.domain.stages import add_stage
 from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep
-from snap_workflow.core.domain import status
-from snap_workflow.core.domain import spoints
-from snap_workflow.server import register_auto_scheduler
+from snap_workflow.core.domain import status, spoints
 
 def is_ssh_reachable():
     try:
@@ -57,9 +55,9 @@ def setup_remote_test_env(remote_path):
         "ssh", "Lab_Main",
         f"python3 -c \"import json, os; "
         f"p1=os.path.expanduser('{resolved_path}/stage1/env.json'); "
-        f"data1=json.load(open(p1)) if os.path.exists(p1) else {{}}; data1['python_path']='python3'; json.dump(data1, open(p1, 'w')); "
+        f"data1=json.load(open(p1)) if os.path.exists(p1) else {{}}; data1['python_path']='PYTHONPATH=/home/tanner/pySNAP/packages/snap_workflow/src:$PYTHONPATH python3'; json.dump(data1, open(p1, 'w')); "
         f"p2=os.path.expanduser('{resolved_path}/.workflow/config.json'); "
-        f"data2=json.load(open(p2)) if os.path.exists(p2) else {{}}; data2['python_path']='python3'; json.dump(data2, open(p2, 'w'))\""
+        f"data2=json.load(open(p2)) if os.path.exists(p2) else {{}}; data2['python_path']='PYTHONPATH=/home/tanner/pySNAP/packages/snap_workflow/src:$PYTHONPATH python3'; json.dump(data2, open(p2, 'w'))\""
     ]
     subprocess.run(modify_cmd, check=True)
     return resolved_path
@@ -104,12 +102,14 @@ def test_remote_autosubmit_workstation(sandbox, env_dir, workflow_server):
             # Start auto-scheduler thread for Lab_Main_Test
             # This triggers remote Workstation Mode since has_slurm is False
             print("Registering auto-scheduler...")
-            register_auto_scheduler(
-                server=srv,
-                remote_name="Lab_Main_Test",
-                stages="stage1",
-                sweeps="sweep1"
+            from snap_workflow.cli.remote import remote_auto_cmd
+            import threading
+            auto_thread = threading.Thread(
+                target=remote_auto_cmd,
+                args=("workflow remote auto", ["Lab_Main_Test", "--stage", "stage1", "--sweep", "sweep1"]),
+                daemon=True
             )
+            auto_thread.start()
 
             # Wait up to 60 seconds for completion of both spoint tasks
             completed = False

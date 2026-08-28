@@ -19,14 +19,17 @@ def test_get_remote_host_and_path(tmp_path, monkeypatch):
         
     monkeypatch.setattr("snap_workflow.utils.io.load_global_remotes", lambda: {"cluster1": {"host": "myhost"}})
     assert exec_module.get_remote_host("cluster1") == "myhost"
+    # Target is already a configured host value
+    assert exec_module.get_remote_host("myhost") == "myhost"
     
     # Unset local remote raises ValueError
     monkeypatch.setattr("snap_workflow.utils.io.load_local_remotes", lambda: {})
     with pytest.raises(ValueError, match="has not been set up locally"):
         exec_module.get_remote_path("cluster1")
         
-    monkeypatch.setattr("snap_workflow.utils.io.load_local_remotes", lambda: {"cluster1": {"path": "/scratch/sims"}})
+    monkeypatch.setattr("snap_workflow.utils.io.load_local_remotes", lambda: {"cluster1": {"host": "myhost", "path": "/scratch/sims"}})
     assert exec_module.get_remote_path("cluster1") == "/scratch/sims"
+    assert exec_module.get_remote_path("myhost") == "/scratch/sims"
 
 
 def test_run_command_local_and_remote():

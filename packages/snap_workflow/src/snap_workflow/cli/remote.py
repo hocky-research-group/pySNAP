@@ -4,7 +4,7 @@ from snap_workflow.utils import io, path
 from snap_workflow.utils.io import load_global_remotes, save_global_remotes, load_local_remotes, save_local_remotes
 from snap_workflow.remote import setup as remote_setup, ssh as remote_ssh
 from snap_workflow.server import sync as remote_sync
-from snap_workflow.cli.utils import parse_remaining, execute_option
+from snap_workflow.cli.utils import parse_remaining, execute_option, get_csv_arg
 
 
 def main_remote(parsed_command, args):
@@ -167,7 +167,7 @@ def remote_connect_cmd(parsed_command, args):
 
     # If manager server is active locally, provision remote server info & reverse SSH tunnel
     try:
-        from snap_workflow.server.tunnels import ensure_remote_tunnel
+        from snap_workflow.remote.tunnels import ensure_remote_tunnel
         ensure_remote_tunnel(name)
     except Exception:
         pass
@@ -177,10 +177,50 @@ def remote_connect_cmd(parsed_command, args):
 
 
 def remote_auto_cmd(parsed_command, args):
-    from snap_workflow.cli.server import server_auto_cmd
-    return server_auto_cmd(parsed_command, args)
+    args, kwargs = parse_remaining(args)
+    target = args[0] if len(args) > 0 else "local"
+
+    stages = get_csv_arg(kwargs, ["stage", "stages", "s", "S"])
+    sweeps = get_csv_arg(kwargs, ["sweep", "sweeps", "w", "W"])
+    exclude_stages = get_csv_arg(kwargs, ["exclude-stage", "exclude_stage", "exclude-stages", "exclude_stages", "xs", "XS"])
+    exclude_sweeps = get_csv_arg(kwargs, ["exclude-sweep", "exclude_sweep", "exclude-sweeps", "exclude_sweeps", "xw", "XW"])
+
+    io.warn_unused_kwargs(kwargs)
+
+    from snap_workflow.remote import run_remote_auto
+    run_remote_auto(
+        target=target,
+        stages=stages,
+        sweeps=sweeps,
+        exclude_stages=exclude_stages,
+        exclude_sweeps=exclude_sweeps
+    )
 
 
 def remote_reserve_cmd(parsed_command, args):
-    from snap_workflow.cli.server import server_reserve_cmd
-    return server_reserve_cmd(parsed_command, args)
+    args, kwargs = parse_remaining(args)
+    if len(args) < 2:
+        raise ValueError("Usage: 'workflow remote reserve <remote> <profile> [--num-workers N] [--sbatch-args S] [--stage S] [--sweep W] [--exclude-stage XS] [--exclude-sweep XW]'")
+
+    remote = args[0]
+    profile = args[1]
+    stages = get_csv_arg(kwargs, ["stage", "stages", "s", "S"])
+    sweeps = get_csv_arg(kwargs, ["sweep", "sweeps", "w", "W"])
+    exclude_stages = get_csv_arg(kwargs, ["exclude-stage", "exclude_stage", "exclude-stages", "exclude_stages", "xs", "XS"])
+    exclude_sweeps = get_csv_arg(kwargs, ["exclude-sweep", "exclude_sweep", "exclude-sweeps", "exclude_sweeps", "xw", "XW"])
+    num_workers = int(kwargs.pop("num-workers", kwargs.pop("num_workers", kwargs.pop("n", 1))))
+    sbatch_args = kwargs.pop("sbatch-args", kwargs.pop("sbatch_args", ""))
+    io.warn_unused_kwargs(kwargs)
+
+    from snap_workflow.remote import run_remote_reserve
+    run_remote_reserve(
+        remote=remote,
+        profile=profile,
+        num_workers=num_workers,
+        sbatch_args=sbatch_args,
+        stages=stages,
+        sweeps=sweeps,
+        exclude_stages=exclude_stages,
+        exclude_sweeps=exclude_sweeps
+    )
+    print(f"Worker reservation submitted for remote '{remote}'.")

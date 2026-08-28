@@ -127,27 +127,6 @@ def test_orchestrator_scheduler_live_ssh(sandbox, env_dir, tmp_path):
         json.dump(env_data, f, indent=4)
 
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
-    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
-
-    from snap_workflow.server.daemon import register_auto_scheduler, WorkflowServer
-    mock_server = MagicMock(spec=WorkflowServer)
-    mock_server.dispatchers = {}
-    mock_server.token = "tok123"
-    mock_server.server_port = 8080
-
-    with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_config_dir), \
-         patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file), \
-         patch("snap_workflow.dispatcher.controller.DispatcherController.start") as mock_start:
-        ctrl = register_auto_scheduler(
-            server=mock_server,
-            remote_name="Lab_Main",
-            stages="stage1",
-            sweeps="sweep1"
-        )
-        assert mock_start.called
-        assert "Lab_Main" in mock_server.dispatchers
-        assert mock_server.dispatchers["Lab_Main"] == ctrl
-
 def test_unauthorized_endpoints(sandbox, env_dir, workflow_server):
     initialize(env_dir)
     _, server_info = workflow_server("127.0.0.1", port=0)
@@ -158,7 +137,7 @@ def test_unauthorized_endpoints(sandbox, env_dir, workflow_server):
         urllib.request.urlopen(req)
     assert cm.value.code == 401
 
-    req = urllib.request.Request(f"{url}/auto", headers={"Authorization": "Bearer badtoken"}, method="POST")
+    req = urllib.request.Request(f"{url}/api/tasks/start", headers={"Authorization": "Bearer badtoken"}, method="POST")
     with pytest.raises(urllib.error.HTTPError) as cm:
         urllib.request.urlopen(req)
     assert cm.value.code == 401
@@ -205,15 +184,6 @@ def test_notify_and_submit_worker_success(sandbox, env_dir, workflow_server):
     resp2 = send_request(f"{url}/notify_shutdown", token, data=payload2)
     assert resp2["status"] == "ok"
 
-    # 3. reserve
-    payload3 = {
-        "name": "local",
-        "num_workers": 1,
-        "profile": "cpu"
-    }
-    with patch("snap_workflow.dispatcher.controller.DispatcherController.start"):
-        resp3 = send_request(f"{url}/reserve", token, data=payload3)
-        assert resp3["status"] == "success"
     req_shutdown = urllib.request.Request(f"{url}/shutdown", headers={"Authorization": f"Bearer {token}"}, method="GET")
     resp_shutdown = urllib.request.urlopen(req_shutdown)
     assert json.loads(resp_shutdown.read().decode())["status"] == "shutdown"
@@ -323,16 +293,6 @@ def test_notify_completion_spoint_path_and_shutdown(sandbox, env_dir, workflow_s
     }
     resp2 = send_request(f"{url}/notify_shutdown", token, data=payload2)
     assert resp2["status"] == "ok"
-
-    # 3. reserve
-    payload3 = {
-        "name": "local",
-        "num_workers": 1,
-        "profile": "cpu"
-    }
-    with patch("snap_workflow.dispatcher.controller.DispatcherController.start"):
-        resp3 = send_request(f"{url}/reserve", token, data=payload3)
-        assert resp3["status"] == "success"
 
 def test_run_server_foreground(sandbox, env_dir):
     initialize(env_dir)

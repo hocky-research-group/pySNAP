@@ -1,7 +1,11 @@
 import numpy as np
-import os,sys
+import os
+import sys
 import json
+import yaml
 from snap_workflow.utils import constants
+from snap_workflow.utils import path as w_path
+from snap_workflow.utils.constants import WORKFLOW
 
 def parse_memory_to_gb(mem_str):
     if not mem_str:
@@ -273,8 +277,6 @@ def recursive_print(object_dictionary,level = 0):# {{{
     return
 # }}}
 def load_json(path, full_path = False):# {{{
-    from snap_workflow.utils import path as w_path
-    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
@@ -286,8 +288,6 @@ def load_json(path, full_path = False):# {{{
     return obj
 # }}}
 def make_json(path, full_path = False,obj = None):# {{{
-    from snap_workflow.utils import path as w_path
-    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
@@ -301,8 +301,6 @@ def make_json(path, full_path = False,obj = None):# {{{
     return obj
 # }}}
 def save_json(path,obj,full_path = False):# {{{
-    from snap_workflow.utils import path as w_path
-    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
@@ -312,8 +310,6 @@ def save_json(path,obj,full_path = False):# {{{
 # }}}
 
 def load_config(path, full_path=False):
-    from snap_workflow.utils import path as w_path
-    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
@@ -330,27 +326,17 @@ def load_config(path, full_path=False):
             yaml_file = alt_yaml
             
     if os.path.isfile(yaml_file):
-        try:
-            import yaml
-        except ImportError:
-            raise ImportError("The 'pyyaml' package is required to read YAML parameter files. Please install it using 'pip install pyyaml'.")
         with open(yaml_file, 'r') as handle:
             return yaml.safe_load(handle)
             
     raise FileNotFoundError(f"Cannot load config {path}. File does not exist as JSON or YAML.")
 
 def save_config(path, obj, format="json", full_path=False):
-    from snap_workflow.utils import path as w_path
-    from snap_workflow.utils.constants import WORKFLOW
     if not full_path:
         root_path = w_path.get_root()
         path = root_path + WORKFLOW + path
         
     if format == "yaml" or format == "yml":
-        try:
-            import yaml
-        except ImportError:
-            raise ImportError("The 'pyyaml' package is required to write YAML parameter files. Please install it using 'pip install pyyaml'.")
         yaml_file = path if (path.endswith(".yaml") or path.endswith(".yml")) else path + ".yaml"
         with open(yaml_file, 'w') as handle:
             yaml.safe_dump(obj, handle, default_flow_style=False)
@@ -439,8 +425,7 @@ def load_sbatch_profile(profile_name, root_dir=None):
     if root_dir is None:
         root_dir = os.getcwd()
         try:
-            from snap_workflow.utils import path
-            root_dir = path.get_root()
+            root_dir = w_path.get_root()
         except Exception:
             pass
 
@@ -462,10 +447,34 @@ def load_sbatch_profile(profile_name, root_dir=None):
                     try:
                         return json.loads(content)
                     except Exception:
-                        import yaml
                         loaded = yaml.safe_load(content)
                         if isinstance(loaded, dict):
                             return loaded
                 except Exception:
                     pass
     return {}
+
+
+def load_server_info(root_dir=None):
+    """
+    Reads .workflow/server to obtain the running manager server's URL and auth token.
+    Returns (url, token).
+    """
+    if root_dir is None:
+        try:
+            info_file = w_path.from_root(constants.SERVER_INFO)
+        except Exception:
+            info_file = constants.SERVER_INFO
+    else:
+        info_file = os.path.join(root_dir, constants.SERVER_INFO)
+
+    if not os.path.isfile(info_file):
+        raise ValueError("Manager server is not running locally. Start it with 'workflow server start'.")
+    with open(info_file, "r") as f:
+        server_info = json.load(f)
+    url = server_info.get("url", f"http://127.0.0.1:{server_info.get('port', 8080)}")
+    token = server_info.get("token", "")
+    return url, token
+
+
+get_server_info = load_server_info

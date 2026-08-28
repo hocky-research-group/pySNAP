@@ -3,12 +3,14 @@ import re
 import sys
 import json
 import time
+import shlex
 import logging
 import argparse
 import subprocess
 from typing import Dict, Any, Optional
 
 from snap_workflow.utils import path, io
+from snap_workflow.core.domain import spoints as spoint_tools
 from snap_workflow.dispatcher.base import BaseDispatcher
 
 logger = logging.getLogger("snap_workflow.dispatcher.slurm")
@@ -58,8 +60,7 @@ class SlurmDispatcher(BaseDispatcher):
 
         if self.is_remote and not self.remote_path:
             try:
-                from snap_workflow.utils.io import load_local_remotes
-                local_remotes = load_local_remotes()
+                local_remotes = io.load_local_remotes()
                 self.remote_path = local_remotes.get(self.remote_host, {}).get("path")
                 if not self.remote_path and self.root:
                     self.remote_path = f"~/{os.path.basename(self.root)}"
@@ -90,7 +91,6 @@ class SlurmDispatcher(BaseDispatcher):
         spoint_dict = task["spoint_dict"]
         spoint_path = task["spoint_path"]
 
-        from snap_workflow.core.domain import spoints as spoint_tools
         rel_spoint_path = os.path.join(stage, "spoints", spoint_tools.get_spoint_string(spoint_dict))
         out_path = f"{rel_spoint_path}/slurm_%j.out"
         err_path = f"{rel_spoint_path}/slurm_%j.err"
@@ -183,7 +183,6 @@ class SlurmDispatcher(BaseDispatcher):
 
                 cmd = ["sbatch"]
                 if self.sbatch_extra_args:
-                    import shlex
                     cmd.extend(shlex.split(self.sbatch_extra_args))
                 cmd.append(script_file)
                 res = subprocess.run(cmd, capture_output=True, text=True, check=True)

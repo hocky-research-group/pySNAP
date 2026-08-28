@@ -1,9 +1,70 @@
 import os
+import sys
+import subprocess
 import threading
 import logging
 from typing import List, Tuple, Set, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def detect_system_resources():
+    """Detects available CPU cores, GPUs, and system memory in GB."""
+    cpus = os.cpu_count() or 1
+    slurm_cpus = os.getenv("SLURM_CPUS_ON_NODE")
+    if slurm_cpus is not None:
+        try:
+            cpus = int(slurm_cpus)
+        except ValueError:
+            pass
+    gpus = 0
+    try:
+        cuda_vis_env = os.getenv("CUDA_VISIBLE_DEVICES")
+        slurm_gpus_env = os.getenv("SLURM_GPUS_ON_NODE")
+        if cuda_vis_env is not None:
+            cuda_vis = str(cuda_vis_env).strip()
+            if cuda_vis.lower() in ("none", "void", "-1"):
+                gpus = -1
+            elif cuda_vis:
+                gpus = len([x for x in cuda_vis.split(",") if x.strip()])
+        elif slurm_gpus_env is not None:
+            try:
+                gpus = int(slurm_gpus_env)
+            except ValueError:
+                gpus = 1
+        else:
+            try:
+                res = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True)
+                if res.returncode == 0:
+                    lines = [line for line in res.stdout.strip().split("\n") if line.strip()]
+                    gpus = len(lines)
+            except Exception:
+                gpus = 0
+
+            if gpus == 0:
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        gpus = torch.cuda.device_count()
+                except Exception:
+                    pass
+    except Exception:
+        gpus = 1
+
+    mem_gb = 16.0
+    try:
+        if sys.platform != "win32":
+            res = subprocess.run(["free", "-b"], capture_output=True, text=True)
+            if res.returncode == 0:
+                lines = res.stdout.strip().split("\n")
+                if len(lines) > 1:
+                    tokens = lines[1].split()
+                    total_bytes = int(tokens[1])
+                    mem_gb = total_bytes / (1024 ** 3)
+    except Exception:
+        pass
+
+    return cpus, gpus, mem_gb
 
 
 class ResourcePool:
@@ -47,7 +108,6 @@ class ResourcePool:
                 self.all_gpus = list(range(gpus_total))
         else:
             try:
-                from snap_workflow.dispatcher.runner import detect_system_resources
                 _, detected_gpus, _ = detect_system_resources()
                 if detected_gpus > 0:
                     self.all_gpus = list(range(detected_gpus))

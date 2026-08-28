@@ -2,6 +2,7 @@ import os
 import sys
 import shutil
 import json
+import yaml
 import numpy as np
 from snap_workflow.utils.constants import *
 from snap_workflow.utils import io, path
@@ -122,7 +123,6 @@ def make_new_stage_files(stage_name, sbatch_details=None):
                 "mem": "FIXME"
             }
         if fmt == "yaml":
-            import yaml
             with open(env_yaml, 'w') as f:
                 yaml.safe_dump(env_data, f, default_flow_style=False)
         else:

@@ -68,7 +68,7 @@ def test_resource_pool_cuda_none(monkeypatch):
 
 def test_resource_pool_detect_gpus_fallback(monkeypatch):
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
-    with patch("snap_workflow.dispatcher.runner.detect_system_resources", return_value=(8, 4, 32.0)):
+    with patch("snap_workflow.dispatcher.resource_allocator.detect_system_resources", return_value=(8, 4, 32.0)):
         pool = ResourcePool(cpus_total=8, gpus_total=4)
         assert len(pool.all_gpus) == 4
         assert pool.all_gpus == [0, 1, 2, 3]

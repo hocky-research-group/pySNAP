@@ -7,7 +7,7 @@ from snap_workflow.utils.io import load_global_remotes, load_local_remotes
 from snap_workflow.utils.constants import SERVER_INFO
 from snap_workflow.utils import path
 
-logger = logging.getLogger("snap_workflow.server.tunnels")
+logger = logging.getLogger("snap_workflow.remote.tunnels")
 
 _ACTIVE_TUNNELS = {}
 
@@ -73,7 +73,7 @@ def provision_remote_server_info(target_remote, server_obj=None, port=None, toke
     except Exception:
         login_node = None
 
-    target_host = login_node or "127.0.0.1"
+    target_host = login_node if isinstance(login_node, str) and login_node else "127.0.0.1"
     server_json_content = json.dumps({
         "host": target_host,
         "port": int(port),
@@ -107,6 +107,9 @@ def cleanup_remote_server_info(target_remote):
 
 
 def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
+    """
+    Ensures a reverse SSH tunnel (-R port:127.0.0.1:port) is active to allow remote workers to reach the local server.
+    """
     if isinstance(server_or_remote, str) and remote_name is None:
         target_remote = server_or_remote
         server_obj = None
@@ -207,10 +210,11 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
     return tunnel_proc
 
 
-def stop_remote_tunnels(server):
-    """Terminates all active background SSH reverse tunnel processes attached to the server."""
-    if hasattr(server, "active_tunnels"):
-        for remote_name, proc in list(server.active_tunnels.items()):
+def stop_remote_tunnels(server=None):
+    """Terminates all active background SSH reverse tunnel processes."""
+    active_dict = getattr(server, "active_tunnels", None) if server is not None else _ACTIVE_TUNNELS
+    if active_dict:
+        for remote_name, proc in list(active_dict.items()):
             cleanup_remote_server_info(remote_name)
             if proc and proc.poll() is None:
                 logger.info("[TUNNEL] Stopping SSH reverse tunnel for remote '%s' (PID %s)...", remote_name, proc.pid)
@@ -219,4 +223,4 @@ def stop_remote_tunnels(server):
                     proc.wait(timeout=2)
                 except subprocess.TimeoutExpired:
                     proc.kill()
-        server.active_tunnels.clear()
+        active_dict.clear()

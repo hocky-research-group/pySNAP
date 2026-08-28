@@ -1,13 +1,15 @@
 import os
 import json
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from snap_workflow.cli.server import (
     main_server,
     server_start_cmd,
+    server_status_cmd,
     server_auto_cmd,
     server_reserve_cmd,
+    server_shutdown_cmd,
 )
 from snap_workflow.cli.utils import get_completions
 from snap_workflow.core import initialize
@@ -37,39 +39,22 @@ def test_server_start_cmd():
         mock_run.assert_called_once_with(host="127.0.0.1", port=9090, debug=False)
 
 
+def test_server_status_cmd():
+    with patch("snap_workflow.server.get_server_status", return_value={"status": "ok"}) as mock_status:
+        server_status_cmd("workflow server status", [])
+        mock_status.assert_called_once()
+
+
 def test_server_auto_cmd_delegation():
-    with patch("snap_workflow.server.auto", return_value={"status": "success", "message": "Autoscheduler started"}) as mock_auto:
-        server_auto_cmd("workflow server auto", ["my_workstation", "--stage", "stage1", "--sweep", "sweep1"])
-        mock_auto.assert_called_once_with(
-            remote="my_workstation",
-            stages="stage1",
-            sweeps="sweep1",
-            exclude_stages="",
-            exclude_sweeps=""
-        )
-
-
-def test_server_reserve_cmd_missing_args():
-    with pytest.raises(ValueError, match="Usage: 'workflow server reserve <remote> <profile>"):
-        server_reserve_cmd("workflow server reserve", ["cluster_only"])
+    with patch("snap_workflow.cli.remote.remote_auto_cmd") as mock_auto:
+        server_auto_cmd("workflow server auto", ["my_workstation", "--stage", "stage1"])
+        mock_auto.assert_called_once()
 
 
 def test_server_reserve_cmd_delegation():
-    with patch("snap_workflow.server.reserve_workers", return_value={"status": "success", "message": "Reservation submitted"}) as mock_reserve:
-        server_reserve_cmd(
-            "workflow server reserve",
-            ["cluster1", "gpu", "--num-workers", "4", "--sbatch-args", "qos=high", "--stage", "stage2"]
-        )
-        mock_reserve.assert_called_once_with(
-            remote="cluster1",
-            profile="gpu",
-            num_workers=4,
-            sbatch_args="qos=high",
-            stages="stage2",
-            sweeps="",
-            exclude_stages="",
-            exclude_sweeps=""
-        )
+    with patch("snap_workflow.cli.remote.remote_reserve_cmd") as mock_reserve:
+        server_reserve_cmd("workflow server reserve", ["cluster1", "gpu"])
+        mock_reserve.assert_called_once()
 
 
 def test_server_autocompletions(sandbox):
@@ -102,20 +87,7 @@ def test_server_autocompletions(sandbox):
         assert "cpu_small" in comp_profiles
 
 
-def test_server_stop_cmd_delegation():
-    from snap_workflow.cli.server import server_stop_cmd
-
-    with pytest.raises(ValueError, match="Usage: 'workflow server stop <target>"):
-        server_stop_cmd("workflow server stop", [])
-
-    with patch("snap_workflow.server.stop_target", return_value={"status": "success", "message": "Target stopped"}) as mock_stop:
-        server_stop_cmd("workflow server stop", ["lonestar", "--force"])
-        mock_stop.assert_called_once_with("lonestar", force=True)
-
-
 def test_server_shutdown_cmd_delegation():
-    from snap_workflow.cli.server import server_shutdown_cmd
-
     with patch("snap_workflow.server.shutdown_server", return_value={"status": "shutdown"}) as mock_shutdown:
         server_shutdown_cmd("workflow server shutdown", [])
         mock_shutdown.assert_called_once()

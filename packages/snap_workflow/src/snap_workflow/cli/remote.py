@@ -123,9 +123,16 @@ def remote_setup_cmd(parsed_command, args):
 def remote_sync_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
     if len(args) != 1:
-        raise ValueError("Usage: 'workflow remote sync name [-v/--verbose]'")
+        raise ValueError("Usage: 'workflow remote sync name [--pull/--push/--both] [-v/--verbose]'")
     name = args[0]
-    direction = kwargs.pop("direction", "push")
+    if kwargs.pop("pull", False):
+        direction = "pull"
+    elif kwargs.pop("push", False):
+        direction = "push"
+    elif kwargs.pop("both", False):
+        direction = "both"
+    else:
+        direction = kwargs.pop("direction", "both")
     stages = kwargs.pop("stage", kwargs.pop("stages", kwargs.pop("s", None)))
     sweeps = kwargs.pop("sweep", kwargs.pop("sweeps", kwargs.pop("w", None)))
     verbose = bool(kwargs.pop("verbose", kwargs.pop("v", False)))

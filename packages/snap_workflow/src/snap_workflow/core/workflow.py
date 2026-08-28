@@ -81,7 +81,7 @@ def setup_agent_skills():
         pass
 
 def setup_blank_workflow():
-    from snap_workflow.utils.exec import has_slurm
+    from snap_workflow.remote.exec import has_slurm
     os.mkdir(".workflow")
     os.makedirs("params", exist_ok=True)
     os.makedirs("data", exist_ok=True)

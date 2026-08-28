@@ -40,10 +40,9 @@ def workflow_server():
         try:
             from snap_workflow.server.tunnels import stop_remote_tunnels
             stop_remote_tunnels(srv)
-            if hasattr(srv, "auto_schedulers"):
-                for remote, scheduler in srv.auto_schedulers.items():
-                    scheduler.shutdown_event.set()
-                    scheduler.join(timeout=2)
+            if hasattr(srv, "dispatchers"):
+                for remote, controller in srv.dispatchers.items():
+                    controller.stop()
             srv.shutdown()
             srv.server_close()
         except Exception:

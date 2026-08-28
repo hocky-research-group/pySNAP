@@ -15,7 +15,7 @@ def wf_init(sandbox):
 def test_reserve_workers_without_server_info_file(wf_init):
     if os.path.isfile(SERVER_INFO):
         os.remove(SERVER_INFO)
-    with patch("snap_workflow.utils.exec.has_slurm", return_value=True):
+    with patch("snap_workflow.remote.exec.has_slurm", return_value=True):
         with pytest.raises(ValueError, match="Manager server is not running locally"):
             server.reserve_workers("local", "default")
 
@@ -25,7 +25,7 @@ def test_reserve_workers_non_slurm_error(wf_init):
     with open(SERVER_INFO, "w") as f:
         json.dump(info_data, f)
 
-    with patch("snap_workflow.utils.exec.has_slurm", return_value=False):
+    with patch("snap_workflow.remote.exec.has_slurm", return_value=False):
         with pytest.raises(ValueError, match="does not have Slurm \\('sbatch'\\)"):
             server.reserve_workers("local", "cpu")
 
@@ -36,7 +36,7 @@ def test_reserve_workers_local_success(wf_init):
         json.dump(info_data, f)
 
     mock_res = {"status": "ok", "message": "Worker submitted successfully"}
-    with patch("snap_workflow.utils.exec.has_slurm", return_value=True), \
+    with patch("snap_workflow.remote.exec.has_slurm", return_value=True), \
          patch("snap_workflow.server.api.send_request", return_value=mock_res) as mock_send:
         res = server.reserve_workers(remote="local", profile="my_profile", num_workers=2, sbatch_args="--qos=high")
         assert res == mock_res
@@ -85,7 +85,7 @@ def test_reserve_workers_unregistered_remote_fails(wf_init):
     with open(SERVER_INFO, "w") as f:
         json.dump(info_data, f)
 
-    with patch("snap_workflow.utils.exec.has_slurm", return_value=True), \
+    with patch("snap_workflow.remote.exec.has_slurm", return_value=True), \
          patch("snap_workflow.utils.io.load_global_remotes", return_value={}), \
          patch("snap_workflow.utils.io.load_local_remotes", return_value={}):
         with pytest.raises(ValueError, match="Remote 'unknown_remote' is not registered"):
@@ -103,7 +103,7 @@ def test_reserve_remote_registered_success(wf_init):
     remotes = {"my_cluster": {"host": "cluster.edu"}}
     mock_res = {"status": "ok"}
 
-    with patch("snap_workflow.utils.exec.has_slurm", return_value=True), \
+    with patch("snap_workflow.remote.exec.has_slurm", return_value=True), \
          patch("snap_workflow.utils.io.load_global_remotes", return_value=remotes), \
          patch("snap_workflow.utils.io.load_local_remotes", return_value={}), \
          patch("snap_workflow.remote.setup.validate_remote_stage_resources") as mock_val, \

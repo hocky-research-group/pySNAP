@@ -183,7 +183,7 @@ def setup_remote_cluster(remote_host, remote_path):
         raise ValueError(f"Cannot connect to remote host '{remote_host}' via SSH: {e}. Please verify hostname and credentials.")
 
     resolved_path = resolve_remote_path(remote_host, remote_path)
-    from snap_workflow.utils.exec import has_slurm
+    from snap_workflow.remote.exec import has_slurm
     remote_has_slurm = has_slurm(remote_host)
     logger.info("[REMOTE:SETUP] Setting up workflow structure on remote %s:%s (slurm=%s)...", remote_host, resolved_path, remote_has_slurm)
 

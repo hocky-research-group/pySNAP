@@ -11,8 +11,7 @@ from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.domain import status
 from snap_workflow.core.domain import spoints
-from snap_workflow import dispatcher
-from snap_workflow.server import register_auto_scheduler, OrchestratorScheduler
+from snap_workflow.server import register_auto_scheduler
 
 def is_ssh_reachable():
     try:

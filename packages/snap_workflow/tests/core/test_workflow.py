@@ -66,7 +66,7 @@ def test_zip_workflow_spoints_iteration(sandbox):
 
 
 def test_initialize_sbatch_profiles_with_slurm(sandbox):
-    with patch("snap_workflow.utils.exec.has_slurm", return_value=True):
+    with patch("snap_workflow.remote.exec.has_slurm", return_value=True):
         initialize(force=True)
         assert os.path.isdir("sbatch_profiles")
         assert os.path.isfile(os.path.join("sbatch_profiles", "cpu.json"))
@@ -74,6 +74,6 @@ def test_initialize_sbatch_profiles_with_slurm(sandbox):
 
 
 def test_initialize_sbatch_profiles_without_slurm(sandbox):
-    with patch("snap_workflow.utils.exec.has_slurm", return_value=False):
+    with patch("snap_workflow.remote.exec.has_slurm", return_value=False):
         initialize(force=True)
         assert not os.path.exists("sbatch_profiles")

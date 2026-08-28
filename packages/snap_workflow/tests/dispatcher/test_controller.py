@@ -70,7 +70,8 @@ def test_dispatcher_controller_start_remote_slurm():
     mock_proc.poll.return_value = None
 
     with patch("snap_workflow.server.tunnels.ensure_remote_tunnel") as mock_tunnel, \
-         patch("snap_workflow.utils.io.load_local_remotes", return_value={"lonestar": {"path": "~/my_project"}}), \
+         patch("snap_workflow.dispatcher.controller.get_remote_host", return_value="lonestar"), \
+         patch("snap_workflow.dispatcher.controller.get_remote_path", return_value="~/my_project"), \
          patch("subprocess.Popen", return_value=mock_proc) as mock_popen:
 
         controller.start()
@@ -107,7 +108,8 @@ def test_dispatcher_controller_start_remote_subprocess():
     mock_ssh_proc.poll.return_value = None
 
     with patch("snap_workflow.server.tunnels.ensure_remote_tunnel") as mock_tunnel, \
-         patch("snap_workflow.utils.io.load_local_remotes", return_value={"workstation": {"path": "~/my_project"}}), \
+         patch("snap_workflow.dispatcher.controller.get_remote_host", return_value="workstation"), \
+         patch("snap_workflow.dispatcher.controller.get_remote_path", return_value="~/my_project"), \
          patch("subprocess.Popen", return_value=mock_ssh_proc) as mock_popen:
 
         controller.start()

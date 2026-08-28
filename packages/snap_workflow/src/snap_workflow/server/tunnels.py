@@ -25,7 +25,7 @@ def provision_remote_server_info(target_remote, server_obj=None, port=None, toke
     on the target remote host so compute nodes and workers can discover it automatically.
     """
     from snap_workflow.remote.ssh import run_remote_bash
-    from snap_workflow.utils.exec import get_remote_host, get_remote_path
+    from snap_workflow.remote.exec import get_remote_host, get_remote_path
 
     try:
         remote_host = get_remote_host(target_remote)
@@ -94,7 +94,7 @@ def cleanup_remote_server_info(target_remote):
     Removes {remote_workspace}/.workflow/server from the remote host upon tunnel teardown.
     """
     from snap_workflow.remote.ssh import run_remote_bash
-    from snap_workflow.utils.exec import get_remote_host, get_remote_path
+    from snap_workflow.remote.exec import get_remote_host, get_remote_path
 
     try:
         remote_host = get_remote_host(target_remote)
@@ -131,7 +131,7 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
             )
             del active_dict[target_remote]
 
-    from snap_workflow.utils.exec import get_remote_host
+    from snap_workflow.remote.exec import get_remote_host
     remote_host = get_remote_host(target_remote)
 
     if port is None and server_obj is not None:

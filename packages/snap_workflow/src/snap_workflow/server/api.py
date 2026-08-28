@@ -25,7 +25,7 @@ def reserve_workers(remote, profile, num_workers=1, sbatch_args="", stages="", s
     """
     url, token = _get_server_info()
 
-    from snap_workflow.utils.exec import has_slurm
+    from snap_workflow.remote.exec import has_slurm
     if not has_slurm(remote):
         raise ValueError(
             f"Target system '{remote}' does not have Slurm ('sbatch'). "

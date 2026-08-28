@@ -129,25 +129,24 @@ def test_orchestrator_scheduler_live_ssh(sandbox, env_dir, tmp_path):
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
-    from snap_workflow.server import OrchestratorScheduler
-    scheduler = OrchestratorScheduler(
-        remote="Lab_Main",
-        stages="stage1",
-        sweeps="sweep1"
-    )
-
-    def mock_sleep(seconds=None):
-        scheduler.shutdown_event.set()
+    from snap_workflow.server.daemon import register_auto_scheduler, WorkflowServer
+    mock_server = MagicMock(spec=WorkflowServer)
+    mock_server.dispatchers = {}
+    mock_server.token = "tok123"
+    mock_server.server_port = 8080
 
     with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_config_dir), \
          patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file), \
-         patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_config_dir), \
-         patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file), \
-         patch("time.sleep", side_effect=mock_sleep), \
-         patch("threading.Event.wait", side_effect=mock_sleep):
-        scheduler.run()
-
-    assert scheduler.shutdown_event.is_set()
+         patch("snap_workflow.dispatcher.controller.DispatcherController.start") as mock_start:
+        ctrl = register_auto_scheduler(
+            server=mock_server,
+            remote_name="Lab_Main",
+            stages="stage1",
+            sweeps="sweep1"
+        )
+        assert mock_start.called
+        assert "Lab_Main" in mock_server.dispatchers
+        assert mock_server.dispatchers["Lab_Main"] == ctrl
 
 def test_unauthorized_endpoints(sandbox, env_dir, workflow_server):
     initialize(env_dir)

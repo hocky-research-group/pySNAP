@@ -11,36 +11,38 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from snap_workflow.utils.constants import *
 from snap_workflow.utils import path, io
 from snap_workflow.core.domain import spoints as spoint_tools, stages as stage_tools, sweeps as sweep_tools
+from snap_workflow.server.scheduler import SPointScheduler
 from snap_workflow.utils.logging import logger
 from snap_workflow.server.tunnels import ensure_remote_tunnel
-from snap_workflow.server.scheduler import OrchestratorScheduler
-
-active_schedulers = {}
+from snap_workflow.dispatcher.controller import DispatcherController
+from snap_workflow.remote.exec import has_slurm
 
 
 def register_auto_scheduler(server, remote_name, stages="", sweeps="", exclude_stages="", exclude_sweeps="", profile="worker_profile"):
-    if not hasattr(server, "schedulers"):
-        server.schedulers = {}
-    if not hasattr(server, "auto_schedulers"):
-        server.auto_schedulers = server.schedulers
+    if not hasattr(server, "dispatchers"):
+        server.dispatchers = {}
 
-    if remote_name in server.schedulers:
-        old_sched = server.schedulers[remote_name]
-        old_sched.shutdown_event.set()
+    if remote_name in server.dispatchers:
+        old_ctrl = server.dispatchers[remote_name]
+        old_ctrl.stop()
 
-    sched = OrchestratorScheduler(
-        remote=remote_name,
+    mode = "slurm" if has_slurm(remote_name) else "subprocess"
+    actual_port = server.server_address[1] if hasattr(server, "server_address") else getattr(server, "server_port", 8080)
+    controller = DispatcherController(
+        target_name=remote_name,
+        mode=mode,
+        server_instance=server,
+        server_port=actual_port,
+        token=getattr(server, "token", None),
         stages=stages,
         sweeps=sweeps,
         exclude_stages=exclude_stages,
         exclude_sweeps=exclude_sweeps,
-        server=server,
         profile=profile
     )
-    server.schedulers[remote_name] = sched
-    server.auto_schedulers[remote_name] = sched
-    sched.daemon = True
-    sched.start()
+    server.dispatchers[remote_name] = controller
+    controller.start()
+    return controller
 
 
 def start_server(host="127.0.0.1", port=0):
@@ -72,9 +74,7 @@ class WorkflowServer(HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, token=None):
         super().__init__(server_address, RequestHandlerClass)
         self.token = token or secrets.token_hex(16)
-        self.spoint_manager = spoint_tools.SPointStatusManager()
-        self.schedulers = {}
-        self.auto_schedulers = self.schedulers
+        self.spoint_manager = SPointScheduler()
         self.dispatchers = {}
         self.active_tunnels = {}
 
@@ -410,7 +410,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 if remote == "local":
                     stage_tools.validate_stage_resources()
                 else:
-                    from snap_workflow.utils.exec import get_remote_host, get_remote_path
+                    from snap_workflow.remote.exec import get_remote_host, get_remote_path
                     from snap_workflow.remote.setup import validate_remote_stage_resources
                     host = get_remote_host(remote)
                     r_path = get_remote_path(remote)
@@ -456,11 +456,6 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                     stopped_items.append(f"dispatcher '{name}'")
                 self.server.dispatchers.clear()
 
-                for name, sched in list(getattr(self.server, "schedulers", {}).items()):
-                    sched.shutdown_event.set()
-                    stopped_items.append(f"auto-scheduler '{name}'")
-                self.server.schedulers.clear()
-
                 if force:
                     for name, proc in list(getattr(self.server, "active_tunnels", {}).items()):
                         if proc and proc.poll() is None:
@@ -474,11 +469,6 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                     ctrl.stop(force=force)
                     stopped_items.append(f"dispatcher '{target}'")
 
-                if target in getattr(self.server, "schedulers", {}):
-                    sched = self.server.schedulers.pop(target)
-                    sched.shutdown_event.set()
-                    stopped_items.append(f"auto-scheduler '{target}'")
-
                 if force and target in getattr(self.server, "active_tunnels", {}):
                     proc = self.server.active_tunnels.pop(target)
                     if proc and proc.poll() is None:
@@ -487,7 +477,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 if stopped_items:
                     msg = f"Successfully stopped {', '.join(stopped_items)}."
                 else:
-                    msg = f"No active dispatcher or auto-scheduler found for target '{target}'."
+                    msg = f"No active dispatcher found for target '{target}'."
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -529,15 +519,21 @@ def run_server_foreground(host="127.0.0.1", port=0):
     except KeyboardInterrupt:
         logger.info("[STARTUP] Manager server stopping...")
     finally:
-        if hasattr(server, "schedulers"):
-            for name, sched in server.schedulers.items():
-                logger.info("[SCHEDULER] Stopping auto-scheduler thread for remote '%s'...", name)
-                sched.shutdown_event.set()
+        if hasattr(server, "dispatchers"):
+            for name, ctrl in list(server.dispatchers.items()):
+                logger.info("[DISPATCHER] Stopping dispatcher for target '%s'...", name)
+                try:
+                    ctrl.stop()
+                except Exception:
+                    pass
         if hasattr(server, "active_tunnels"):
-            for name, proc in server.active_tunnels.items():
+            for name, proc in list(server.active_tunnels.items()):
                 if proc and proc.poll() is None:
                     logger.info("[TUNNEL] Terminating active SSH reverse tunnel for remote '%s'...", name)
-                    proc.terminate()
+                    try:
+                        proc.terminate()
+                    except Exception:
+                        pass
         server.server_close()
         if os.path.isfile(info_path):
             try:

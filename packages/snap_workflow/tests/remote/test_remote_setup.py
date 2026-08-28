@@ -160,7 +160,7 @@ def test_setup_remote_cluster_with_slurm(sandbox, env_dir):
     initialize(env_dir)
     with patch("subprocess.run") as mock_run, \
          patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
-         patch("snap_workflow.utils.exec.has_slurm", return_value=True), \
+         patch("snap_workflow.remote.exec.has_slurm", return_value=True), \
          patch("snap_workflow.remote.setup.run_remote_python", return_value="ok"):
         
         mock_res = MagicMock()
@@ -185,7 +185,7 @@ def test_setup_remote_cluster_without_slurm(sandbox, env_dir):
     initialize(env_dir)
     with patch("subprocess.run") as mock_run, \
          patch("snap_workflow.remote.setup.resolve_remote_path", return_value="~/sims"), \
-         patch("snap_workflow.utils.exec.has_slurm", return_value=False), \
+         patch("snap_workflow.remote.exec.has_slurm", return_value=False), \
          patch("snap_workflow.remote.setup.run_remote_python", return_value="ok"):
         
         mock_res = MagicMock()

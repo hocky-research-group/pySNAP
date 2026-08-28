@@ -3,7 +3,7 @@ import os
 import json
 import subprocess
 from unittest.mock import patch, MagicMock
-from snap_workflow.utils import exec as exec_module
+from snap_workflow.remote import exec as exec_module
 from snap_workflow.utils import constants
 
 
@@ -42,7 +42,7 @@ def test_run_command_local_and_remote():
         mock_run.assert_called_with("echo hello", shell=True)
 
     # Remote command execution
-    with patch("snap_workflow.utils.exec.get_remote_host", return_value="user@hpc.edu"), \
+    with patch("snap_workflow.remote.exec.get_remote_host", return_value="user@hpc.edu"), \
          patch("subprocess.run") as mock_run:
         mock_run.return_value = subprocess.CompletedProcess(args=["ssh"], returncode=0, stdout="remote_out")
         res = exec_module.run_command("cluster1", ["ls", "-la"])
@@ -62,15 +62,15 @@ def test_has_slurm():
         assert exec_module.has_slurm("local") is False
         
     # Remote check with sbatch present
-    with patch("snap_workflow.utils.exec.run_command", return_value=subprocess.CompletedProcess(args=[], returncode=0)):
+    with patch("snap_workflow.remote.exec.run_command", return_value=subprocess.CompletedProcess(args=[], returncode=0)):
         assert exec_module.has_slurm("cluster1") is True
         
     # Remote check without sbatch
-    with patch("snap_workflow.utils.exec.run_command", return_value=subprocess.CompletedProcess(args=[], returncode=1)):
+    with patch("snap_workflow.remote.exec.run_command", return_value=subprocess.CompletedProcess(args=[], returncode=1)):
         assert exec_module.has_slurm("cluster1") is False
 
     # Remote check raising exception
-    with patch("snap_workflow.utils.exec.run_command", side_effect=RuntimeError("SSH fail")):
+    with patch("snap_workflow.remote.exec.run_command", side_effect=RuntimeError("SSH fail")):
         assert exec_module.has_slurm("cluster1") is False
 
 
@@ -81,11 +81,11 @@ def test_detect_target_resources():
         
     # Remote detection success
     mock_res = subprocess.CompletedProcess(args=[], returncode=0, stdout="[32, 4, 128.5]\n")
-    with patch("snap_workflow.utils.exec.run_command", return_value=mock_res):
+    with patch("snap_workflow.remote.exec.run_command", return_value=mock_res):
         assert exec_module.detect_target_resources("cluster1") == (32, 4, 128.5)
         
     # Remote detection failure raises RuntimeError
-    with patch("snap_workflow.utils.exec.run_command", side_effect=Exception("Timeout")), \
+    with patch("snap_workflow.remote.exec.run_command", side_effect=Exception("Timeout")), \
          patch("snap_workflow.remote.ssh.run_remote_bash", side_effect=Exception("SSH down")):
         with pytest.raises(RuntimeError, match="Failed to query hardware resources on remote"):
             exec_module.detect_target_resources("cluster1")

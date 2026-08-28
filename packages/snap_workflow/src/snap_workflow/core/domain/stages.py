@@ -150,6 +150,23 @@ def get_dependent_stages(stage_name, stages=None, deps=None):
         deps.append(dep_name)
     return np.unique(deps).tolist()
 
+def get_stage_depth(stage_name, stages_dict, cache=None):
+    """Calculates dependency depth for a stage (0 if no dependencies)."""
+    if cache is None:
+        cache = {}
+    if stage_name in cache:
+        return cache[stage_name]
+    stage_cfg = stages_dict.get(stage_name, {})
+    deps = stage_cfg.get("dependencies")
+    if deps is None:
+        deps = stage_cfg.get("dependent_stages", [])
+    if not deps:
+        cache[stage_name] = 0
+        return 0
+    depth = 1 + max(get_stage_depth(d, stages_dict, cache) for d in deps)
+    cache[stage_name] = depth
+    return depth
+
 def validate_stage_resources(root_dir=None):
     stages = load_stages()
     root = root_dir if root_dir else path.get_root()

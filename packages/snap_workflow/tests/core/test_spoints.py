@@ -9,6 +9,7 @@ from snap_workflow.core.domain.variables import add_variable
 from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.domain import spoints
 from snap_workflow.core.domain import status
+from snap_workflow.server.scheduler import SPointScheduler
 
 def test_spoint_still_defined(sandbox, env_dir):
     initialize(env_dir)
@@ -131,7 +132,7 @@ def test_spoint_status_manager_set_status_exception_handling(sandbox, env_dir):
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
-    mgr = spoints.SPointStatusManager()
+    mgr = SPointScheduler()
     with patch("snap_workflow.core.params.params.set_spoint_params", side_effect=Exception("Params error")):
         mgr.set_status("sweep1", "stage1", {"x": 5}, "complete")
         assert status.load_status(spoints.get_spoint_path("stage1", {"x": 5})) == "complete"
@@ -207,7 +208,7 @@ def test_get_spoint_parent_variable_filtering(sandbox, env_dir):
     spoints.create_spoint("shrink", {"x": 5}, clear=True)
     status.write_status("complete", spoints.get_spoint_path("shrink", {"x": 5}))
     
-    manager = spoints.SPointStatusManager()
+    manager = SPointScheduler()
     res = manager.get_spoint("sweep1", "shrink", {"x": 5, "ncheck": 10})
     assert res is not None
     assert res["status"] == "complete"

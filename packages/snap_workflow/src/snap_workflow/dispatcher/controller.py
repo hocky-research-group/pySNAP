@@ -7,6 +7,8 @@ from typing import Dict, Any, List, Optional
 
 from snap_workflow.utils import path
 from snap_workflow.utils.constants import SERVER_INFO
+from snap_workflow.remote.exec import get_remote_host, get_remote_path
+from snap_workflow.remote.ssh import get_control_path_args
 
 logger = logging.getLogger("snap_workflow.dispatcher.controller")
 
@@ -109,17 +111,8 @@ class DispatcherController:
         port = self.server_port or (self.server_instance.server_port if self.server_instance else 8080)
         url = self.server_url or f"http://127.0.0.1:{port}"
 
-        try:
-            from snap_workflow.utils.io import load_local_remotes
-            local_remotes = load_local_remotes()
-            remote_path = local_remotes.get(self.target_name, {}).get("path")
-            if not remote_path:
-                try:
-                    remote_path = f"~/{os.path.basename(path.get_root())}"
-                except Exception:
-                    remote_path = "~/workflow"
-        except Exception:
-            remote_path = "~/workflow"
+        remote_host = get_remote_host(self.target_name)
+        remote_path = get_remote_path(self.target_name)
 
         if self.mode == "slurm":
             # For remote Slurm clusters, run SlurmDispatcher locally; it interacts with Slurm via SSH
@@ -127,7 +120,7 @@ class DispatcherController:
                 sys.executable, "-m", "snap_workflow.dispatcher.slurm",
                 url, self.token or "",
                 "--host", self.target_name,
-                "--remote-host", self.target_name,
+                "--remote-host", remote_host,
                 "--remote-path", remote_path,
                 "--remote-port", str(port)
             ]
@@ -144,31 +137,30 @@ class DispatcherController:
 
             proc = subprocess.Popen(cmd)
             self.procs.append(proc)
-            logger.info("Spawned local Slurm dispatcher for remote target %s (PID: %s)", self.target_name, proc.pid)
+            logger.info("Spawned local Slurm dispatcher for remote target %s on %s (PID: %s)", self.target_name, remote_host, proc.pid)
         else:
             # For remote non-Slurm workstations, spawn the runner directly on the remote machine
-            remote_cmd_parts = [
-                f"cd {remote_path} &&",
-                f"python3 -u -m snap_workflow.dispatcher.runner http://127.0.0.1:{port} {self.token or ''}",
-                f"--host {self.target_name}"
-            ]
+            flags = [f"--host {self.target_name}"]
             if self.stages:
-                remote_cmd_parts.append(f"--stages {self.stages}")
+                flags.append(f"--stages {self.stages}")
             if self.sweeps:
-                remote_cmd_parts.append(f"--sweeps {self.sweeps}")
+                flags.append(f"--sweeps {self.sweeps}")
             if self.exclude_stages:
-                remote_cmd_parts.append(f"--exclude_stages {self.exclude_stages}")
+                flags.append(f"--exclude_stages {self.exclude_stages}")
             if self.exclude_sweeps:
-                remote_cmd_parts.append(f"--exclude_sweeps {self.exclude_sweeps}")
+                flags.append(f"--exclude_sweeps {self.exclude_sweeps}")
 
-            full_ssh_cmd = [
-                "ssh", "-o", "BatchMode=yes", self.target_name,
-                " ".join(remote_cmd_parts)
-            ]
+            flags_str = " ".join(flags)
+            remote_cmd = (
+                f"cd {remote_path} && "
+                f"PY_EXE=$(python3 -c \"import json, os; print(json.load(open('.workflow/config.json')).get('python_path', 'python3')) if os.path.exists('.workflow/config.json') else print('python3')\" 2>/dev/null || echo python3); "
+                f"$PY_EXE -u -m snap_workflow.dispatcher.runner http://127.0.0.1:{port} {self.token or ''} {flags_str}"
+            )
+            full_ssh_cmd = ["ssh"] + get_control_path_args() + [remote_host, remote_cmd]
 
             proc = subprocess.Popen(full_ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.procs.append(proc)
-            logger.info("Spawned remote subprocess dispatcher on %s (SSH PID: %s)", self.target_name, proc.pid)
+            logger.info("Spawned remote subprocess dispatcher on %s (%s) (SSH PID: %s)", self.target_name, remote_host, proc.pid)
 
     def stop(self, force: bool = False) -> None:
         """Terminates managed dispatcher processes (gracefully by default, or immediately if force=True)."""

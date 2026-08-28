@@ -106,6 +106,22 @@ def reserve_remote_workers(server_port, token, remote_name, profile, num_workers
         err_str = (res_sync.stderr or res_sync.stdout or "").strip()
         raise RuntimeError(f"Failed to sync codebase to remote host '{remote_host}': {err_str}")
 
+    templates_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "core", "templates"))
+    worker_sh = os.path.join(templates_dir, "run_worker.sh")
+    worker_py = os.path.join(templates_dir, "run_worker.py")
+    spoint_sh = os.path.join(templates_dir, "spoint.sh")
+    subprocess.run(["ssh"] + get_control_path_args() + [remote_host, f"mkdir -p {remote_path}/.workflow/workers"], check=False)
+    subprocess.run([
+        "rsync", "-avz",
+        "-e", "ssh " + " ".join(get_control_path_args()),
+        worker_sh, worker_py, f"{remote_host}:{remote_path}/.workflow/workers/"
+    ], capture_output=True)
+    subprocess.run([
+        "rsync", "-avz",
+        "-e", "ssh " + " ".join(get_control_path_args()),
+        spoint_sh, f"{remote_host}:{remote_path}/.workflow/spoint.sh"
+    ], capture_output=True)
+
     run_worker_sh = os.path.join(".workflow", "workers", "run_worker.sh")
     try:
         login_node = run_remote_bash(remote_host, "hostname -f").strip()

@@ -43,7 +43,8 @@ def measure_directory_size(remote, host, remote_path, spoint_rel_path):
         # Measure remotely using ssh + du -sb
         target_path = f"{remote_path}/{spoint_rel_path}"
         try:
-            cmd = ["ssh", host, f"du -sb {target_path}"]
+            from snap_workflow.remote.ssh import get_control_path_args
+            cmd = ["ssh"] + get_control_path_args() + [host, f"du -sb {target_path}"]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             if res.returncode == 0 and res.stdout.strip():
                 # Extract first token (the size in bytes)

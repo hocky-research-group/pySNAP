@@ -132,6 +132,7 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
             del active_dict[target_remote]
 
     from snap_workflow.remote.exec import get_remote_host
+    from snap_workflow.remote.ssh import get_control_path_args
     remote_host = get_remote_host(target_remote)
 
     if port is None and server_obj is not None:
@@ -156,6 +157,24 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
 
     ssh_dir = get_ssh_control_dir()
     control_path = os.path.join(ssh_dir, "mux_%h_%p_%r")
+
+    # 1. Try dynamic port forwarding over existing ControlMaster connection
+    fwd_cmd = ["ssh", "-O", "forward", "-o", f"ControlPath={control_path}", "-R", f"{port}:127.0.0.1:{port}", remote_host]
+    res_fwd = subprocess.run(fwd_cmd, capture_output=True, text=True)
+    if res_fwd.returncode == 0:
+        logger.info("[TUNNEL] Dynamic reverse tunnel forwarded over active master socket for '%s' (port %s).", target_remote, port)
+        provision_remote_server_info(target_remote, server_obj=server_obj, port=port)
+        return None
+
+    # 2. Check if the port is already listening on the remote host
+    check_port_cmd = ["ssh"] + get_control_path_args() + [remote_host, f"ss -tulpn 2>/dev/null | grep ':{port} ' || netstat -tulpn 2>/dev/null | grep ':{port} ' || true"]
+    res_port = subprocess.run(check_port_cmd, capture_output=True, text=True)
+    if res_port.stdout.strip():
+        logger.info("[TUNNEL] Port %s is already active on remote '%s'. Reusing existing tunnel.", port, target_remote)
+        provision_remote_server_info(target_remote, server_obj=server_obj, port=port)
+        return None
+
+    # 3. Otherwise, spawn new tunnel process using ControlMaster args
     tunnel_cmd = [
         "ssh", "-N", "-n",
         "-o", "ConnectTimeout=10",
@@ -176,7 +195,7 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
-    time.sleep(1.5)
+    time.sleep(1.0)
 
     active_dict[target_remote] = tunnel_proc
     if server_obj is not None and hasattr(server_obj, "active_tunnels"):

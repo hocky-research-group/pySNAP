@@ -62,7 +62,7 @@ def validate_remote_stage_resources(remote_host, resolved_path=None, stages=None
 
 def resolve_remote_path(remote_host, remote_path):
     check_cmd = [
-        "ssh", remote_host,
+        "ssh"] + get_control_path_args() + [remote_host,
         f'RP=$(eval echo {remote_path}); '
         f'if [ ! -d "$RP" ]; then echo "not_exists"; '
         f'elif [ -d "$RP/.workflow" ]; then echo "workflow_root"; '

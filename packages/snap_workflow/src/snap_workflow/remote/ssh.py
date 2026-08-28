@@ -26,13 +26,13 @@ def run_remote_python(remote_host, python_code, python_cmd=None, timeout=30):
     b64_cmd = f"import base64; exec(base64.b64decode('{b64_payload}'))"
     py_exec = python_cmd or "python3"
     cmd = ["ssh"] + get_control_path_args() + [remote_host, f"{py_exec} -c {repr(b64_cmd)}"]
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     ret = res.returncode if isinstance(res.returncode, int) else 0
     if ret != 0 and not python_cmd:
         bash_payload = f"python3 -c {repr(b64_cmd)} 2>/dev/null || python -c {repr(b64_cmd)}"
         b64_bash = base64.b64encode(bash_payload.encode()).decode()
         cmd = ["ssh"] + get_control_path_args() + [remote_host, f"echo '{b64_bash}' | base64 -d | bash -l"]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
         ret = res.returncode if isinstance(res.returncode, int) else 0
 
     if ret != 0:
@@ -47,7 +47,7 @@ def run_remote_bash(remote_host, bash_script, timeout=30):
     b64_payload = base64.b64encode(bash_script.encode()).decode()
     b64_cmd = f"echo '{b64_payload}' | base64 -d | bash"
     cmd = ["ssh"] + get_control_path_args() + [remote_host, b64_cmd]
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     ret = res.returncode if isinstance(res.returncode, int) else 0
     if ret != 0:
         err_str = (res.stdout or res.stderr or "").strip()
@@ -68,22 +68,26 @@ def ensure_remote_ssh_master(remote_host_or_name):
         pass
 
     check_cmd = ["ssh", "-o", "BatchMode=yes"] + get_control_path_args() + [host, "echo", "ping"]
-    res = subprocess.run(check_cmd, capture_output=True, text=True, timeout=5)
-    if res.returncode != 0:
-        ssh_dir = os.path.expanduser("~/.config/snap_workflow/ssh")
-        if os.path.isdir(ssh_dir):
-            for f in os.listdir(ssh_dir):
-                if f.startswith("mux_"):
-                    sock_path = os.path.join(ssh_dir, f)
-                    try:
-                        exit_cmd = ["ssh", "-O", "exit", "-o", f"ControlPath={sock_path}", host]
-                        subprocess.run(exit_cmd, capture_output=True, timeout=2)
-                    except Exception:
-                        pass
+    try:
+        res = subprocess.run(check_cmd, capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL)
+        if res.returncode == 0:
+            return
+    except Exception:
+        pass
 
-        print(f"Establishing persistent SSH master connection to '{remote_host_or_name}' ({host})...")
-        interactive_cmd = ["ssh", "-N", "-f"] + get_control_path_args() + [host]
-        subprocess.run(interactive_cmd)
+    ssh_dir = os.path.expanduser("~/.config/snap_workflow/ssh")
+    if os.path.isdir(ssh_dir):
+        for f in os.listdir(ssh_dir):
+            if f.startswith("mux_"):
+                sock_path = os.path.join(ssh_dir, f)
+                try:
+                    exit_cmd = ["ssh", "-O", "exit", "-o", f"ControlPath={sock_path}", host]
+                    subprocess.run(exit_cmd, capture_output=True, timeout=2, stdin=subprocess.DEVNULL)
+                except Exception:
+                    pass
+
+    interactive_cmd = ["ssh", "-n", "-N", "-f"] + get_control_path_args() + [host]
+    subprocess.run(interactive_cmd, stdin=subprocess.DEVNULL)
 
 
 def is_remote_ssh_connected(remote_host_or_name):
@@ -103,7 +107,7 @@ def is_remote_ssh_connected(remote_host_or_name):
 
     check_cmd = ["ssh", "-o", "BatchMode=yes"] + get_control_path_args() + [host, "echo", "ping"]
     try:
-        res = subprocess.run(check_cmd, capture_output=True, text=True, timeout=5)
+        res = subprocess.run(check_cmd, capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL)
         return res.returncode == 0
     except Exception:
         return False

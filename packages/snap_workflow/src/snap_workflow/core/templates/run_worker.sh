@@ -51,4 +51,4 @@ if [ ! -z "$SLURM_JOB_ID" ]; then
     export WORKER_ID="remote_slurm_${SLURM_JOB_ID}"
 fi
 
-$python_path .workflow/workers/run_worker.py
+$python_path -u .workflow/workers/run_worker.py

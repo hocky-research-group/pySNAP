@@ -16,7 +16,7 @@ from snap_workflow.cli.utils import get_completions
 @patch('builtins.input')
 def test_cli_lifecycle(mock_input, sandbox, env_dir):
     # 1. Test CLI initialization
-    mock_input.side_effect = ["y", "json", env_dir]
+    mock_input.side_effect = ["y", "json"]
     try:
         main_init("workflow init", [])
     except SystemExit:
@@ -60,7 +60,7 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
 
 @patch('builtins.input')
 def test_cli_noun_verb_lifecycle(mock_input, sandbox, env_dir):
-    mock_input.side_effect = ["y", "json", env_dir]
+    mock_input.side_effect = ["y", "json"]
     try:
         main_init("workflow init", [])
     except SystemExit:

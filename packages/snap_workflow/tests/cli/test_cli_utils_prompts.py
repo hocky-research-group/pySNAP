@@ -5,7 +5,7 @@ from unittest.mock import patch
 from snap_workflow.core.workflow import initialize
 from snap_workflow.core.domain.stages import add_stage
 from snap_workflow.core.domain.sweeps import add_sweep
-from snap_workflow.cli.utils import parse_remaining, execute_option, get_csv_arg, get_data_format, get_script_path, get_completions, get_shell_completion_script
+from snap_workflow.cli.utils import parse_remaining, execute_option, get_csv_arg, get_data_format, get_completions, get_shell_completion_script
 from snap_workflow.cli import prompts
 
 
@@ -47,13 +47,6 @@ def test_get_data_format():
     assert get_data_format({"format": "json"}) == "json"
     with patch("builtins.input", return_value="yaml"):
         assert get_data_format({}) == "yaml"
-
-
-def test_get_script_path(tmp_path):
-    f = tmp_path / "run.py"
-    f.write_text("print(1)")
-
-    assert get_script_path({"f": str(f)}) == str(f)
 
 
 def test_get_completions_advanced(sandbox):

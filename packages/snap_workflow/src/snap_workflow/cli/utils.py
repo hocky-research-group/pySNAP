@@ -79,17 +79,6 @@ def get_data_format(kwargs):
     return input_collector.collect()
 
 
-def get_script_path(kwargs):
-    prompt = "Enter script path: "
-    help_string = "The path of the python file containing the workflow instructions"
-    collector = io.InputCollector(prompt, help_string,
-                                   keys=["f", "script", "F", "Script"],
-                                   add_checks=lambda x: isinstance(x, str) and os.path.exists(x),
-                                   add_errors="Path must point to a valid file")
-
-    return collector.parse_kwargs(kwargs)
-
-
 def get_completions(args=None, prefix="", shell='bash'):
     if args is None:
         args = []

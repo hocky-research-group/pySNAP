@@ -2,7 +2,7 @@ import sys
 from snap_workflow.utils import io
 from snap_workflow.utils.logging import setup_logging
 from snap_workflow.core.workflow import initialize, zip_workflow
-from snap_workflow.cli.utils import parse_remaining, get_data_format, get_script_path, get_completions, get_shell_completion_script
+from snap_workflow.cli.utils import parse_remaining, get_data_format, get_completions, get_shell_completion_script
 from snap_workflow.cli.prompts import get_existing_stage_name, get_existing_sweep_name
 
 from snap_workflow.cli.stage import main_stage
@@ -37,9 +37,8 @@ def main_init(parsed_command, args):
     else:
         io.save_global_config({"default_format": "json"})
 
-    script_path = get_script_path(kwargs)
     io.warn_unused_kwargs(kwargs)
-    initialize(script_path)
+    initialize()
     sys.exit(0)
 
 

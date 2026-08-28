@@ -157,7 +157,7 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
     ssh_dir = get_ssh_control_dir()
     control_path = os.path.join(ssh_dir, "mux_%h_%p_%r")
     tunnel_cmd = [
-        "ssh", "-N",
+        "ssh", "-N", "-n",
         "-o", "ConnectTimeout=10",
         "-o", "ServerAliveInterval=15",
         "-o", "ServerAliveCountMax=10080",
@@ -170,7 +170,12 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
         remote_host
     ]
     logger.info("[TUNNEL] Spawning SSH reverse tunnel for remote '%s' on port %s...", target_remote, port)
-    tunnel_proc = subprocess.Popen(tunnel_cmd)
+    tunnel_proc = subprocess.Popen(
+        tunnel_cmd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
     time.sleep(1.5)
 
     active_dict[target_remote] = tunnel_proc

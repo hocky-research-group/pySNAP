@@ -99,7 +99,7 @@ class DispatcherController:
                 cmd.extend(["--exclude_sweeps", self.exclude_sweeps])
             cmd.extend(["--host", self.target_name])
 
-            proc = subprocess.Popen(cmd)
+            proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL)
             self.procs.append(proc)
             logger.info("Spawned local %s dispatcher (PID: %s)", self.mode, proc.pid)
 
@@ -136,7 +136,7 @@ class DispatcherController:
             if self.sbatch_args:
                 cmd.extend(["--sbatch-extra-args", self.sbatch_args])
 
-            proc = subprocess.Popen(cmd)
+            proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL)
             self.procs.append(proc)
             logger.info("Spawned local Slurm dispatcher for remote target %s on %s (PID: %s)", self.target_name, remote_host, proc.pid)
         else:
@@ -159,7 +159,7 @@ class DispatcherController:
                 f"print(cfg.get('python_path') or cfg.get('default_python_env') or 'python3')\" 2>/dev/null || echo python3); "
                 f"$PY_EXE -u -m snap_workflow.dispatcher.runner http://127.0.0.1:{port} {self.token or ''} {flags_str}"
             )
-            full_ssh_cmd = ["ssh"] + get_control_path_args() + [remote_host, remote_cmd]
+            full_ssh_cmd = ["ssh", "-n"] + get_control_path_args() + [remote_host, remote_cmd]
 
             logs_dir = os.path.expanduser("~/.config/snap_workflow/logs")
             os.makedirs(logs_dir, exist_ok=True)
@@ -167,7 +167,7 @@ class DispatcherController:
             log_fp = open(log_file, "a")
             self._log_fps.append(log_fp)
 
-            proc = subprocess.Popen(full_ssh_cmd, stdout=log_fp, stderr=subprocess.STDOUT)
+            proc = subprocess.Popen(full_ssh_cmd, stdin=subprocess.DEVNULL, stdout=log_fp, stderr=subprocess.STDOUT)
             self.procs.append(proc)
             logger.info("Spawned remote subprocess dispatcher on %s (%s) (SSH PID: %s, Log: %s)", self.target_name, remote_host, proc.pid, log_file)
 

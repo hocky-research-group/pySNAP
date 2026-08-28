@@ -200,9 +200,9 @@ class SubprocessDispatcher(BaseDispatcher):
             cmd = ["taskset", "-c", core_str] + cmd
 
         if self.log_file is not None:
-            proc = subprocess.Popen(cmd, env=proc_env, stdout=self.log_file, stderr=self.log_file)
+            proc = subprocess.Popen(cmd, env=proc_env, stdin=subprocess.DEVNULL, stdout=self.log_file, stderr=self.log_file)
         else:
-            proc = subprocess.Popen(cmd, env=proc_env)
+            proc = subprocess.Popen(cmd, env=proc_env, stdin=subprocess.DEVNULL)
 
         self.active_jobs[spoint_path] = {
             "proc": proc,

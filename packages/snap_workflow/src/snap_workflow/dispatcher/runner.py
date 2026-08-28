@@ -155,6 +155,8 @@ class SubprocessDispatcher(BaseDispatcher):
     def has_capacity(self) -> bool:
         """Returns True if there is remaining CPU/memory capacity to accept another task."""
         res = self.get_available_resources()
+        if getattr(self, "gpus_total", 0) > 0 and res.get("gpu_avail", 0) <= 0:
+            return False
         return res["cpus_avail"] > 0 and res["mem_avail"] > 0
 
     def dispatch_task(self, task: Dict[str, Any]) -> None:
@@ -183,8 +185,8 @@ class SubprocessDispatcher(BaseDispatcher):
         try:
             assigned_cpus, assigned_gpus = self.resource_pool.acquire(req_cpus, req_gpus)
         except Exception as acq_err:
-            logger.warning("ResourcePool checkout failed for %s: %s. Using fallback baseline.", stage, acq_err)
-            assigned_cpus, assigned_gpus = list(range(req_cpus)), list(range(req_gpus)) if req_gpus > 0 else []
+            logger.error("ResourcePool checkout failed for %s: %s", stage, acq_err)
+            return
 
         proc_env = os.environ.copy()
         if req_gpus > 0 and assigned_gpus:

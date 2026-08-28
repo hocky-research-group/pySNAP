@@ -235,6 +235,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                     exclude_sweeps=exclude_sweeps
                 )
                 if all_complete:
+                    logger.info("[SCHEDULER] All targeted tasks complete. Sending shutdown command to dispatcher '%s'.", host)
                     resp_data = {"status": "shutdown"}
                 else:
                     resp_data = {"status": "none"}

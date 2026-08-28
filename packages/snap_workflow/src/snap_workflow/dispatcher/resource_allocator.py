@@ -59,6 +59,18 @@ class ResourcePool:
         self.avail_cpus: Set[int] = set(self.all_cpus)
         self.avail_gpus: Set[int] = set(self.all_gpus)
 
+    @property
+    def cpus_avail(self) -> int:
+        """Returns the number of currently free CPU cores."""
+        with self._lock:
+            return len(self.avail_cpus)
+
+    @property
+    def gpus_avail(self) -> int:
+        """Returns the number of currently free GPU devices."""
+        with self._lock:
+            return len(self.avail_gpus)
+
     def acquire(self, req_cpus: int = 1, req_gpus: int = 0) -> Tuple[List[int], List[int]]:
         """
         Acquires requested number of CPU core IDs and GPU device IDs.

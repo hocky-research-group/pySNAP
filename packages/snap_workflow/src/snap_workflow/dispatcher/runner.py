@@ -127,30 +127,24 @@ class SubprocessDispatcher(BaseDispatcher):
 
     def get_available_resources(self) -> Dict[str, Any]:
         """Calculates currently available CPUs, GPUs, and Memory capacity."""
-        cpus_running = 0
-        gpus_running = 0
-        mem_running = 0.0
+        cpus_avail = self.resource_pool.cpus_avail if self.resource_pool else self.cpus_total
+        gpu_avail = self.resource_pool.gpus_avail if self.resource_pool else self.gpus_total
+        if getattr(self, "gpus_total", 0) == -1:
+            gpu_avail = -1
 
+        mem_running = 0.0
         for spoint_info in self.active_jobs.values():
             stage_name = spoint_info["stage"]
             env_base = os.path.join(self.root if self.root is not None else ".", stage_name, "env")
-            req_cpus = 1
-            req_gpus = 0
             req_mem = 0.0
             try:
                 env_data = io.load_config(env_base, full_path=True)
                 res = env_data.get("resources", {})
-                req_cpus = int(res.get("cpus", 1))
-                req_gpus = int(res.get("gpus", 0))
                 req_mem = parse_memory_to_gb(res.get("mem", "0"))
             except Exception:
                 pass
-            cpus_running += req_cpus
-            gpus_running += req_gpus
             mem_running += req_mem
 
-        cpus_avail = max(0, self.cpus_total - cpus_running)
-        gpu_avail = max(-1, self.gpus_total - gpus_running) if self.gpus_total != -1 else -1
         mem_avail = max(0.0, self.mem_total - mem_running)
         return {
             "cpus_avail": cpus_avail,

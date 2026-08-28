@@ -17,29 +17,34 @@ class ResourcePool:
     def __init__(self, cpus_total: Optional[int] = None, gpus_total: Optional[int] = None):
         self._lock = threading.Lock()
 
-        # Detect baseline CPU cores
-        if hasattr(os, "sched_getaffinity"):
-            try:
-                self.all_cpus: List[int] = sorted(list(os.sched_getaffinity(0)))
-            except Exception:
-                self.all_cpus = list(range(os.cpu_count() or 1))
+        if cpus_total is not None and cpus_total > 0:
+            self.all_cpus: List[int] = list(range(cpus_total))
         else:
-            self.all_cpus = list(range(os.cpu_count() or 1))
-
-        if cpus_total is not None and cpus_total > 0 and cpus_total < len(self.all_cpus):
-            self.all_cpus = self.all_cpus[:cpus_total]
+            # Detect baseline CPU cores
+            if hasattr(os, "sched_getaffinity"):
+                try:
+                    self.all_cpus = sorted(list(os.sched_getaffinity(0)))
+                except Exception:
+                    self.all_cpus = list(range(os.cpu_count() or 1))
+            else:
+                self.all_cpus = list(range(os.cpu_count() or 1))
 
         # Detect baseline GPU IDs
         cuda_vis = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_vis is not None:
-            c_str = str(cuda_vis).strip()
-            if c_str.lower() in ("none", "void", "-1") or not c_str:
-                self.all_gpus: List[int] = []
+        if cuda_vis is not None and cuda_vis.strip().lower() in ("none", "void", "-1"):
+            self.all_gpus: List[int] = []
+        elif cuda_vis is not None and any(x.strip().isdigit() for x in cuda_vis.split(",")):
+            try:
+                self.all_gpus = [int(x.strip()) for x in cuda_vis.split(",") if x.strip().isdigit()]
+            except Exception:
+                self.all_gpus = []
+            if gpus_total is not None and gpus_total >= 0 and gpus_total < len(self.all_gpus):
+                self.all_gpus = self.all_gpus[:gpus_total]
+        elif gpus_total is not None:
+            if gpus_total <= 0:
+                self.all_gpus = []
             else:
-                try:
-                    self.all_gpus = [int(x.strip()) for x in c_str.split(",") if x.strip().isdigit()]
-                except Exception:
-                    self.all_gpus = []
+                self.all_gpus = list(range(gpus_total))
         else:
             try:
                 from snap_workflow.dispatcher.runner import detect_system_resources
@@ -50,12 +55,6 @@ class ResourcePool:
                     self.all_gpus = []
             except Exception:
                 self.all_gpus = []
-
-        if gpus_total is not None:
-            if gpus_total == -1 or gpus_total == 0:
-                self.all_gpus = []
-            elif gpus_total > 0 and gpus_total < len(self.all_gpus):
-                self.all_gpus = self.all_gpus[:gpus_total]
 
         self.avail_cpus: Set[int] = set(self.all_cpus)
         self.avail_gpus: Set[int] = set(self.all_gpus)

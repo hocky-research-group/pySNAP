@@ -282,10 +282,11 @@ def test_auto_scheduling(sandbox, env_dir, workflow_server):
     mock_run_res.returncode = 1
     
     with patch("subprocess.run", return_value=mock_run_res), \
+         patch("snap_workflow.dispatcher.detect_system_resources", return_value=(8, 2, 16.0)), \
          patch("snap_workflow.server.scheduler.detect_system_resources", return_value=(8, 2, 16.0)), \
          patch("snap_workflow.dispatcher.runner.detect_system_resources", return_value=(8, 2, 16.0)), \
          patch("subprocess.Popen") as mock_popen:
-         
+        mock_popen.return_value.poll.return_value = None
         server_auto_cmd("workflow server auto", ["local"])
         
         assert hasattr(srv, "auto_schedulers")

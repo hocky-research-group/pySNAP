@@ -139,7 +139,11 @@ class OrchestratorScheduler(threading.Thread):
         slurm_submitted_jobs = []
 
         if not has_slurm:
-            cpus_total, gpus_total, mem_total = detect_target_resources(self.remote)
+            try:
+                cpus_total, gpus_total, mem_total = detect_target_resources(self.remote)
+            except Exception as det_err:
+                logger.error("Failed to detect hardware resources on '%s': %s", self.remote, det_err)
+                return
             logger.info("[SCHEDULER] Workstation capacity for remote '%s': CPUs=%s, GPUs=%s, Memory=%.2f GB",
                         self.remote, cpus_total, gpus_total, mem_total)
 
@@ -151,13 +155,19 @@ class OrchestratorScheduler(threading.Thread):
                 try:
                     env_data = io.load_config(env_base, full_path=True)
                     res_cfg = env_data.get("resources", {})
+                    cpus_val = int(res_cfg.get("cpus", -1))
+                    gpus_val = int(res_cfg.get("gpus", -1))
+                    mem_val = parse_memory_to_gb(res_cfg.get("mem", "-1"))
+                    if cpus_val < 1 or gpus_val < 0 or mem_val <= 0:
+                        raise ValueError(f"Invalid resource values in {st_name}/env: cpus={cpus_val}, gpus={gpus_val}, mem={mem_val}")
                     stage_resources[st_name] = {
-                        "cpus": int(res_cfg.get("cpus", 1)),
-                        "gpus": int(res_cfg.get("gpus", 0)),
-                        "mem": parse_memory_to_gb(res_cfg.get("mem", "1G"))
+                        "cpus": cpus_val,
+                        "gpus": gpus_val,
+                        "mem": mem_val
                     }
-                except Exception:
-                    stage_resources[st_name] = {"cpus": 1, "gpus": 0, "mem": 1.0}
+                except Exception as st_err:
+                    logger.error("Failed to load configured resources for stage '%s': %s", st_name, st_err)
+                    return
             if not has_slurm:
                 finished = []
                 for job in active_jobs:
@@ -322,7 +332,7 @@ class OrchestratorScheduler(threading.Thread):
                             sbatch_dict = {}
                             env_base = os.path.join(root_dir, st, "env")
                             try:
-                                env_data = io.load_config(env_base, full_path=True)
+                                env_data = io.load_config(env_base, full_path=False)
                                 sbatch_dict = env_data.get("sbatch", {})
                             except Exception:
                                 pass
@@ -358,12 +368,13 @@ class OrchestratorScheduler(threading.Thread):
                             # Load remote stage env.json sbatch flags
                             sbatch_dict = {}
                             try:
-                                cat_out = run_remote_bash(host, f"cat {resolved_r_path}/{st}/env.json 2>/dev/null || true").strip()
-                                if cat_out:
-                                    env_json_data = json.loads(cat_out)
-                                    sbatch_dict = env_json_data.get("sbatch", {})
-                            except Exception as env_e:
-                                logger.warning("Failed to load remote sbatch configuration for stage %s: %s", st, env_e)
+                                from snap_workflow.remote.setup import get_template
+                                tmpl = get_template("load_profile.py")
+                                profile_script = tmpl.replace("{PROFILE_NAME}", repr("env")).replace("{RESOLVED_PATH}", repr(os.path.join(resolved_r_path, st)))
+                                out = run_remote_python(host, profile_script)
+                                sbatch_dict = json.loads(out.strip()).get("sbatch", {})
+                            except Exception:
+                                pass
 
                             flags_list = [f"-J {st}", "-o slurm_out/%j.out"]
                             for k, v in sbatch_dict.items():
@@ -392,7 +403,10 @@ class OrchestratorScheduler(threading.Thread):
                         mem_avail = mem_total - mem_running
 
                         fits_cpus = (st_cpus <= cpus_avail)
-                        fits_gpus = (gpus_avail == -1) or (st_gpus <= gpus_avail)
+                        if st_gpus > 0:
+                            fits_gpus = (gpus_avail > 0) and (st_gpus <= gpus_avail)
+                        else:
+                            fits_gpus = True
                         fits_mem = (st_mem <= mem_avail)
 
                         if fits_cpus and fits_gpus and fits_mem:

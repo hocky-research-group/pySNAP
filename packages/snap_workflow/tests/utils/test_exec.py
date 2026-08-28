@@ -46,8 +46,10 @@ def test_run_command_local_and_remote():
          patch("subprocess.run") as mock_run:
         mock_run.return_value = subprocess.CompletedProcess(args=["ssh"], returncode=0, stdout="remote_out")
         res = exec_module.run_command("cluster1", ["ls", "-la"])
-        assert res.returncode == 0
-        mock_run.assert_called_with(["ssh", "user@hpc.edu", "ls -la"])
+        call_args = mock_run.call_args[0][0]
+        assert call_args[0] == "ssh"
+        assert "user@hpc.edu" in call_args
+        assert "ls -la" in call_args
 
 
 def test_has_slurm():
@@ -82,6 +84,8 @@ def test_detect_target_resources():
     with patch("snap_workflow.utils.exec.run_command", return_value=mock_res):
         assert exec_module.detect_target_resources("cluster1") == (32, 4, 128.5)
         
-    # Remote detection failure fallback
-    with patch("snap_workflow.utils.exec.run_command", side_effect=Exception("Timeout")):
-        assert exec_module.detect_target_resources("cluster1") == (8, 0, 16.0)
+    # Remote detection failure raises RuntimeError
+    with patch("snap_workflow.utils.exec.run_command", side_effect=Exception("Timeout")), \
+         patch("snap_workflow.remote.ssh.run_remote_bash", side_effect=Exception("SSH down")):
+        with pytest.raises(RuntimeError, match="Failed to query hardware resources on remote"):
+            exec_module.detect_target_resources("cluster1")

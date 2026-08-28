@@ -163,7 +163,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             exclude_stages = {x.strip() for x in exclude_stages_str.split(",") if x.strip()} if exclude_stages_str else None
             exclude_sweeps = {x.strip() for x in exclude_sweeps_str.split(",") if x.strip()} if exclude_sweeps_str else None
 
-            logger.info(
+            logger.debug(
                 "[REQUEST_WORK] Dispatcher : %s | CPUs : %s | GPUs : %s | Mem : %.1f GB",
                 host, cpus_avail, gpu_avail, mem_avail
             )
@@ -513,7 +513,11 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"error": "Not Found"}).encode())
 
 
-def run_server_foreground(host="127.0.0.1", port=0):
+def run_server_foreground(host="127.0.0.1", port=0, debug=False):
+    from snap_workflow.utils.logging import setup_logging
+    if debug:
+        setup_logging(level=logging.DEBUG)
+
     root = path.get_root()
     info_path = os.path.join(root, SERVER_INFO)
 

@@ -23,8 +23,13 @@ def server_start_cmd(parsed_command, args):
     args, kwargs = parse_remaining(args)
     port = int(kwargs.pop("port", 8080))
     host = kwargs.pop("host", "0.0.0.0")
+    debug = kwargs.pop("debug", False)
+    if isinstance(debug, str):
+        debug = debug.lower() in ("true", "1", "yes", "")
+    elif debug is not False:
+        debug = True
     io.warn_unused_kwargs(kwargs)
-    server.run_server_foreground(host=host, port=port)
+    server.run_server_foreground(host=host, port=port, debug=debug)
 
 
 def server_auto_cmd(parsed_command, args):

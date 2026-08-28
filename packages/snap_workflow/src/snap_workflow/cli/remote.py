@@ -17,6 +17,9 @@ def main_remote(parsed_command, args):
         "sync": remote_sync_cmd,
         "connect": remote_connect_cmd,
         "print": remote_print_cmd,
+        "reserve": remote_reserve_cmd,
+        "auto": remote_auto_cmd,
+        "autoschedule": remote_auto_cmd,
         "help": help_remote_cmd,
         "--help": help_remote_cmd,
         "-h": help_remote_cmd,
@@ -31,6 +34,8 @@ def help_remote_cmd(parsed_command, args):
     print("  setup <name> <path>               Provision workspace and validate remote resources")
     print("  sync <name> [--pull|--push|--both] Sync files, statuses, and auto-sync outputs")
     print("  connect <name>                    Open an interactive SSH session to remote host")
+    print("  reserve <name> <profile>          Reserve Slurm worker compute allocations")
+    print("  auto [name]                       Launch autonomous scheduling (defaults to local)")
 
 
 def remote_print_cmd(parsed_command, args):
@@ -169,3 +174,13 @@ def remote_connect_cmd(parsed_command, args):
 
     remote_ssh.connect_remote(name)
     io.warn_unused_kwargs(kwargs)
+
+
+def remote_auto_cmd(parsed_command, args):
+    from snap_workflow.cli.server import server_auto_cmd
+    return server_auto_cmd(parsed_command, args)
+
+
+def remote_reserve_cmd(parsed_command, args):
+    from snap_workflow.cli.server import server_reserve_cmd
+    return server_reserve_cmd(parsed_command, args)

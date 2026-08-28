@@ -21,3 +21,5 @@ Subcommands
 * **sync <name> [--pull|--push|--both]**: Synchronizes code, parameters, worker logs, statuses, and auto-sync outputs between local and remote environments. Defaults to bidirectional (``both``).
 * **connect <name>**: Establishes an interactive SSH session to the remote cluster login node, automatically establishing reverse SSH tunnels if the manager server is active.
 * **print [name]**: Displays registered remote host configurations, paths, and connectivity status.
+* **reserve <name> <profile> [--num-workers N]**: Submits and reserves persistent Slurm worker compute allocations on the cluster.
+* **auto [name]**: Launches auto-scheduling on the target machine (defaults to ``local`` if target is omitted).

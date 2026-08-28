@@ -178,6 +178,8 @@ def test_get_completions_noun_verb():
     assert "status" in get_completions([], "")
     assert "spoint" in get_completions([], "")
     assert "python" in get_completions([], "")
+    assert "local" in get_completions([], "")
+    assert "auto" in get_completions([], "")
     assert "build" not in get_completions([], "")
     assert "update" not in get_completions([], "")
 
@@ -187,6 +189,46 @@ def test_get_completions_noun_verb():
     assert get_completions(["status"], "") == ["print", "set", "reset"]
     assert get_completions(["spoint"], "") == ["reset", "submit"]
     assert get_completions(["python"], "") == ["print", "set"]
+    assert get_completions(["local"], "") == ["auto", "autoschedule"]
+    assert "auto" in get_completions(["remote"], "")
+    assert "reserve" in get_completions(["remote"], "")
+
+
+def test_cli_remote_and_local_execution(sandbox, env_dir):
+    from snap_workflow.cli.workflow import main
+    from snap_workflow.cli.remote import main_remote
+
+    with patch("snap_workflow.server.auto", return_value={"message": "ok"}) as mock_auto, \
+         patch("snap_workflow.server.reserve_workers", return_value={"message": "ok"}) as mock_res:
+
+        # 1. 'workflow remote auto' defaults to local
+        main_remote("workflow remote", ["auto"])
+        mock_auto.assert_called_with(remote="local", stages="", sweeps="", exclude_stages="", exclude_sweeps="")
+
+        # 2. 'workflow remote auto my_cluster'
+        main_remote("workflow remote", ["auto", "my_cluster", "-s", "stage1"])
+        mock_auto.assert_called_with(remote="my_cluster", stages="stage1", sweeps="", exclude_stages="", exclude_sweeps="")
+
+        # 3. 'workflow local auto'
+        main("local", ["auto", "-s", "stage1"])
+        mock_auto.assert_called_with(remote="local", stages="stage1", sweeps="", exclude_stages="", exclude_sweeps="")
+
+        # 4. 'workflow auto'
+        main("auto", ["local"])
+        mock_auto.assert_called_with(remote="local", stages="", sweeps="", exclude_stages="", exclude_sweeps="")
+
+        # 5. 'workflow remote reserve my_cluster gpu -n 2'
+        main_remote("workflow remote", ["reserve", "my_cluster", "gpu", "-n", "2"])
+        mock_res.assert_called_with(
+            remote="my_cluster",
+            profile="gpu",
+            num_workers=2,
+            sbatch_args="",
+            stages="",
+            sweeps="",
+            exclude_stages="",
+            exclude_sweeps=""
+        )
 
 
 def test_cli_status_and_spoint(sandbox, env_dir, capsys):

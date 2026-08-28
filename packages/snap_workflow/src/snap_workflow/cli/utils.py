@@ -116,8 +116,8 @@ def get_completions(args=None, prefix="", shell='bash'):
     if not args:
         commands = [
             "init", "stage", "sweep", "variable", "status",
-            "spoint", "params", "data", "python", "remote", "server", "zip",
-            "completions", "autocomplete"
+            "spoint", "params", "data", "python", "remote", "server",
+            "local", "auto", "zip", "completions", "autocomplete"
         ]
         if prefix:
             commands = [c for c in commands if c.startswith(prefix)]
@@ -135,8 +135,10 @@ def get_completions(args=None, prefix="", shell='bash'):
             "params": ["set", "convert"],
             "data": ["collect"],
             "python": ["print", "set"],
-            "remote": ["add", "setup", "sync", "connect", "print"],
+            "remote": ["add", "setup", "sync", "connect", "print", "reserve", "auto", "autoschedule"],
             "server": ["start", "auto", "autoschedule", "reserve", "stop", "shutdown"],
+            "local": ["auto", "autoschedule"],
+            "auto": [],
         }
         cmds = mapping.get(first_arg, [])
         if prefix:
@@ -175,8 +177,55 @@ def get_completions(args=None, prefix="", shell='bash'):
                 except Exception:
                     return ["cpu", "gpu"]
 
+    elif first_arg == "local":
+        if second_arg in ["auto", "autoschedule"]:
+            try:
+                from snap_workflow.core.domain.stages import load_stages
+                st = list(load_stages().keys())
+                if prefix:
+                    st = [s for s in st if s.startswith(prefix)]
+                return st
+            except Exception:
+                return []
+
     elif first_arg == "remote":
-        if second_arg in ["sync", "connect", "setup", "print"]:
+        if second_arg in ["auto", "autoschedule"]:
+            try:
+                from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                remotes = ["local"] + list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))
+                if prefix:
+                    remotes = [r for r in remotes if r.startswith(prefix)]
+                return remotes
+            except Exception:
+                return ["local"]
+        elif second_arg in ["reserve"]:
+            if len(args) == 2:
+                try:
+                    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                    remotes = list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))
+                    if prefix:
+                        remotes = [r for r in remotes if r.startswith(prefix)]
+                    return remotes
+                except Exception:
+                    return []
+            elif len(args) == 3:
+                try:
+                    from snap_workflow.utils import path
+                    profiles = []
+                    for prof_dir in [path.from_root("sbatch_profiles"), os.path.expanduser("~/.config/snap_workflow/sbatch_profiles")]:
+                        if os.path.isdir(prof_dir):
+                            for f in os.listdir(prof_dir):
+                                if f.endswith((".json", ".yaml", ".yml")):
+                                    profiles.append(os.path.splitext(f)[0])
+                    profiles = list(dict.fromkeys(profiles))
+                    if not profiles:
+                        profiles = ["cpu", "gpu"]
+                    if prefix:
+                        profiles = [p for p in profiles if p.startswith(prefix)]
+                    return profiles
+                except Exception:
+                    return ["cpu", "gpu"]
+        elif second_arg in ["sync", "connect", "setup", "print"]:
             try:
                 from snap_workflow.utils.io import load_global_remotes, load_local_remotes
                 remotes = list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))

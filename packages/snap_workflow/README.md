@@ -171,7 +171,7 @@ workflow remote setup my_cluster /scratch/user/my_experiment
 workflow server start
 
 # 4. Reserve persistent GPU compute allocations on the remote cluster
-workflow server reserve my_cluster gpu --num-workers 4
+workflow remote reserve my_cluster gpu --num-workers 4
 ```
 
 #### Option C: Workstation / Slurm Auto-Scheduling
@@ -179,15 +179,17 @@ Run auto-scheduling directly on the local machine or a remote workstation (dynam
 
 ```bash
 workflow server start
-workflow server auto local
+
+# Run locally:
+workflow local auto
 # Or for a remote workstation:
-workflow server auto my_workstation
+workflow remote auto my_workstation
 ```
 
 ### Execution Model Differences:
 * **Direct SPoint dispatch (`workflow spoint submit`)**: Executes ready SPoints on the local machine or queue.
-* **Cluster Reservation Model (`workflow server reserve <remote> <profile>`)**: Submits long-running Slurm compute allocations on HPC compute nodes. Compute nodes connect back to the central manager server over reverse SSH tunnels, dynamically pulling and executing SPoints while surviving temporary connection drops.
-* **Auto-scheduling mode (`workflow server auto <target>`)**: The manager server autonomously pushes tasks to the target machine's CPU/GPU resources as upstream dependencies in the DAG complete.
+* **Cluster Reservation Model (`workflow remote reserve <remote> <profile>`)**: Submits long-running Slurm compute allocations on HPC compute nodes. Compute nodes connect back to the central manager server over reverse SSH tunnels, dynamically pulling and executing SPoints while surviving temporary connection drops.
+* **Auto-scheduling mode (`workflow remote auto [target]` or `workflow local auto`)**: The manager server autonomously pushes tasks to the target machine's CPU/GPU resources as upstream dependencies in the DAG complete.
 
 ## Configuration Files
 
@@ -252,8 +254,10 @@ time: 04:00:00
 | `workflow python [print\|set]` | Display or configure Python interpreter paths across global, project, and stage scopes |
 | `workflow params [set\|convert]` | Configure default parameter format or migrate existing files between JSON and YAML |
 | `workflow data collect [stage]` | Execute stage data aggregation routines across SPoints |
-| `workflow remote [add\|setup\|sync\|connect\|print]` | Register remote clusters, provision workspaces, sync files/statuses, or open SSH shells |
-| `workflow server [start\|auto\|reserve\|stop\|shutdown]` | Launch central coordinator server, start auto-schedulers, or reserve Slurm workers |
+| `workflow remote [add\|setup\|sync\|connect\|print\|reserve\|auto]` | Register remote clusters, provision workspaces, sync files/statuses, reserve workers, or launch auto-schedulers |
+| `workflow local auto` | Launch auto-scheduler locally (alias for `workflow remote auto local`) |
+| `workflow auto [target]` | Top-level shortcut to launch auto-scheduling (defaults to `local`) |
+| `workflow server [start\|stop\|shutdown]` | Launch central coordinator server daemon or terminate running dispatchers |
 | `workflow zip <filename>` | Package the workflow and parameter state into a `.zip` archive |
 | `workflow autocomplete [shell]` | Generate shell auto-completion installation instructions for Bash or Zsh |
 

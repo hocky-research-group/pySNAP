@@ -41,9 +41,11 @@ Available Commands
    * - ``workflow data``
      - Execute stage data aggregation routines (``collect``).
    * - ``workflow remote``
-     - Manage remote HPC clusters and synchronization (``add``, ``setup``, ``sync``, ``connect``, ``print``).
+     - Manage remote HPC clusters, worker reservations, and auto-schedulers (``add``, ``setup``, ``sync``, ``connect``, ``print``, ``reserve``, ``auto``).
+   * - ``workflow local auto``
+     - Launch auto-scheduler locally on the current machine (alias for ``workflow remote auto local``).
    * - ``workflow server``
-     - Manage central manager daemon, auto-schedulers, and Slurm worker allocations (``start``, ``auto``, ``reserve``, ``stop``, ``shutdown``).
+     - Manage central coordinator server daemon (``start``, ``stop``, ``shutdown``).
    * - ``workflow zip``
      - Compress and bundle workflow state into a ``.zip`` archive.
    * - ``workflow autocomplete``

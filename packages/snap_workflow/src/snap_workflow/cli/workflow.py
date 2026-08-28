@@ -81,6 +81,19 @@ def main_complete(parsed_command, args):
     sys.exit(0)
 
 
+def main_local(parsed_command, args):
+    from snap_workflow.cli.remote import remote_auto_cmd
+    if not args or args[0] in ("auto", "autoschedule"):
+        subargs = args[1:] if args and args[0] in ("auto", "autoschedule") else args
+        return remote_auto_cmd("workflow local auto", ["local"] + subargs)
+    raise ValueError(f"Unknown command for 'workflow local': '{args[0]}'. Did you mean 'workflow local auto'?")
+
+
+def main_auto(parsed_command, args):
+    from snap_workflow.cli.remote import remote_auto_cmd
+    return remote_auto_cmd(parsed_command, args)
+
+
 def main(command_name=None, args=None):
     setup_logging()
     import os
@@ -116,6 +129,8 @@ def main(command_name=None, args=None):
         "spoint": main_spoint,
         "remote": main_remote,
         "server": main_server,
+        "local": main_local,
+        "auto": main_auto,
     }
 
     if command_name in cmd_map:

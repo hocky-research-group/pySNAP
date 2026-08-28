@@ -171,15 +171,21 @@ class DispatcherController:
             self.procs.append(proc)
             logger.info("Spawned remote subprocess dispatcher on %s (SSH PID: %s)", self.target_name, proc.pid)
 
-    def stop(self) -> None:
-        """Terminates all managed dispatcher processes."""
+    def stop(self, force: bool = False) -> None:
+        """Terminates managed dispatcher processes (gracefully by default, or immediately if force=True)."""
         for proc in self.procs:
             if proc.poll() is None:
-                try:
-                    proc.terminate()
-                    proc.wait(timeout=2)
-                except Exception:
-                    proc.kill()
+                if force:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        proc.terminate()
+                        proc.wait(timeout=2)
+                    except Exception:
+                        proc.kill()
         self.procs.clear()
 
     def get_status(self) -> Dict[str, Any]:

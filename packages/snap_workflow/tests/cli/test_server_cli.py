@@ -100,3 +100,22 @@ def test_server_autocompletions(sandbox):
         comp_profiles = get_completions(["server", "reserve", "cluster1"], prefix="")
         assert "gpu_large" in comp_profiles
         assert "cpu_small" in comp_profiles
+
+
+def test_server_stop_cmd_delegation():
+    from snap_workflow.cli.server import server_stop_cmd
+
+    with pytest.raises(ValueError, match="Usage: 'workflow server stop <target>"):
+        server_stop_cmd("workflow server stop", [])
+
+    with patch("snap_workflow.server.stop_target", return_value={"status": "success", "message": "Target stopped"}) as mock_stop:
+        server_stop_cmd("workflow server stop", ["lonestar", "--force"])
+        mock_stop.assert_called_once_with("lonestar", force=True)
+
+
+def test_server_shutdown_cmd_delegation():
+    from snap_workflow.cli.server import server_shutdown_cmd
+
+    with patch("snap_workflow.server.shutdown_server", return_value={"status": "shutdown"}) as mock_shutdown:
+        server_shutdown_cmd("workflow server shutdown", [])
+        mock_shutdown.assert_called_once()

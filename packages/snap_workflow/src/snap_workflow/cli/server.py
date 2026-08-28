@@ -12,7 +12,9 @@ def main_server(parsed_command, args):
         "start": server_start_cmd,
         "auto": server_auto_cmd,
         "autoschedule": server_auto_cmd,
-        "reserve": server_reserve_cmd
+        "reserve": server_reserve_cmd,
+        "stop": server_stop_cmd,
+        "shutdown": server_shutdown_cmd
     }
     execute_option("server_option", server_options, parsed_command=parsed_command, args=args)
 
@@ -41,7 +43,8 @@ def server_auto_cmd(parsed_command, args):
         exclude_stages=exclude_stages,
         exclude_sweeps=exclude_sweeps
     )
-    print(res.get("message", f"Auto-scheduler registered for remote '{remote}'."))
+    msg = res.get("message", f"Auto-scheduler registered for remote '{remote}'.") if isinstance(res, dict) else f"Auto-scheduler registered for remote '{remote}'."
+    print(msg)
     io.warn_unused_kwargs(kwargs)
 
 
@@ -69,5 +72,29 @@ def server_reserve_cmd(parsed_command, args):
         exclude_stages=exclude_stages,
         exclude_sweeps=exclude_sweeps
     )
-    print(res.get("message", f"Worker reservation submitted for remote '{remote}'."))
+    msg = res.get("message", f"Worker reservation submitted for remote '{remote}'.") if isinstance(res, dict) else f"Worker reservation submitted for remote '{remote}'."
+    print(msg)
+    io.warn_unused_kwargs(kwargs)
+
+
+def server_stop_cmd(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    if len(args) < 1:
+        raise ValueError(
+            "Usage: 'workflow server stop <target> [--force]'\n"
+            "To shut down the entire server daemon, use 'workflow server shutdown'."
+        )
+    target = args[0]
+    force = bool(kwargs.pop("force", kwargs.pop("f", False)))
+    res = server.stop_target(target, force=force)
+    msg = res.get("message", f"Stopped dispatcher for '{target}'.") if isinstance(res, dict) else f"Stopped dispatcher for '{target}'."
+    print(msg)
+    io.warn_unused_kwargs(kwargs)
+
+
+def server_shutdown_cmd(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    res = server.shutdown_server()
+    msg = res.get("message", "Workflow server shutting down...") if isinstance(res, dict) else "Workflow server shutting down..."
+    print(msg)
     io.warn_unused_kwargs(kwargs)

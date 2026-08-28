@@ -55,7 +55,11 @@ def reserve_workers(remote, profile, num_workers=1, sbatch_args="", stages="", s
         "exclude_sweeps": exclude_sweeps
     }
 
-    res = send_request(f"{url}/reserve", token, data=payload)
+    res = send_request(f"{url}/reserve", token, data=payload, timeout=120)
+    if res is None:
+        raise ValueError(f"Failed to communicate with workflow server at {url} (request timed out or server unavailable).")
+    if res.get("status") == "error":
+        raise ValueError(res.get("message", f"Failed to reserve workers on '{remote}'."))
     return res
 
 
@@ -82,5 +86,33 @@ def auto(remote, stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
         "exclude_sweeps": exclude_sweeps
     }
 
-    res = send_request(f"{url}/auto", token, data=payload)
+    res = send_request(f"{url}/auto", token, data=payload, timeout=120)
+    if res is None:
+        raise ValueError(f"Failed to communicate with workflow server at {url} (request timed out or server unavailable).")
+    if res.get("status") == "error":
+        raise ValueError(res.get("message", f"Failed to register auto-scheduler on '{remote}'."))
+    return res
+
+
+def stop_target(target, force=False):
+    """Stops a specific dispatcher target or all targets on the running workflow server."""
+    url, token = _get_server_info()
+    payload = {
+        "target": target,
+        "force": bool(force)
+    }
+    res = send_request(f"{url}/stop", token, data=payload, timeout=60)
+    if res is None:
+        raise ValueError(f"Failed to communicate with workflow server at {url}.")
+    if res.get("status") == "error":
+        raise ValueError(res.get("message", f"Failed to stop target '{target}'."))
+    return res
+
+
+def shutdown_server():
+    """Cleanly shuts down the running workflow server daemon."""
+    url, token = _get_server_info()
+    res = send_request(f"{url}/shutdown", token, timeout=10)
+    if res is None:
+        raise ValueError(f"Failed to communicate with workflow server at {url}.")
     return res

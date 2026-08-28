@@ -136,6 +136,14 @@ def remote_connect_cmd(parsed_command, args):
     if len(args) != 1:
         raise ValueError("Usage: 'workflow remote connect name'")
     name = args[0]
+
+    # If manager server is active locally, provision remote server info & reverse SSH tunnel
+    try:
+        from snap_workflow.server.tunnels import ensure_remote_tunnel
+        ensure_remote_tunnel(name)
+    except Exception:
+        pass
+
     remote_ssh.connect_remote(name)
     io.warn_unused_kwargs(kwargs)
 

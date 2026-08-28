@@ -438,6 +438,70 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"status": "success"}).encode())
             return
 
+        if self.path == "/stop":
+            if not self._check_auth():
+                return
+
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode())
+
+            target = data.get("target")
+            force = bool(data.get("force", False))
+
+            if not target:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": "Target parameter is required."}).encode())
+                return
+
+            stopped_items = []
+            if target == "all":
+                for name, ctrl in list(getattr(self.server, "dispatchers", {}).items()):
+                    ctrl.stop(force=force)
+                    stopped_items.append(f"dispatcher '{name}'")
+                self.server.dispatchers.clear()
+
+                for name, sched in list(getattr(self.server, "schedulers", {}).items()):
+                    sched.shutdown_event.set()
+                    stopped_items.append(f"auto-scheduler '{name}'")
+                self.server.schedulers.clear()
+
+                if force:
+                    for name, proc in list(getattr(self.server, "active_tunnels", {}).items()):
+                        if proc and proc.poll() is None:
+                            proc.terminate()
+                    self.server.active_tunnels.clear()
+
+                msg = f"Stopped all active targets ({', '.join(stopped_items) if stopped_items else 'none active'})."
+            else:
+                if target in getattr(self.server, "dispatchers", {}):
+                    ctrl = self.server.dispatchers.pop(target)
+                    ctrl.stop(force=force)
+                    stopped_items.append(f"dispatcher '{target}'")
+
+                if target in getattr(self.server, "schedulers", {}):
+                    sched = self.server.schedulers.pop(target)
+                    sched.shutdown_event.set()
+                    stopped_items.append(f"auto-scheduler '{target}'")
+
+                if force and target in getattr(self.server, "active_tunnels", {}):
+                    proc = self.server.active_tunnels.pop(target)
+                    if proc and proc.poll() is None:
+                        proc.terminate()
+
+                if stopped_items:
+                    msg = f"Successfully stopped {', '.join(stopped_items)}."
+                else:
+                    msg = f"No active dispatcher or auto-scheduler found for target '{target}'."
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "message": msg}).encode())
+            return
+
         self.send_response(404)
         self.send_header("Content-Type", "application/json")
         self.end_headers()

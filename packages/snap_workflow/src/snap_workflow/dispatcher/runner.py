@@ -250,10 +250,11 @@ class SubprocessDispatcher(BaseDispatcher):
                 pass
 
 
-def send_request(url, token, data=None, retries=1, backoff=2, timeout=2, *args, **kwargs):
+def send_request(url, token, data=None, retries=1, backoff=2, timeout=60, *args, **kwargs):
     """Convenience helper for authenticated HTTP requests with exponential backoff."""
     import urllib.request
     import urllib.error
+    timeout = kwargs.get("timeout", timeout)
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -269,6 +270,7 @@ def send_request(url, token, data=None, retries=1, backoff=2, timeout=2, *args, 
             if attempt < retries - 1:
                 time.sleep(backoff * (2 ** attempt))
             else:
+                logger.debug("send_request failed after %s attempts: %s", retries, e)
                 return None
     return None
 

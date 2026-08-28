@@ -222,7 +222,7 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
             json.dump(env1, f, indent=4)
 
         from snap_workflow.dispatcher.controller import DispatcherController
-        def mock_send_request(url, token, data=None):
+        def mock_send_request(url, token, data=None, *args, **kwargs):
             if data and data.get("name") == "local":
                 ctrl = DispatcherController(
                     target_name="local",

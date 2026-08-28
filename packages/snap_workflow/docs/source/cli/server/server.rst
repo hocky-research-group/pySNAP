@@ -20,6 +20,8 @@ Arguments
     * :doc:`start <start>`
     * :doc:`auto <auto>`
     * :doc:`reserve <reserve>`
+    * :doc:`stop <stop>`
+    * :doc:`shutdown <shutdown>`
 
 .. toctree::
    :maxdepth: 1
@@ -28,3 +30,5 @@ Arguments
    start
    auto
    reserve
+   stop
+   shutdown

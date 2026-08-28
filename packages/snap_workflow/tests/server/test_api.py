@@ -52,7 +52,8 @@ def test_reserve_workers_local_success(wf_init):
                 "sweeps": "",
                 "exclude_stages": "",
                 "exclude_sweeps": ""
-            }
+            },
+            timeout=120
         )
 
 
@@ -74,7 +75,8 @@ def test_auto_local_success(wf_init):
                 "sweeps": "",
                 "exclude_stages": "",
                 "exclude_sweeps": ""
-            }
+            },
+            timeout=120
         )
 
 
@@ -115,3 +117,21 @@ def test_reserve_remote_registered_success(wf_init):
 
         res2 = server.auto("my_cluster", stages="st1", sweeps="gamma_sweep")
         assert res2 == mock_res
+
+
+def test_stop_target_and_shutdown(wf_init):
+    info_data = {"port": 8080, "token": "test_token"}
+    with open(SERVER_INFO, "w") as f:
+        json.dump(info_data, f)
+
+    mock_stop_res = {"status": "success", "message": "Stopped dispatcher 'lonestar'"}
+    mock_shutdown_res = {"status": "shutdown"}
+
+    with patch("snap_workflow.server.api.send_request", side_effect=[mock_stop_res, mock_shutdown_res]) as mock_send:
+        res1 = server.stop_target("lonestar", force=True)
+        assert res1 == mock_stop_res
+        mock_send.assert_called_with("http://127.0.0.1:8080/stop", "test_token", data={"target": "lonestar", "force": True}, timeout=60)
+
+        res2 = server.shutdown_server()
+        assert res2 == mock_shutdown_res
+        mock_send.assert_called_with("http://127.0.0.1:8080/shutdown", "test_token", timeout=10)

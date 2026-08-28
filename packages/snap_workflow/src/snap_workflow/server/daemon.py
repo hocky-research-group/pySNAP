@@ -216,6 +216,12 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                                     push_dependency_data(host, r_host, r_path, dep_rel_sp)
                     except Exception as sync_e:
                         logger.warning("Failed to push spoint and dependency data for %s to %s: %s", stage_name, host, sync_e)
+                        self.server.spoint_manager.set_status(sweep_name, stage_name, spoint_dict, "initialized", host="local")
+                        self.send_response(500)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"error": f"Failed to push dependency data: {sync_e}"}).encode())
+                        return
             else:
                 all_complete = self.server.spoint_manager.are_all_complete(
                     allowed_stages=allowed_stages,

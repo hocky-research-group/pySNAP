@@ -273,7 +273,7 @@ class SubprocessDispatcher(BaseDispatcher):
                 pass
 
 
-def send_request(url, token, data=None, retries=1, backoff=2, timeout=60, *args, **kwargs):
+def send_request(url, token, data=None, retries=1, backoff=2, timeout=300, *args, **kwargs):
     """Convenience helper for authenticated HTTP requests with exponential backoff."""
     import urllib.request
     import urllib.error

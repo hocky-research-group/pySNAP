@@ -138,14 +138,14 @@ def get_completions(args=None, prefix="", shell='bash'):
     first_arg = args[0]
     if len(args) == 1:
         mapping = {
-            "stage": ["add", "print", "list", "set"],
-            "sweep": ["add", "print", "list", "reset", "remove"],
-            "variable": ["add", "print", "list"],
-            "status": ["print", "list", "set", "reset", "reset-errors", "submit"],
-            "spoint": ["print", "list", "set", "reset", "reset-errors", "submit"],
+            "stage": ["add", "print", "set"],
+            "sweep": ["add", "print", "reset", "remove"],
+            "variable": ["add", "print"],
+            "status": ["print", "set", "reset", "reset-errors", "submit"],
+            "spoint": ["print", "set", "reset", "reset-errors", "submit"],
             "params": ["set", "convert"],
             "data": ["collect"],
-            "remote": ["add", "setup", "sync", "connect", "list", "print"],
+            "remote": ["add", "setup", "sync", "connect", "print"],
             "server": ["start", "auto", "autoschedule", "reserve", "stop", "shutdown"],
         }
         cmds = mapping.get(first_arg, [])

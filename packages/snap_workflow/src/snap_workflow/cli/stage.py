@@ -8,7 +8,6 @@ def main_stage(parsed_command, args):
     stage_options = {
         "add": add_stage_cmd,
         "print": print_stages_cmd,
-        "list": list_stages_cmd,
         "set": set_stage_cmd,
     }
     execute_option("stage_option", stage_options, parsed_command=parsed_command, args=args)
@@ -34,10 +33,6 @@ def print_stages_cmd(parsed_command, args):
     stage_name = get_existing_stage_name(kwargs, include_all=True, get_input=False, default='all')
     io.warn_unused_kwargs(kwargs)
     stage_tools.print_stages(stage_name)
-
-
-def list_stages_cmd(parsed_command, args):
-    return print_stages_cmd(parsed_command, args)
 
 
 def set_stage_cmd(parsed_command, args):

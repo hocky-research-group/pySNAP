@@ -8,9 +8,13 @@ from snap_workflow.cli.utils import parse_remaining, execute_option
 
 
 def main_remote(parsed_command, args):
-    remote_options = ["add", "setup", "sync", "connect", "list", "print"]
-    remote_functions = [remote_add_cmd, remote_setup_cmd, remote_sync_cmd, remote_connect_cmd, remote_list_cmd, remote_print_cmd]
-    remote_options = {remote_options[i]: remote_functions[i] for i in range(len(remote_options))}
+    remote_options = {
+        "add": remote_add_cmd,
+        "setup": remote_setup_cmd,
+        "sync": remote_sync_cmd,
+        "connect": remote_connect_cmd,
+        "print": remote_print_cmd,
+    }
     execute_option("remote_option", remote_options, parsed_command=parsed_command, args=args)
 
 
@@ -154,19 +158,4 @@ def remote_connect_cmd(parsed_command, args):
         pass
 
     remote_ssh.connect_remote(name)
-    io.warn_unused_kwargs(kwargs)
-
-
-def remote_list_cmd(parsed_command, args):
-    args, kwargs = parse_remaining(args)
-    remotes_info = io.get_remotes_info()
-    if not remotes_info:
-        print("No remotes registered.")
-    else:
-        print(f"{'NAME':<20} {'HOST':<30} {'PATH':<30} {'STATUS'}")
-        print("-" * 90)
-        for r in remotes_info:
-            path_str = r['path'] if r['path'] else "(not set)"
-            conn_str = "connected" if r['connected'] else "disconnected"
-            print(f"{r['name']:<20} {r['host']:<30} {path_str:<30} {conn_str}")
     io.warn_unused_kwargs(kwargs)

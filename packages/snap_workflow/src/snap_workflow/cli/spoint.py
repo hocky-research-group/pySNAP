@@ -63,7 +63,6 @@ def submit_spoint_cmd(parsed_command, args):
 def main_spoint(parsed_command, args):
     spoint_options = {
         "print": print_status_cmd,
-        "list": print_status_cmd,
         "set": set_status_cmd,
         "status": set_status_cmd,
         "reset": reset_spoint_cmd,

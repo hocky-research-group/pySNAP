@@ -169,11 +169,11 @@ def test_get_completions_noun_verb():
     assert "status" in get_completions([], "")
     assert "spoint" in get_completions([], "")
 
-    assert get_completions(["stage"], "") == ["add", "print", "list", "set"]
-    assert get_completions(["sweep"], "") == ["add", "print", "list", "reset", "remove"]
-    assert get_completions(["variable"], "") == ["add", "print", "list"]
-    assert get_completions(["status"], "") == ["print", "list", "set", "reset", "reset-errors", "submit"]
-    assert get_completions(["spoint"], "") == ["print", "list", "set", "reset", "reset-errors", "submit"]
+    assert get_completions(["stage"], "") == ["add", "print", "set"]
+    assert get_completions(["sweep"], "") == ["add", "print", "reset", "remove"]
+    assert get_completions(["variable"], "") == ["add", "print"]
+    assert get_completions(["status"], "") == ["print", "set", "reset", "reset-errors", "submit"]
+    assert get_completions(["spoint"], "") == ["print", "set", "reset", "reset-errors", "submit"]
 
 
 def test_cli_spoint_consolidated(sandbox, env_dir, capsys):
@@ -221,11 +221,6 @@ def test_cli_variable_print(sandbox, env_dir, capsys):
     assert "int" in captured.out
     assert "stage1" in captured.out
     assert "y" in captured.out
-
-    main_variable("workflow variable", ["list"])
-    captured = capsys.readouterr()
-    assert "NAME" in captured.out
-    assert "x" in captured.out
 
 
 @patch('builtins.input')

@@ -8,7 +8,6 @@ def main_variable(parsed_command, args):
     variable_options = {
         "add": add_variable_cmd,
         "print": print_variable_cmd,
-        "list": print_variable_cmd,
     }
     execute_option("variable_option", variable_options, parsed_command=parsed_command, args=args)
 

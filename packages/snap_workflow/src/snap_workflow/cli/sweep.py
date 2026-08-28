@@ -6,9 +6,12 @@ from snap_workflow.cli.prompts import get_sweep_name, get_existing_sweep_name, g
 
 
 def main_sweep(parsed_command, args):
-    sweep_options = ["add", "print", "list", "reset", "remove"]
-    sweep_functions = [add_sweep_cmd, print_sweeps_cmd, print_sweeps_cmd, reset_sweep_cmd, remove_sweep_cmd]
-    sweep_options = {sweep_options[i]: sweep_functions[i] for i in range(len(sweep_options))}
+    sweep_options = {
+        "add": add_sweep_cmd,
+        "print": print_sweeps_cmd,
+        "reset": reset_sweep_cmd,
+        "remove": remove_sweep_cmd,
+    }
     execute_option("sweep_option", sweep_options, parsed_command=parsed_command, args=args)
 
 

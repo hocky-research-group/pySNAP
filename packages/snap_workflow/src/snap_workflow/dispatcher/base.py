@@ -74,6 +74,8 @@ class BaseDispatcher(ABC):
             params["exclude_sweeps"] = self.exclude_sweeps
         if self.host:
             params["host"] = self.host
+        if getattr(self, "worker_id", None):
+            params["worker_id"] = self.worker_id
 
         res_info = self.get_available_resources()
         if res_info:
@@ -85,6 +87,37 @@ class BaseDispatcher(ABC):
             url += f"?{query}"
 
         return self.send_request(url)
+
+    def notify_start(
+        self,
+        spoint_path: str,
+        pid: Optional[Any] = None,
+        extra_data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """Notifies the workflow server that an SPoint task has started executing."""
+        url = f"{self.server_url}/api/tasks/start"
+        payload = {
+            "spoint_path": spoint_path,
+            "pid": pid,
+            "worker_id": getattr(self, "worker_id", self.host),
+            "host": self.host or "local"
+        }
+        if extra_data:
+            payload.update(extra_data)
+        resp = self.send_request(url, data=payload)
+        return resp is not None and resp.get("status") == "ok"
+
+    def send_heartbeats(self) -> None:
+        """Sends heartbeats for all active in-flight tasks to extend server lease TTL."""
+        if not self.active_jobs:
+            return
+        url = f"{self.server_url}/api/tasks/heartbeat"
+        payload = {
+            "spoint_paths": list(self.active_jobs.keys()),
+            "worker_id": getattr(self, "worker_id", self.host),
+            "host": self.host or "local"
+        }
+        self.send_request(url, data=payload)
 
     def notify_completion(
         self,
@@ -110,7 +143,7 @@ class BaseDispatcher(ABC):
         """Notifies the server that this dispatcher is shutting down."""
         url = f"{self.server_url}/notify_worker_shutdown"
         payload = {
-            "worker_id": self.worker_id or self.host or "unknown",
+            "worker_id": getattr(self, "worker_id", self.host or "unknown"),
             "host": self.host or "unknown",
             "active_tasks": list(self.active_jobs.keys())
         }
@@ -124,9 +157,15 @@ class BaseDispatcher(ABC):
         """Main template method loop executing the dispatcher lifecycle."""
         logger.info(f"Starting dispatcher targeting {self.server_url} (host: {self.host or 'local'})")
         last_contact = time.time()
+        last_heartbeat = time.time()
         try:
             while not self.shutdown_requested:
                 self.reap_finished()
+
+                # Periodic heartbeat check (every 15s)
+                if self.active_jobs and (time.time() - last_heartbeat >= 15.0):
+                    self.send_heartbeats()
+                    last_heartbeat = time.time()
 
                 if self.has_capacity():
                     task = self.request_work()

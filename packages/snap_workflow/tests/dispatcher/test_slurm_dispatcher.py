@@ -39,7 +39,8 @@ def test_slurm_dispatcher_dispatch_and_script_generation(sandbox, env_dir):
 
     mock_res = subprocess.CompletedProcess(args=["sbatch"], returncode=0, stdout="Submitted batch job 888123\n")
 
-    with patch("subprocess.run", return_value=mock_res) as mock_run:
+    with patch("subprocess.run", return_value=mock_res) as mock_run, \
+         patch.object(d, "send_request", return_value={"status": "ok"}):
         d.dispatch_task(task)
 
         assert mock_run.called
@@ -118,7 +119,8 @@ def test_slurm_dispatcher_remote_ssh(sandbox, env_dir):
 
     # 1. Test remote dispatch over SSH
     mock_sbatch_res = subprocess.CompletedProcess(args=["ssh"], returncode=0, stdout="Submitted batch job 999111\n")
-    with patch("subprocess.run", return_value=mock_sbatch_res) as mock_run:
+    with patch("subprocess.run", return_value=mock_sbatch_res) as mock_run, \
+         patch.object(d, "send_request", return_value={"status": "ok"}):
         d.dispatch_task(task)
         assert mock_run.called
         call_args = mock_run.call_args[0][0]

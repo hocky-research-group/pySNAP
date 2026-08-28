@@ -1,4 +1,5 @@
 import os
+import time
 import itertools
 import logging
 from typing import Dict, Any, List, Optional, Tuple
@@ -15,14 +16,36 @@ logger = logging.getLogger("snap_workflow.server.scheduler")
 class SPointScheduler:
     """Server-side scheduler managing candidate selection, resource allocation, and status tracking for SPoints."""
 
-    def __init__(self):
-        pass
+    def __init__(self, default_lease_ttl: float = 60.0):
+        self.default_lease_ttl = default_lease_ttl
+        self.active_leases: Dict[str, Dict[str, Any]] = {}
+
+    def reclaim_expired_leases(self) -> int:
+        """Reclaims any active task leases that have passed their lease_expires_at TTL."""
+        now = time.time()
+        expired_paths = [
+            sp_path for sp_path, lease in self.active_leases.items()
+            if lease.get("lease_expires_at", 0) < now
+        ]
+        for sp_path in expired_paths:
+            lease = self.active_leases.pop(sp_path, None)
+            if lease:
+                logger.warning(
+                    "[SCHEDULER] Task lease expired for %s (worker: %s, host: %s). Reclaiming task back to 'initialized'.",
+                    sp_path, lease.get("worker_id"), lease.get("host")
+                )
+                try:
+                    status.write_status("initialized", sp_path)
+                except Exception as e:
+                    logger.debug("Failed to reset status to initialized for %s: %s", sp_path, e)
+        return len(expired_paths)
 
     @property
     def stages_dict(self) -> Dict[str, Any]:
         return stage_tools.load_stages()
 
     def get_spoints(self, sweep_name: str, stage_name: str) -> List[Dict[str, Any]]:
+        self.reclaim_expired_leases()
         result = []
         for s_name, st_name, sp_dict in iter_spoints(sweep_names=[sweep_name], stage_names=[stage_name]):
             sp_path = get_spoint_path(st_name, sp_dict)
@@ -53,8 +76,73 @@ class SPointScheduler:
             "path": sp_path
         }
 
+    def record_start(
+        self,
+        spoint_path: str,
+        worker_id: Optional[str] = None,
+        pid: Optional[Any] = None,
+        host: str = "local",
+        ttl: Optional[float] = None
+    ) -> bool:
+        """Records task execution start and sets active status to 'running'."""
+        ttl_val = ttl if ttl is not None else self.default_lease_ttl
+        now = time.time()
+        norm_path = os.path.abspath(spoint_path)
+
+        # Match either exact path or basename
+        target_key = None
+        for key in list(self.active_leases.keys()):
+            if os.path.abspath(key) == norm_path or key == spoint_path:
+                target_key = key
+                break
+
+        if target_key:
+            self.active_leases[target_key]["started_at"] = now
+            self.active_leases[target_key]["pid"] = pid
+            self.active_leases[target_key]["lease_expires_at"] = now + ttl_val
+        else:
+            self.active_leases[spoint_path] = {
+                "started_at": now,
+                "pid": pid,
+                "worker_id": worker_id,
+                "host": host,
+                "lease_expires_at": now + ttl_val
+            }
+
+        try:
+            status.write_status("running", spoint_path)
+        except Exception as e:
+            logger.debug("Failed to write 'running' status for %s: %s", spoint_path, e)
+        return True
+
+    def extend_heartbeat(
+        self,
+        spoint_paths: List[str],
+        worker_id: Optional[str] = None,
+        ttl: Optional[float] = None
+    ) -> int:
+        """Extends TTL lease expiration for actively running tasks."""
+        ttl_val = ttl if ttl is not None else self.default_lease_ttl
+        now = time.time()
+        extended = 0
+
+        for sp in spoint_paths:
+            norm_sp = os.path.abspath(sp)
+            for key in list(self.active_leases.keys()):
+                if os.path.abspath(key) == norm_sp or key == sp:
+                    self.active_leases[key]["lease_expires_at"] = now + ttl_val
+                    extended += 1
+                    break
+        return extended
+
     def set_status(self, sweep_name: str, stage_name: str, spoint_dict: Dict[str, Any], status_val: str, host: str = "local") -> None:
         sp_path = get_spoint_path(stage_name, spoint_dict)
+        if status_val in ("complete", "error", "initialized"):
+            norm_p = os.path.abspath(sp_path)
+            for k in list(self.active_leases.keys()):
+                if os.path.abspath(k) == norm_p or k == sp_path:
+                    self.active_leases.pop(k, None)
+
         create_spoint(stage_name, spoint_dict, clear=False)
         params_file = os.path.join(sp_path, PARAMS)
         if not os.path.isfile(params_file):
@@ -75,8 +163,11 @@ class SPointScheduler:
         allowed_sweeps: Optional[List[str]] = None,
         exclude_stages: Optional[List[str]] = None,
         exclude_sweeps: Optional[List[str]] = None,
-        host: str = "local"
+        host: str = "local",
+        worker_id: Optional[str] = None,
+        lease_ttl: Optional[float] = None
     ) -> Optional[Tuple[str, str, Dict[str, Any], str]]:
+        self.reclaim_expired_leases()
         sweeps = sweep_tools.load_sweeps()
         stages = stage_tools.load_stages()
 
@@ -158,6 +249,17 @@ class SPointScheduler:
                             break
 
                     if deps_satisfied:
+                        ttl_val = lease_ttl if lease_ttl is not None else self.default_lease_ttl
+                        self.active_leases[sp_path] = {
+                            "lease_expires_at": time.time() + ttl_val,
+                            "worker_id": worker_id,
+                            "host": host,
+                            "stage": stage_name,
+                            "sweep": sweep_name,
+                            "spoint_dict": spoint_dict,
+                            "started_at": None,
+                            "pid": None
+                        }
                         self.set_status(sweep_name, stage_name, spoint_dict, "submitted", host=host)
                         vars_str = ", ".join(f"{k}={v}" for k, v in spoint_dict.items()) if isinstance(spoint_dict, dict) else str(spoint_dict)
                         logger.info("[SCHEDULER] Assignment | Dispatcher : %s | Stage : %s | Spoint : %s", host, stage_name, vars_str)

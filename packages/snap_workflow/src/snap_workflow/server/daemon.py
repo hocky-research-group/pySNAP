@@ -213,7 +213,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             self._submit_priority_job(0, _handle_shutdown)
             return
 
-        if parsed.path == "/request_work":
+        if parsed.path in ("/request_work", "/api/tasks/next"):
             if not self._check_auth():
                 return
 
@@ -239,6 +239,12 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                     min_cpu_running_gpu = 0
 
                 host = params.get("host", ["local"])[0]
+                worker_id = params.get("worker_id", [None])[0]
+                try:
+                    ttl = float(params.get("ttl", [60.0])[0])
+                except Exception:
+                    ttl = 60.0
+
                 stages_str = params.get("stages", [""])[0]
                 sweeps_str = params.get("sweeps", [""])[0]
                 exclude_stages_str = params.get("exclude_stages", [""])[0]
@@ -264,7 +270,9 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                         allowed_sweeps=allowed_sweeps,
                         exclude_stages=exclude_stages,
                         exclude_sweeps=exclude_sweeps,
-                        host=host
+                        host=host,
+                        worker_id=worker_id,
+                        lease_ttl=ttl
                     )
                 except Exception as e:
                     logger.error("Error acquiring next available task: %s", e, exc_info=True)
@@ -329,7 +337,48 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"error": "Not Found"}).encode())
 
     def do_POST(self):
-        if self.path in ("/update_status", "/notify_completion"):
+        if self.path in ("/api/tasks/start", "/start_task"):
+            if not self._check_auth():
+                return
+
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode())
+
+            def _handle_start_task():
+                sp_path = data.get("spoint_path")
+                worker_id = data.get("worker_id")
+                pid = data.get("pid") or data.get("job_id")
+                host = data.get("host", "local")
+                ttl = data.get("ttl")
+                if sp_path:
+                    self.server.spoint_manager.record_start(sp_path, worker_id=worker_id, pid=pid, host=host, ttl=ttl)
+                return {"status": "ok"}, 200
+
+            self._submit_priority_job(1, _handle_start_task)
+            return
+
+        if self.path in ("/api/tasks/heartbeat", "/heartbeat"):
+            if not self._check_auth():
+                return
+
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode())
+
+            def _handle_heartbeat():
+                spoint_paths = data.get("spoint_paths") or []
+                if "spoint_path" in data and data["spoint_path"] not in spoint_paths:
+                    spoint_paths.append(data["spoint_path"])
+                worker_id = data.get("worker_id")
+                ttl = data.get("ttl")
+                ext_count = self.server.spoint_manager.extend_heartbeat(spoint_paths, worker_id=worker_id, ttl=ttl)
+                return {"status": "ok", "extended": ext_count}, 200
+
+            self._submit_priority_job(0, _handle_heartbeat)
+            return
+
+        if self.path in ("/update_status", "/notify_completion", "/api/tasks/complete"):
             if not self._check_auth():
                 return
 
@@ -411,7 +460,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             self._submit_priority_job(0, _handle_update_status)
             return
 
-        if self.path == "/notify_shutdown":
+        if self.path in ("/notify_shutdown", "/notify_worker_shutdown"):
             if not self._check_auth():
                 return
 

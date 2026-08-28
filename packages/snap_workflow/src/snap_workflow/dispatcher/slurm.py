@@ -194,6 +194,11 @@ class SlurmDispatcher(BaseDispatcher):
             job_id = match.group(1) if match else output
 
             logger.info("[SLURM_DISPATCHER] Submitted Slurm job %s for %s (%s)", job_id, stage, spoint_dict)
+            try:
+                self.notify_start(spoint_path, pid=job_id)
+            except Exception:
+                pass
+
             self.active_jobs[spoint_path] = {
                 "job_id": job_id,
                 "sweep": sweep,

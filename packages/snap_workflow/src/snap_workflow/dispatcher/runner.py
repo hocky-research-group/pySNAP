@@ -208,6 +208,10 @@ class SubprocessDispatcher(BaseDispatcher):
             cmd = ["taskset", "-c", core_str] + cmd
 
         proc = subprocess.Popen(cmd, env=proc_env, cwd=root_dir, stdin=subprocess.DEVNULL)
+        try:
+            self.notify_start(spoint_path, pid=proc.pid)
+        except Exception:
+            pass
 
         self.active_jobs[spoint_path] = {
             "proc": proc,

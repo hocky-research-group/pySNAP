@@ -346,3 +346,48 @@ def test_run_server_foreground(sandbox, env_dir):
         from snap_workflow.server.daemon import run_server_foreground
         run_server_foreground("127.0.0.1", 9999)
         assert mock_srv.server_close.called
+
+
+def test_api_tasks_lifecycle_endpoints(sandbox, env_dir, workflow_server):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    configure_stage_resources("stage1")
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+
+    _, server_info = workflow_server("127.0.0.1", port=0)
+    url = server_info["url"]
+    token = server_info["token"]
+
+    # 1. Request work via /api/tasks/next
+    req_work_resp = send_request(f"{url}/api/tasks/next?cpus_avail=2&worker_id=test_worker_1&ttl=10", token)
+    assert req_work_resp is not None
+    assert req_work_resp["status"] == "spoint"
+    sp_path = req_work_resp["spoint_path"]
+
+    # 2. Notify start via /api/tasks/start
+    start_resp = send_request(f"{url}/api/tasks/start", token, data={
+        "spoint_path": sp_path,
+        "worker_id": "test_worker_1",
+        "pid": 99999,
+        "ttl": 10
+    })
+    assert start_resp["status"] == "ok"
+    assert status.load_status(sp_path) == "running"
+
+    # 3. Send heartbeat via /api/tasks/heartbeat
+    heartbeat_resp = send_request(f"{url}/api/tasks/heartbeat", token, data={
+        "spoint_paths": [sp_path],
+        "worker_id": "test_worker_1",
+        "ttl": 10
+    })
+    assert heartbeat_resp["status"] == "ok"
+    assert heartbeat_resp["extended"] == 1
+
+    # 4. Notify completion via /api/tasks/complete
+    complete_resp = send_request(f"{url}/api/tasks/complete", token, data={
+        "spoint_path": sp_path,
+        "status": "complete"
+    })
+    assert complete_resp["status"] == "ok"
+    assert status.load_status(sp_path) == "complete"

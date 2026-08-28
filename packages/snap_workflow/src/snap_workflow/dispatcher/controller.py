@@ -7,7 +7,6 @@ from typing import Dict, Any, List, Optional
 
 from snap_workflow.utils import path
 from snap_workflow.utils.constants import SERVER_INFO
-from snap_workflow.remote.setup import resolve_remote_path
 
 logger = logging.getLogger("snap_workflow.dispatcher.controller")
 

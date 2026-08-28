@@ -410,18 +410,11 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 if remote == "local":
                     stage_tools.validate_stage_resources()
                 else:
-                    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
-                    from snap_workflow.remote.setup import validate_remote_stage_resources, resolve_remote_path
-                    global_remotes = load_global_remotes()
-                    if remote not in global_remotes:
-                        raise ValueError(f"Remote '{remote}' not registered globally.")
-                    host = global_remotes[remote]["host"]
-                    local_remotes = load_local_remotes()
-                    if remote not in local_remotes:
-                        raise ValueError(f"Remote '{remote}' not set up locally.")
-                    r_path = local_remotes[remote]["path"]
-                    resolved_r_path = resolve_remote_path(host, r_path)
-                    validate_remote_stage_resources(host, resolved_r_path)
+                    from snap_workflow.utils.exec import get_remote_host, get_remote_path
+                    from snap_workflow.remote.setup import validate_remote_stage_resources
+                    host = get_remote_host(remote)
+                    r_path = get_remote_path(remote)
+                    validate_remote_stage_resources(host, r_path)
                     ensure_remote_tunnel(self.server, remote)
             except Exception as e:
                 self.send_response(200)

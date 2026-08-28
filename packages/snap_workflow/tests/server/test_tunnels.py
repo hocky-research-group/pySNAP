@@ -112,11 +112,10 @@ def test_ensure_remote_tunnel_single_arg_without_server():
 
 def test_provision_and_cleanup_remote_server_info():
     global_remotes = {"cluster1": {"host": "user@cluster.edu"}}
-    local_remotes = {"cluster1": {"path": "~/sims"}}
+    local_remotes = {"cluster1": {"path": "/home/user/sims"}}
 
     with patch("snap_workflow.utils.io.load_global_remotes", return_value=global_remotes), \
          patch("snap_workflow.utils.io.load_local_remotes", return_value=local_remotes), \
-         patch("snap_workflow.remote.setup.resolve_remote_path", return_value="/home/user/sims"), \
          patch("snap_workflow.remote.ssh.run_remote_bash", return_value="login01.cluster.edu\n") as mock_bash:
 
         server_mock = MagicMock()

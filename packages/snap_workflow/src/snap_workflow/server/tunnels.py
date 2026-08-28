@@ -24,25 +24,15 @@ def provision_remote_server_info(target_remote, server_obj=None, port=None, toke
     Synchronizes manager server connection credentials to {remote_workspace}/.workflow/server
     on the target remote host so compute nodes and workers can discover it automatically.
     """
-    from snap_workflow.utils import io
     from snap_workflow.remote.ssh import run_remote_bash
-    from snap_workflow.remote.setup import resolve_remote_path
-
-    local_remotes = io.load_local_remotes()
-    global_remotes = io.load_global_remotes()
-    r_info = local_remotes.get(target_remote) or global_remotes.get(target_remote)
-    if not r_info:
-        return
-
-    remote_host = r_info.get("host", target_remote)
-    raw_remote_path = (local_remotes.get(target_remote) or {}).get("path") or (global_remotes.get(target_remote) or {}).get("path")
-    if not raw_remote_path:
-        return
+    from snap_workflow.utils.exec import get_remote_host, get_remote_path
 
     try:
-        resolved_path = resolve_remote_path(remote_host, raw_remote_path)
-    except Exception:
-        resolved_path = raw_remote_path
+        remote_host = get_remote_host(target_remote)
+        remote_path = get_remote_path(target_remote)
+    except Exception as e:
+        logger.debug("[TUNNEL] Skipping provision_remote_server_info for '%s': %s", target_remote, e)
+        return
 
     if port is None and server_obj is not None:
         raw_port = getattr(server_obj, "server_port", None) or getattr(server_obj, "port", None)
@@ -92,9 +82,9 @@ def provision_remote_server_info(target_remote, server_obj=None, port=None, toke
     }, indent=2)
 
     try:
-        cmd = f"mkdir -p {resolved_path}/.workflow && cat << 'EOF' > {resolved_path}/.workflow/server\n{server_json_content}\nEOF"
+        cmd = f"mkdir -p {remote_path}/.workflow && cat << 'EOF' > {remote_path}/.workflow/server\n{server_json_content}\nEOF"
         run_remote_bash(remote_host, cmd)
-        logger.info("[TUNNEL] Synchronized .workflow/server to remote '%s' at %s/.workflow/server", target_remote, resolved_path)
+        logger.info("[TUNNEL] Synchronized .workflow/server to remote '%s' at %s/.workflow/server", target_remote, remote_path)
     except Exception as e:
         logger.warning("[TUNNEL] Failed to synchronize .workflow/server to remote '%s': %s", target_remote, e)
 
@@ -103,24 +93,13 @@ def cleanup_remote_server_info(target_remote):
     """
     Removes {remote_workspace}/.workflow/server from the remote host upon tunnel teardown.
     """
-    from snap_workflow.utils import io
     from snap_workflow.remote.ssh import run_remote_bash
-    from snap_workflow.remote.setup import resolve_remote_path
-
-    local_remotes = io.load_local_remotes()
-    global_remotes = io.load_global_remotes()
-    r_info = local_remotes.get(target_remote) or global_remotes.get(target_remote)
-    if not r_info:
-        return
-
-    remote_host = r_info.get("host", target_remote)
-    raw_remote_path = (local_remotes.get(target_remote) or {}).get("path") or (global_remotes.get(target_remote) or {}).get("path")
-    if not raw_remote_path:
-        return
+    from snap_workflow.utils.exec import get_remote_host, get_remote_path
 
     try:
-        resolved_path = resolve_remote_path(remote_host, raw_remote_path)
-        cmd = f"rm -f {resolved_path}/.workflow/server"
+        remote_host = get_remote_host(target_remote)
+        remote_path = get_remote_path(target_remote)
+        cmd = f"rm -f {remote_path}/.workflow/server"
         run_remote_bash(remote_host, cmd)
         logger.info("[TUNNEL] Cleaned up .workflow/server on remote '%s'", target_remote)
     except Exception as e:
@@ -152,14 +131,8 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
             )
             del active_dict[target_remote]
 
-    from snap_workflow.utils import io
-    local_remotes = io.load_local_remotes()
-    global_remotes = io.load_global_remotes()
-    r_info = local_remotes.get(target_remote) or global_remotes.get(target_remote)
-    if not r_info:
-        raise ValueError(f"Remote '{target_remote}' is not registered.")
-
-    remote_host = r_info.get("host", target_remote)
+    from snap_workflow.utils.exec import get_remote_host
+    remote_host = get_remote_host(target_remote)
 
     if port is None and server_obj is not None:
         port = getattr(server_obj, "server_port", None) or getattr(server_obj, "port", None)

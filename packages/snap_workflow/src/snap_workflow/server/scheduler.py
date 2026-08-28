@@ -75,9 +75,8 @@ class OrchestratorScheduler(threading.Thread):
             if self.remote == "local":
                 stage_tools.validate_stage_resources()
             else:
-                from snap_workflow.remote.setup import validate_remote_stage_resources, resolve_remote_path
-                resolved_r_path = resolve_remote_path(host, remote_path)
-                validate_remote_stage_resources(host, resolved_r_path)
+                from snap_workflow.remote.setup import validate_remote_stage_resources
+                validate_remote_stage_resources(host, remote_path)
         except Exception as e:
             logger.error("Stage resource validation failed for remote '%s': %s", self.remote, e)
             return
@@ -351,15 +350,14 @@ class OrchestratorScheduler(threading.Thread):
                             subprocess.run(sbatch_cmd, capture_output=True)
                         else:
                             ensure_remote_tunnel(self.server, self.remote)
-                            from snap_workflow.remote.setup import resolve_remote_path, run_remote_python
-                            resolved_r_path = resolve_remote_path(host, remote_path)
-                            r_spoint_path = os.path.join(resolved_r_path, rel_sp_path)
+                            from snap_workflow.remote.setup import run_remote_python
+                            r_spoint_path = os.path.join(remote_path, rel_sp_path)
 
                             # Ensure .workflow/spoint.sh and spoint dir are synced to remote cluster
                             from snap_workflow.remote.setup import run_remote_bash
                             local_spoint_sh = os.path.join(root_dir, ".workflow", "spoint.sh")
                             if os.path.isfile(local_spoint_sh):
-                                r_wf_dir = f"{resolved_r_path}/.workflow"
+                                r_wf_dir = f"{remote_path}/.workflow"
                                 run_remote_bash(host, f"mkdir -p {r_wf_dir}")
                                 subprocess.run(["rsync", "-avz", local_spoint_sh, f"{host}:{r_wf_dir}/spoint.sh"], capture_output=True)
 
@@ -370,7 +368,7 @@ class OrchestratorScheduler(threading.Thread):
                             try:
                                 from snap_workflow.remote.setup import get_template
                                 tmpl = get_template("load_profile.py")
-                                profile_script = tmpl.replace("{PROFILE_NAME}", repr("env")).replace("{RESOLVED_PATH}", repr(os.path.join(resolved_r_path, st)))
+                                profile_script = tmpl.replace("{PROFILE_NAME}", repr("env")).replace("{RESOLVED_PATH}", repr(os.path.join(remote_path, st)))
                                 out = run_remote_python(host, profile_script)
                                 sbatch_dict = json.loads(out.strip()).get("sbatch", {})
                             except Exception:
@@ -385,7 +383,7 @@ class OrchestratorScheduler(threading.Thread):
                                     flags_list.append(f"{dash_k}={v}")
 
                             sbatch_flags_str = " ".join(flags_list)
-                            remote_sbatch_cmd = f"cd {resolved_r_path} && mkdir -p slurm_out && sbatch --export={export_env} {sbatch_flags_str} .workflow/spoint.sh {rel_sp_path}"
+                            remote_sbatch_cmd = f"cd {remote_path} && mkdir -p slurm_out && sbatch --export={export_env} {sbatch_flags_str} .workflow/spoint.sh {rel_sp_path}"
                             logger.info("[REMOTE:AUTO] Executing sbatch command on '%s': ssh %s '%s'", host, host, remote_sbatch_cmd)
                             run_remote_bash(host, remote_sbatch_cmd)
                             slurm_submitted_jobs.append({"sweep": sw, "stage": st, "spoint_dict": sp_dict, "sp_path": sp_path, "r_spoint_path": r_spoint_path, "host": host})
@@ -442,15 +440,14 @@ class OrchestratorScheduler(threading.Thread):
 
                                 proc = subprocess.Popen(cmd, env=proc_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                             else:
-                                resolved_r_path = resolve_remote_path(host, remote_path)
                                 rel_sp_path = os.path.relpath(sp_path, root_dir)
-                                r_spoint_path = os.path.join(resolved_r_path, rel_sp_path)
+                                r_spoint_path = os.path.join(remote_path, rel_sp_path)
 
                                 # Ensure .workflow/spoint.sh is synced to remote host
                                 local_spoint_sh = os.path.join(root_dir, ".workflow", "spoint.sh")
                                 if os.path.isfile(local_spoint_sh):
                                     try:
-                                        r_wf_dir = f"{resolved_r_path}/.workflow"
+                                        r_wf_dir = f"{remote_path}/.workflow"
                                         subprocess.run(["ssh", host, f"mkdir -p {r_wf_dir}"], capture_output=True)
                                         subprocess.run(["rsync", "-avz", local_spoint_sh, f"{host}:{r_wf_dir}/spoint.sh"], capture_output=True)
                                     except Exception as sh_e:
@@ -461,7 +458,7 @@ class OrchestratorScheduler(threading.Thread):
                                     subprocess.run(sync_cmd, capture_output=True, check=True)
                                 except Exception as sync_e:
                                     logger.warning("Failed to sync spoint directory %s to %s: %s", sp_path, host, sync_e)
-                                remote_cmd = f"mkdir -p {r_spoint_path} && cd {resolved_r_path} && bash .workflow/spoint.sh {rel_sp_path}"
+                                remote_cmd = f"mkdir -p {r_spoint_path} && cd {remote_path} && bash .workflow/spoint.sh {rel_sp_path}"
                                 logger.info("[REMOTE:AUTO] Executing remote command on '%s': ssh %s '%s'", host, host, remote_cmd)
                                 proc = subprocess.Popen(["ssh", host, remote_cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 

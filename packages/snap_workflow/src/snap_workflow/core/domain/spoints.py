@@ -533,7 +533,7 @@ class SPointManager():
     def _notify_server(self, final_status, exit_code):
         try:
             import urllib.request, json
-            url = f"{self.report_to.rstrip('/')}/notify_completion"
+            url = f"{self.report_to.rstrip('/')}/update_status"
             payload = json.dumps({
                 "spoint_path": self.main_dir,
                 "status": final_status,

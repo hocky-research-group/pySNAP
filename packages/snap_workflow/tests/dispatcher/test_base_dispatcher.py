@@ -120,7 +120,7 @@ def test_notify_completion():
         success = d.notify_completion("stage1/spoints/x_5", success=True, returncode=0, extra_data={"foo": "bar"})
         assert success is True
         assert len(payloads) == 1
-        assert payloads[0][0] == "http://localhost:8000/notify_completion"
+        assert payloads[0][0] == "http://localhost:8000/update_status"
         assert payloads[0][1]["status"] == "COMPLETED"
         assert payloads[0][1]["foo"] == "bar"
 

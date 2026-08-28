@@ -128,7 +128,7 @@ class SlurmDispatcher(BaseDispatcher):
         lines.append("# Notify SNAP Workflow server of task completion")
         lines.append(f"curl -s -X POST -H 'Authorization: Bearer {self.token}' -H 'Content-Type: application/json' \\")
         lines.append(f"  -d '{json.dumps({'sweep': sweep, 'stage': stage, 'spoint_dict': spoint_dict, 'host': self.host})}' \\")
-        lines.append(f"  {notify_url}/notify_completion >/dev/null || true")
+        lines.append(f"  {notify_url}/update_status >/dev/null || true")
         lines.append("")
         lines.append("exit $EXIT_CODE")
 

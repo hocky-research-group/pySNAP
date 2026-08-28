@@ -53,7 +53,7 @@ def test_slurm_dispatcher_dispatch_and_script_generation(sandbox, env_dir):
 
         assert "#SBATCH --job-name=snap_stage1" in script_content
         assert "bash .workflow/spoint.sh" in script_content
-        assert "notify_completion" in script_content
+        assert "update_status" in script_content
         assert spoint_dir in d.active_jobs
         assert d.active_jobs[spoint_dir]["job_id"] == "888123"
 

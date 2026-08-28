@@ -94,7 +94,7 @@ class BaseDispatcher(ABC):
         extra_data: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Notifies the workflow server that an SPoint task has completed."""
-        url = f"{self.server_url}/notify_completion"
+        url = f"{self.server_url}/update_status"
         payload = {
             "spoint_path": spoint_path,
             "status": "COMPLETED" if success else "FAILED",

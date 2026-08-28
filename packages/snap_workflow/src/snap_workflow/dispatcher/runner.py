@@ -253,7 +253,7 @@ class SubprocessDispatcher(BaseDispatcher):
                     "status": status_val,
                     "host": self.host
                 }
-                self.send_request(f"{self.server_url}/notify_completion", data=payload)
+                self.send_request(f"{self.server_url}/update_status", data=payload)
 
                 if "assigned_cpus" in job and "assigned_gpus" in job:
                     self.resource_pool.release(job["assigned_cpus"], job["assigned_gpus"])

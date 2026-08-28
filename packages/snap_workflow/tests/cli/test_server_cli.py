@@ -34,7 +34,7 @@ def test_main_server_options_dispatch():
 def test_server_start_cmd():
     with patch("snap_workflow.server.run_server_foreground") as mock_run:
         server_start_cmd("workflow server start", ["--port", "9090", "--host", "127.0.0.1"])
-        mock_run.assert_called_once_with(host="127.0.0.1", port=9090)
+        mock_run.assert_called_once_with(host="127.0.0.1", port=9090, debug=False)
 
 
 def test_server_auto_cmd_delegation():

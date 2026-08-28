@@ -57,7 +57,7 @@ def has_slurm(target: str) -> bool:
     if target == "local":
         return shutil.which("sbatch") is not None
     try:
-        res = run_command(target, "which sbatch", capture_output=True, text=True, timeout=10)
+        res = run_command(target, "which sbatch", capture_output=True, text=True, timeout=30)
         return res.returncode == 0
     except Exception as e:
         logger.warning("Failed to check Slurm on remote '%s': %s", target, e)
@@ -81,7 +81,7 @@ def detect_target_resources(target: str) -> tuple[int, int, float]:
         'print(json.dumps(detect_system_resources()))"'
     )
     try:
-        res = run_command(target, cmd, capture_output=True, text=True, timeout=10)
+        res = run_command(target, cmd, capture_output=True, text=True, timeout=30)
         if res.returncode == 0 and res.stdout.strip():
             data = json.loads(res.stdout.strip())
             return int(data[0]), int(data[1]), float(data[2])

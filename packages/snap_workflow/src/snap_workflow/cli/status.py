@@ -1,0 +1,51 @@
+from snap_workflow.utils import io
+from snap_workflow.core.domain import status as status_tools
+from snap_workflow.cli.utils import parse_remaining, execute_option
+from snap_workflow.cli.prompts import get_existing_sweep_name, get_existing_stage_name
+
+
+def print_status_cmd(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    sweep_name = get_existing_sweep_name(kwargs, include_all=True, get_input=False, default='all')
+    stage_name = get_existing_stage_name(kwargs, include_all=True, is_list=False, get_input=False, default='all')
+    io.warn_unused_kwargs(kwargs)
+    status_tools.print_status(sweep_names=sweep_name, stage_names=stage_name)
+
+
+def set_status_cmd(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    if len(args) == 0:
+        raise ValueError("Must provide status value")
+    new_status = args.pop(0)
+    old_status = kwargs.pop("from", kwargs.pop("old", kwargs.pop("old_status", None)))
+    sweep_name = get_existing_sweep_name(kwargs, include_all=True, get_input=False, default='all')
+    stage_name = get_existing_stage_name(kwargs, include_all=True, is_list=False, get_input=False, default='all')
+    io.warn_unused_kwargs(kwargs)
+    status_tools.set_status(new_status, old_status=old_status, sweep_names=sweep_name, stage_names=stage_name)
+
+
+def reset_status_cmd(parsed_command, args):
+    args, kwargs = parse_remaining(args)
+    old_status = kwargs.pop("from", kwargs.pop("old", kwargs.pop("old_status", None)))
+    if (args and args[0] == "errors") or kwargs.pop("errors", False) or kwargs.pop("e", False):
+        if args and args[0] == "errors":
+            args.pop(0)
+        old_status = "error"
+
+    sweep_name = get_existing_sweep_name(kwargs, include_all=True, get_input=False, default='all')
+    stage_name = get_existing_stage_name(kwargs, include_all=True, is_list=False, get_input=False, default='all')
+    io.warn_unused_kwargs(kwargs)
+    status_tools.set_status("initialized", old_status=old_status, sweep_names=sweep_name, stage_names=stage_name)
+
+
+def main_status(parsed_command, args):
+    # Default to 'print' if no arguments or only flag arguments are provided (e.g. 'workflow status -w sweepA')
+    if not args or args[0].startswith("-"):
+        return print_status_cmd(parsed_command, args)
+
+    status_options = {
+        "print": print_status_cmd,
+        "set": set_status_cmd,
+        "reset": reset_status_cmd,
+    }
+    execute_option("status_option", status_options, parsed_command=parsed_command, args=args)

@@ -8,7 +8,8 @@ from snap_workflow.cli.prompts import get_existing_stage_name, get_existing_swee
 from snap_workflow.cli.stage import main_stage
 from snap_workflow.cli.sweep import main_sweep
 from snap_workflow.cli.variable import main_variable
-from snap_workflow.cli.spoint import main_status, main_spoint
+from snap_workflow.cli.status import main_status
+from snap_workflow.cli.spoint import main_spoint
 from snap_workflow.cli.params import main_params
 from snap_workflow.cli.data import main_data
 from snap_workflow.cli.remote import main_remote

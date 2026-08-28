@@ -7,7 +7,8 @@ from snap_workflow.core.domain.sweeps import load_sweeps
 from snap_workflow.cli.workflow import main_init, main_update, main_zip, main_autocomplete, main_variable
 from snap_workflow.cli.stage import main_stage
 from snap_workflow.cli.sweep import main_sweep
-from snap_workflow.cli.spoint import main_status, main_spoint
+from snap_workflow.cli.status import main_status
+from snap_workflow.cli.spoint import main_spoint
 from snap_workflow.cli.utils import get_completions
 
 
@@ -46,7 +47,7 @@ def test_cli_lifecycle(mock_input, sandbox, env_dir):
         main_sweep("workflow sweep", ["print"])
         
     # 6. Test CLI set status
-    main_spoint("workflow spoint", ["set", "submitted", "-w", "sweepA", "-s", "stageA"])
+    main_status("workflow status", ["set", "submitted", "-w", "sweepA", "-s", "stageA"])
     
     # 7. Test CLI remove sweep
     mock_input.side_effect = ["y"]
@@ -128,7 +129,7 @@ def test_cli_reset(sandbox, env_dir):
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
     
     with patch('builtins.input', side_effect=["sweep1", "stage1"]):
-        main_spoint("workflow spoint", ["reset", "errors"])
+        main_status("workflow status", ["reset", "errors"])
         
     with patch('builtins.input', side_effect=["sweep1"]):
         main_sweep("workflow sweep", ["reset"])
@@ -172,36 +173,43 @@ def test_get_completions_noun_verb():
     assert get_completions(["stage"], "") == ["add", "print", "set"]
     assert get_completions(["sweep"], "") == ["add", "print", "reset", "remove"]
     assert get_completions(["variable"], "") == ["add", "print"]
-    assert get_completions(["status"], "") == ["print", "set", "reset", "reset-errors", "submit"]
-    assert get_completions(["spoint"], "") == ["print", "set", "reset", "reset-errors", "submit"]
+    assert get_completions(["status"], "") == ["print", "set", "reset"]
+    assert get_completions(["spoint"], "") == ["reset", "submit"]
 
 
-def test_cli_spoint_consolidated(sandbox, env_dir, capsys):
+def test_cli_status_and_spoint(sandbox, env_dir, capsys):
     initialize(env_dir)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
     add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
 
-    main_spoint("workflow spoint", ["print"])
+    # Bare 'workflow status' defaults to print
+    main_status("workflow status", [])
     captured = capsys.readouterr()
     assert "Sweep: " in captured.out or "sweep1" in captured.out
 
-    main_spoint("workflow spoint", ["set", "complete"])
-    main_spoint("workflow spoint", ["print"])
+    # 'workflow status print'
+    main_status("workflow status", ["print"])
+    captured = capsys.readouterr()
+    assert "Sweep: " in captured.out or "sweep1" in captured.out
+
+    # 'workflow status set'
+    main_status("workflow status", ["set", "complete"])
+    main_status("workflow status", ["print"])
     captured = capsys.readouterr()
     assert "complete" in captured.out
 
-    # Test error reset
-    main_spoint("workflow spoint", ["set", "error"])
-    main_spoint("workflow spoint", ["reset", "errors"])
-    main_spoint("workflow spoint", ["print"])
+    # 'workflow status reset errors'
+    main_status("workflow status", ["set", "error"])
+    main_status("workflow status", ["reset", "errors"])
+    main_status("workflow status", ["print"])
     captured = capsys.readouterr()
     assert "initialized" in captured.out
 
-    # Test setting status --from error
-    main_spoint("workflow spoint", ["set", "error"])
-    main_spoint("workflow spoint", ["set", "initialized", "--from", "error"])
-    main_spoint("workflow spoint", ["print"])
+    # 'workflow status reset' with --from error
+    main_status("workflow status", ["set", "error"])
+    main_status("workflow status", ["reset", "--from", "error"])
+    main_status("workflow status", ["print"])
     captured = capsys.readouterr()
     assert "initialized" in captured.out
 

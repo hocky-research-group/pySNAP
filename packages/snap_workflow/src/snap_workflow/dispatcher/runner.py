@@ -195,7 +195,10 @@ class SubprocessDispatcher(BaseDispatcher):
         proc_env["VECLIB_MAXIMUM_THREADS"] = str(req_cpus)
         proc_env["NUMEXPR_NUM_THREADS"] = str(req_cpus)
 
-        cmd = ["bash", spoint_sh_script, spoint_path]
+        from snap_workflow.core.domain import spoints as spoint_tools
+        spoint_rel_path = os.path.join(stage, "spoints", spoint_tools.get_spoint_string(spoint_dict))
+
+        cmd = ["bash", spoint_sh_script, spoint_rel_path]
         if sys.platform != "win32" and shutil.which("taskset") and assigned_cpus:
             if len(assigned_cpus) > 1 and assigned_cpus == list(range(assigned_cpus[0], assigned_cpus[-1] + 1)):
                 core_str = f"{assigned_cpus[0]}-{assigned_cpus[-1]}"
@@ -214,6 +217,7 @@ class SubprocessDispatcher(BaseDispatcher):
             "stage": stage,
             "spoint_dict": spoint_dict,
             "spoint_path": spoint_path,
+            "spoint_rel_path": spoint_rel_path,
             "assigned_cpus": assigned_cpus,
             "assigned_gpus": assigned_gpus
         }
@@ -230,7 +234,8 @@ class SubprocessDispatcher(BaseDispatcher):
                 disk_status = None
                 try:
                     from snap_workflow.core.domain import status as status_module
-                    target_dir = spoint_path if os.path.isabs(spoint_path) else os.path.join(self.root if self.root else ".", spoint_path)
+                    rel_p = job.get("spoint_rel_path")
+                    target_dir = os.path.join(self.root if self.root else ".", rel_p) if rel_p else (spoint_path if os.path.isabs(spoint_path) else os.path.join(self.root if self.root else ".", spoint_path))
                     disk_status = status_module.load_status(target_dir)
                 except Exception:
                     pass

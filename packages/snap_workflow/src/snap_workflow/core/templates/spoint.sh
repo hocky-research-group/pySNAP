@@ -18,6 +18,7 @@ export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
 #to take advantage of the status manager
 
 count=0
+pids=()
 for spoint in "$@"; do
     echo $spoint
     mkdir -p "$spoint"
@@ -141,7 +142,6 @@ for k, v in cfg.get(\"env_vars\", {}).items():
     print(f\"export {k}={q}{v}{q}\")
 " 2>/dev/null)
 
-    pids=()
     if [ -n "$REPORT_TO" ]; then
         $python_path "$WF_ROOT/$stage_name/$stage_name.py" "$spoint" --report-to "$REPORT_TO" >> spoint.log 2>&1 &
         pids+=($!)

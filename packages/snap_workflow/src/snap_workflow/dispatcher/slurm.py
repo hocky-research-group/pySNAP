@@ -90,16 +90,11 @@ class SlurmDispatcher(BaseDispatcher):
         spoint_dict = task["spoint_dict"]
         spoint_path = task["spoint_path"]
 
-        rel_spoint_path = spoint_path
-        if self.root and os.path.isabs(spoint_path):
-            try:
-                rel_spoint_path = os.path.relpath(spoint_path, self.root)
-            except Exception:
-                rel_spoint_path = spoint_path
-
-        out_path = f"{rel_spoint_path}/slurm_%j.out" if self.is_remote else f"{spoint_path}/slurm_%j.out"
-        err_path = f"{rel_spoint_path}/slurm_%j.err" if self.is_remote else f"{spoint_path}/slurm_%j.err"
-        exec_target = rel_spoint_path if self.is_remote else spoint_path
+        from snap_workflow.core.domain import spoints as spoint_tools
+        rel_spoint_path = os.path.join(stage, "spoints", spoint_tools.get_spoint_string(spoint_dict))
+        out_path = f"{rel_spoint_path}/slurm_%j.out"
+        err_path = f"{rel_spoint_path}/slurm_%j.err"
+        exec_target = rel_spoint_path
         notify_url = f"http://127.0.0.1:{self.remote_port or 8080}" if self.is_remote else self.server_url
 
         lines = [

@@ -505,6 +505,10 @@ class SPointManager():
         self._set_running()
         self.start_time = time.time()
         signal.signal(signal.SIGINT, signal.default_int_handler)
+        try:
+            signal.signal(signal.SIGTERM, signal.default_int_handler)
+        except Exception:
+            pass
         return self
 
     def __exit__(self, exc_type, exc_val, traceback):

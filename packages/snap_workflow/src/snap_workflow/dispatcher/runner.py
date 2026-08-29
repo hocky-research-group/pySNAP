@@ -211,9 +211,12 @@ class SubprocessDispatcher(BaseDispatcher):
         logger.info("[DISPATCHER] Cleaning up. Terminating %s active child processes...", len(self.active_jobs))
         for job in self.active_jobs.values():
             try:
-                job["proc"].terminate()
+                job["proc"].send_signal(signal.SIGINT)
             except Exception:
-                pass
+                try:
+                    job["proc"].terminate()
+                except Exception:
+                    pass
 
 
 def dispatcher_loop(

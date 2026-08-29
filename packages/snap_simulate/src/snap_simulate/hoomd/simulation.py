@@ -304,7 +304,8 @@ def build_integrator(int_info, hoomd_objs):# {{{
 
     method_info = int_info["method"]
     method_class = get_class(method_info,["md","methods"])
-    method_options = get_options(method_info)
+    raw_method_options = get_options(method_info)
+    method_options = dict(raw_method_options)
 
     filter = hoomd_objs["filters"][method_info["filter"]]
     method_options["filter"] = filter
@@ -321,12 +322,12 @@ def build_integrator(int_info, hoomd_objs):# {{{
         print("    "*2,"Thermostat: ", thermostat_info['class'])
         print("    "*3,"Options: ", thermostat_options)
 
-    print("    "*2,"Options: ", method_options)
+    print("    "*2,"Options: ", raw_method_options)
 
     method = method_class(**method_options)
 
     if "gamma" in method_info:
-        print("    "*2,"Gamma: ", method_options)
+        print("    "*2,"Gamma:")
         for particle,gamma in method_info['gamma'].items():
             print("    "*3, particle, ": ", gamma)
             method.gamma[particle] = gamma
@@ -704,7 +705,7 @@ def build_writers(Writers, obj_dict):# {{{
                 filter_obj = obj_dict["filters"][filter_info]
             else:
                 raise TypeError(f"Cannot build info of type {type(filter_info)} into a filter")
-            options["filter"] = filter 
+            options["filter"] = filter_obj
 
         writer_class = get_class(writer_info,["write"])
         writer = writer_class(**options)

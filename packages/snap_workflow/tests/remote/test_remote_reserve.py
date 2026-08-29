@@ -42,3 +42,4 @@ def test_reserve_remote_workers_success():
         assert "SERVER_TOKEN=secret_token" in ssh_cmd
         assert "TUNNEL_HOST=login01.cluster.edu" in ssh_cmd
         assert "--qos=high" in ssh_cmd
+        assert "--signal=B:INT@60" in ssh_cmd

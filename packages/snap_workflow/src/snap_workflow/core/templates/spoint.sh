@@ -169,7 +169,7 @@ kill_spoints () {
     wait "${pids[@]}" 2>/dev/null
 }   
 
-trap 'kill_spoints' INT SIGINT
+trap 'kill_spoints' INT SIGINT TERM SIGTERM
 
 #---- Wait ----
 # waits for all spoints to be finished (or killed)

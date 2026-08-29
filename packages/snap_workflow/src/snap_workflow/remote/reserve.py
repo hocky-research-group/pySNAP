@@ -69,13 +69,18 @@ def reserve_remote_workers(server_port, token, remote_name, profile, num_workers
     profile_sbatch_args = ""
     if profile_data:
         flags = []
+        has_signal = any(k.lstrip("-") == "signal" for k in profile_data.keys())
         for k, v in profile_data.items():
             dash_key = k if k.startswith("-") else (f"-{k}" if len(k) == 1 else f"--{k}")
             if v is None:
                 flags.append(dash_key)
             else:
                 flags.append(f"{dash_key}={v}")
+        if not has_signal and ("--signal" not in sbatch_args and "-signal" not in sbatch_args):
+            flags.append("--signal=B:INT@60")
         profile_sbatch_args = " ".join(flags)
+    elif "--signal" not in sbatch_args and "-signal" not in sbatch_args:
+        profile_sbatch_args = "--signal=B:INT@60"
 
     if profile_sbatch_args:
         if sbatch_args:

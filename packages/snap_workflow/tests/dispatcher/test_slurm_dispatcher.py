@@ -53,6 +53,7 @@ def test_slurm_dispatcher_dispatch_and_script_generation(sandbox, env_dir):
             script_content = f.read()
 
         assert "#SBATCH --job-name=snap_stage1" in script_content
+        assert "#SBATCH --signal=B:INT@60" in script_content
         assert "bash .workflow/spoint.sh" in script_content
         assert "update_status" in script_content
         assert spoint_dir in d.active_jobs

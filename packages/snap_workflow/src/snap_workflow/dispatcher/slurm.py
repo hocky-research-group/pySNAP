@@ -110,6 +110,10 @@ class SlurmDispatcher(BaseDispatcher):
         if req_gpus > 0:
             lines.append(f"#SBATCH --gpus={req_gpus}")
 
+        has_signal = any("signal" in k.lower() for k in extra_env.keys()) or ("--signal" in self.sbatch_extra_args)
+        if not has_signal:
+            lines.append("#SBATCH --signal=B:INT@60")
+
         for k, v in extra_env.items():
             if k.startswith("#SBATCH"):
                 lines.append(f"{k} {v}")

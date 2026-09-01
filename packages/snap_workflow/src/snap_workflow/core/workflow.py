@@ -159,8 +159,7 @@ def setup_blank_workflow():
     path.ensure_default_python_path()
     config_data = {
         "default_python_env": path.load_python_path(),
-        "default_activate_cmd": [],
-        "default_env_vars": {}
+        "default_setup_cmds": []
     }
     io.make_json(LOCAL_CONFIG, obj=config_data)
     return

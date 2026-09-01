@@ -85,62 +85,91 @@ class SlurmDispatcher(BaseDispatcher):
         """Returns True if the number of in-flight Slurm jobs is below max_queued_jobs."""
         return len(self.active_jobs) < self.max_queued_jobs
 
-    def _build_sbatch_script(self, task: Dict[str, Any], req_cpus: int, req_gpus: int, req_mem: str, time_limit: str, extra_env: Dict[str, str]) -> str:
-        """Generates the SBATCH script content with trailing server notification."""
+    def _build_sbatch_script(self, task: Dict[str, Any], env_data: Dict[str, Any]) -> str:
+        """Generates the SBATCH script content running SubprocessDispatcher for assigned SPoints."""
         stage = task["stage"]
         sweep = task["sweep"]
         spoint_dict = task["spoint_dict"]
         spoint_path = task["spoint_path"]
+        root_dir = self.root if self.root is not None else "."
+
+        profile_name = env_data.get("slurm_profile", env_data.get("sbatch_profile"))
+        profile_flags = {}
+        if profile_name:
+            profile_flags = io.load_sbatch_profile(profile_name, root_dir=root_dir)
+
+        custom_flags = env_data.get("slurm_flags", env_data.get("sbatch", env_data.get("sbatch_details", {})))
+        sbatch_directives: Dict[str, Any] = {}
+
+        for k, v in profile_flags.items():
+            dash_key = k if k.startswith("-") else (f"-{k}" if len(k) == 1 else f"--{k}")
+            sbatch_directives[dash_key] = v
+        for k, v in custom_flags.items():
+            dash_key = k if k.startswith("-") else (f"-{k}" if len(k) == 1 else f"--{k}")
+            sbatch_directives[dash_key] = v
 
         rel_spoint_path = os.path.join(stage, "spoints", spoint_tools.get_spoint_string(spoint_dict))
         out_path = f"{rel_spoint_path}/slurm_%j.out"
         err_path = f"{rel_spoint_path}/slurm_%j.err"
-        exec_target = rel_spoint_path
+
+        if "-o" not in sbatch_directives and "--output" not in sbatch_directives:
+            sbatch_directives["-o"] = out_path
+        if "-e" not in sbatch_directives and "--error" not in sbatch_directives:
+            sbatch_directives["-e"] = err_path
+        if "-J" not in sbatch_directives and "--job-name" not in sbatch_directives:
+            sbatch_directives["-J"] = f"snap_{stage}"
+
+        has_signal = any("signal" in k.lower() for k in sbatch_directives.keys()) or ("--signal" in self.sbatch_extra_args)
+        if not has_signal:
+            sbatch_directives["--signal"] = "B:INT@60"
+
+        lines = ["#!/bin/bash"]
+        for k, v in sbatch_directives.items():
+            if v is None or v is True or str(v).strip() == "":
+                lines.append(f"#SBATCH {k}")
+            elif k.startswith("--") and "=" not in k:
+                lines.append(f"#SBATCH {k}={v}")
+            else:
+                lines.append(f"#SBATCH {k} {v}")
+
+        lines.append("")
         notify_url = f"http://127.0.0.1:{self.remote_port or 8080}" if self.is_remote else self.server_url
 
-        lines = [
-            "#!/bin/bash",
-            f"#SBATCH --job-name=snap_{stage}",
-            f"#SBATCH --cpus-per-task={req_cpus}",
-            f"#SBATCH --mem={req_mem}",
-            f"#SBATCH --time={time_limit}",
-            f"#SBATCH --output={out_path}",
-            f"#SBATCH --error={err_path}"
-        ]
+        if self.is_remote:
+            lines.append("# Forward port back to submission host")
+            lines.append('if [ -z "$SERVER_PORT" ] && [ -f ".workflow/server" ]; then')
+            lines.append('    SERVER_PORT=$(grep -o \'"port"[[:space:]]*:[[:space:]]*[0-9]*\' ".workflow/server" 2>/dev/null | tr -dc \'0-9\')')
+            lines.append('fi')
+            lines.append('SERVER_PORT="${SERVER_PORT:-8080}"')
+            lines.append('TARGET_HOST="${TUNNEL_HOST:-$SLURM_SUBMIT_HOST}"')
+            lines.append('if [ -n "$TARGET_HOST" ] && [ "$TARGET_HOST" != "localhost" ] && [ "$TARGET_HOST" != "127.0.0.1" ]; then')
+            lines.append('    ssh -i ~/.ssh/id_rsa -o BatchMode=yes -o StrictHostKeyChecking=no -L $SERVER_PORT:127.0.0.1:$SERVER_PORT $TARGET_HOST -N -f 2>/dev/null || ssh -o BatchMode=yes -o StrictHostKeyChecking=no -L $SERVER_PORT:127.0.0.1:$SERVER_PORT $TARGET_HOST -N -f 2>/dev/null || true')
+            lines.append('fi')
+            lines.append("")
 
-        if req_gpus > 0:
-            lines.append(f"#SBATCH --gpus={req_gpus}")
+        setup_cmds = env_data.get("setup_cmds", env_data.get("setup_cmd", env_data.get("activate_cmd", [])))
+        if isinstance(setup_cmds, str):
+            setup_cmds = [setup_cmds]
+        if setup_cmds:
+            lines.append("# Stage setup commands")
+            for cmd in setup_cmds:
+                lines.append(cmd)
+            lines.append("")
 
-        has_signal = any("signal" in k.lower() for k in extra_env.keys()) or ("--signal" in self.sbatch_extra_args)
-        if not has_signal:
-            lines.append("#SBATCH --signal=B:INT@60")
+        python_path = env_data.get("python_path")
+        if not python_path or python_path == "FIXME":
+            python_path = "python3"
 
-        for k, v in extra_env.items():
-            if k.startswith("#SBATCH"):
-                lines.append(f"{k} {v}")
-
-        lines.append("")
-        lines.append("# SPoint execution")
-        lines.append(f"bash .workflow/spoint.sh {exec_target}")
-        lines.append("EXIT_CODE=$?")
-        lines.append("")
-        lines.append("if [ $EXIT_CODE -eq 0 ]; then")
-        lines.append("    STATUS='complete'")
-        lines.append("else")
-        lines.append("    STATUS='error'")
-        lines.append("fi")
-        lines.append("")
-        lines.append("# Notify SNAP Workflow server of task completion")
-        lines.append(f"curl -s -X POST -H 'Authorization: Bearer {self.token}' -H 'Content-Type: application/json' \\")
-        lines.append(f"  -d '{json.dumps({'sweep': sweep, 'stage': stage, 'spoint_dict': spoint_dict, 'host': self.host})}' \\")
-        lines.append(f"  {notify_url}/update_status >/dev/null || true")
-        lines.append("")
-        lines.append("exit $EXIT_CODE")
+        lines.append(f"exec {python_path} -m snap_workflow.dispatcher.runner \\")
+        lines.append(f"  {notify_url} '{self.token}' \\")
+        lines.append(f"  --host '{self.host}' \\")
+        lines.append(f"  --stage '{stage}' \\")
+        lines.append(f"  --assigned-spoints '{rel_spoint_path}'")
 
         return "\n".join(lines)
 
     def dispatch_task(self, task: Dict[str, Any]) -> None:
-        """Generates an SBATCH script for the SPoint and submits it to Slurm."""
+        """Generates an SBATCH script for the SPoint and submits it (with optional chained submissions)."""
         stage = task["stage"]
         sweep = task["sweep"]
         spoint_dict = task["spoint_dict"]
@@ -149,62 +178,64 @@ class SlurmDispatcher(BaseDispatcher):
         logger.info("[SLURM_DISPATCHER] Preparing sbatch for spoint: %s %s (remote=%s)", stage, spoint_dict, self.is_remote)
 
         env_base = os.path.join(self.root if self.root is not None else ".", stage, "env")
-        req_cpus = 1
-        req_gpus = 0
-        req_mem = "2G"
-        time_limit = "02:00:00"
-        extra_sbatch: Dict[str, str] = {}
-
+        env_data: Dict[str, Any] = {}
         try:
             env_data = io.load_config(env_base, full_path=True)
-            res = env_data.get("resources", {})
-            req_cpus = int(res.get("cpus", 1))
-            req_gpus = int(res.get("gpus", 0))
-            req_mem = str(res.get("mem", "2G"))
-            if "time" in res:
-                time_limit = str(res["time"])
-            for k, v in env_data.get("sbatch", {}).items():
-                extra_sbatch[f"#SBATCH --{k}"] = str(v)
         except Exception:
             pass
 
-        script_content = self._build_sbatch_script(task, req_cpus, req_gpus, req_mem, time_limit, extra_sbatch)
+        script_content = self._build_sbatch_script(task, env_data)
+        chained_submissions = int(env_data.get("chained_submissions", env_data.get("num_submits", 1)))
 
         try:
-            if self.is_remote:
-                sbatch_sub_cmd = f"cd {self.remote_path} && sbatch"
-                if self.sbatch_extra_args:
-                    sbatch_sub_cmd += f" {self.sbatch_extra_args}"
-                cmd = ["ssh", "-o", "BatchMode=yes", self.remote_host, sbatch_sub_cmd]
-                res = subprocess.run(cmd, input=script_content, capture_output=True, text=True, check=True)
-            else:
-                script_file = os.path.join(spoint_path, "run_spoint.sbatch")
-                try:
-                    with open(script_file, "w") as f:
-                        f.write(script_content)
-                except Exception as e:
-                    logger.error("Failed to write sbatch script to %s: %s", script_file, e)
-                    return
+            prev_job_id = None
+            primary_job_id = None
 
-                cmd = ["sbatch"]
-                if self.sbatch_extra_args:
-                    cmd.extend(shlex.split(self.sbatch_extra_args))
-                cmd.append(script_file)
-                res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            for i in range(max(1, chained_submissions)):
+                extra_args = self.sbatch_extra_args or ""
+                if prev_job_id is not None:
+                    extra_args = f"--dependency=afterany:{prev_job_id} {extra_args}".strip()
 
-            output = res.stdout.strip()
-            # Expecting: "Submitted batch job <job_id>"
-            match = re.search(r"Submitted batch job (\d+)", output)
-            job_id = match.group(1) if match else output
+                if self.is_remote:
+                    sbatch_sub_cmd = f"cd {self.remote_path} && sbatch"
+                    if extra_args:
+                        sbatch_sub_cmd += f" {extra_args}"
+                    cmd = ["ssh", "-o", "BatchMode=yes", self.remote_host, sbatch_sub_cmd]
+                    res = subprocess.run(cmd, input=script_content, capture_output=True, text=True, check=True)
+                else:
+                    script_file = os.path.join(spoint_path, "run_spoint.sbatch")
+                    try:
+                        with open(script_file, "w") as f:
+                            f.write(script_content)
+                    except Exception as e:
+                        logger.error("Failed to write sbatch script to %s: %s", script_file, e)
+                        return
 
-            logger.info("[SLURM_DISPATCHER] Submitted Slurm job %s for %s (%s)", job_id, stage, spoint_dict)
+                    cmd = ["sbatch"]
+                    if extra_args:
+                        cmd.extend(shlex.split(extra_args))
+                    cmd.append(script_file)
+                    res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+                output = res.stdout.strip()
+                match = re.search(r"Submitted batch job (\d+)", output)
+                job_id = match.group(1) if match else output
+
+                if i == 0:
+                    primary_job_id = job_id
+                    logger.info("[SLURM_DISPATCHER] Submitted primary Slurm job %s for %s (%s)", job_id, stage, spoint_dict)
+                else:
+                    logger.info("[SLURM_DISPATCHER] Submitted chained Slurm job %d/%d (%s) dependent on %s", i + 1, chained_submissions, job_id, prev_job_id)
+
+                prev_job_id = job_id
+
             try:
-                self.notify_start(spoint_path, pid=job_id)
+                self.notify_start(spoint_path, pid=primary_job_id)
             except Exception:
                 pass
 
             self.active_jobs[spoint_path] = {
-                "job_id": job_id,
+                "job_id": primary_job_id,
                 "sweep": sweep,
                 "stage": stage,
                 "spoint_dict": spoint_dict,

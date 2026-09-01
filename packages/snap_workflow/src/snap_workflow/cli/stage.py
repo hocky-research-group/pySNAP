@@ -1,7 +1,7 @@
 from snap_workflow.utils import io
 from snap_workflow.core.domain import stages as stage_tools
 from snap_workflow.cli.utils import parse_remaining, execute_option
-from snap_workflow.cli.prompts import get_new_stage_name, get_existing_stage_name, get_sbatch_details, prompt_each_stage, prompt_each_variable
+from snap_workflow.cli.prompts import get_new_stage_name, get_existing_stage_name, prompt_each_stage, prompt_each_variable
 
 
 def print_stages_cmd(parsed_command, args, show_helper=False):
@@ -18,22 +18,17 @@ def add_stage_cmd(parsed_command, args):
     if len(args) > 0 and "name" not in kwargs and "n" not in kwargs:
         kwargs["name"] = args.pop(0)
     stage_name = get_new_stage_name(kwargs)
-    has_sbatch = kwargs.pop("sbatch", kwargs.pop("b", None))
-    if has_sbatch is not None:
-        sbatch_details = {"--signal": "B:INT@60"} if has_sbatch else None
-    else:
-        sbatch_details = get_sbatch_details(stage_name)
 
     stage_variables = prompt_each_variable(f"Add which variables to the {stage_name} stage?")
     stage_dependencies = prompt_each_stage(f"The {stage_name} stage depends on which stage results?")
     io.warn_unused_kwargs(kwargs)
-    stage_tools.add_stage(stage_name, sbatch_details, stage_variables, stage_dependencies)
+    stage_tools.add_stage(stage_name, None, stage_variables, stage_dependencies)
 
 
 def help_stages_cmd(parsed_command, args):
     print("Available subcommands for 'workflow stage':")
     print("  print [-s S]                      Print registered stages and dependencies")
-    print("  add [name] [--sbatch]             Create a new stage (interactive wizard)")
+    print("  add [name]                        Create a new stage (interactive wizard)")
 
 
 def main_stage(parsed_command, args):

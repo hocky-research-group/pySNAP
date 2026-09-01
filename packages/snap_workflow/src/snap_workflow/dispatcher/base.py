@@ -94,6 +94,8 @@ class BaseDispatcher(ABC):
             params["host"] = self.host
         if getattr(self, "worker_id", None):
             params["worker_id"] = self.worker_id
+        if getattr(self, "pending_assigned", None):
+            params["target_spoints"] = ",".join(self.pending_assigned)
 
         res_info = self.get_available_resources()
         if res_info:

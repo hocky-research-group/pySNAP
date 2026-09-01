@@ -25,6 +25,16 @@ for spoint in "$@"; do
     stage_dir="${spoint%%/spoints/*}"
     stage_name=$(basename "$stage_dir")
     cd "$spoint"
+    # If already complete, skip execution (useful for chained Slurm submissions)
+    if [ -f ".spoint_info/status" ]; then
+        current_status=$(cat ".spoint_info/status" 2>/dev/null | tr -d '\r\n ')
+        if [ "$current_status" == "complete" ]; then
+            echo "SPoint $spoint is already complete. Skipping."
+            cd - > /dev/null 2>&1
+            continue
+        fi
+    fi
+
     WF_ROOT="$(cd ../../.. 2>/dev/null && pwd)"
     export PYTHONPATH="$WF_ROOT/.workflow:$WF_ROOT/packages/snap_workflow/src:$WF_ROOT/src:$WF_ROOT:$PYTHONPATH"
     # Detect default python interpreter fallback
@@ -78,7 +88,7 @@ for spoint in "$@"; do
         python_path="$python_cmd"
     fi
 
-    # Evaluate activation commands and env_vars using stage python
+    # Evaluate setup commands and env_vars using stage python
     eval $($python_path -c "
 import os, json, re
 cfg = {}
@@ -104,23 +114,23 @@ for ext in [\".json\", \".yaml\", \".yml\"]:
                     except ImportError:
                         with open(p) as f: content = f.read()
                         lines = content.split(chr(10))
-                        in_activate = False
-                        activate_cmd = []
+                        in_setup = False
+                        setup_cmds = []
                         env_vars = {}
                         for line in lines:
-                            if line.strip().startswith(\"activate_cmd:\"):
-                                in_activate = True
+                            if line.strip().startswith(\"setup_cmds:\") or line.strip().startswith(\"setup_cmd:\") or line.strip().startswith(\"activate_cmd:\"):
+                                in_setup = True
                                 continue
                             elif line.strip().startswith(\"env_vars:\"):
-                                in_activate = False
+                                in_setup = False
                                 continue
-                            elif in_activate:
+                            elif in_setup:
                                 if line.strip().startswith(\"-\"):
                                     cmd = line.strip().lstrip(\"-\").strip().strip('\"').strip(chr(39))
-                                    activate_cmd.append(cmd)
+                                    setup_cmds.append(cmd)
                                 elif \":\" in line and not line.strip().startswith(\"-\"):
-                                    in_activate = False
-                        cfg[\"activate_cmd\"] = activate_cmd
+                                    in_setup = False
+                        cfg[\"setup_cmds\"] = setup_cmds
                         in_env = False
                         for line in lines:
                             if line.strip().startswith(\"env_vars:\"):
@@ -141,7 +151,10 @@ for ext in [\".json\", \".yaml\", \".yml\"]:
                 pass
     if cfg:
         break
-for cmd in cfg.get(\"activate_cmd\", []):
+cmds = cfg.get(\"setup_cmds\", cfg.get(\"setup_cmd\", cfg.get(\"activate_cmd\", [])))
+if isinstance(cmds, str):
+    cmds = [cmds]
+for cmd in cmds:
     print(cmd)
 q = '\"'
 for k, v in cfg.get(\"env_vars\", {}).items():

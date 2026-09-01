@@ -195,6 +195,7 @@ class SPointScheduler:
         allowed_sweeps: Optional[List[str]] = None,
         exclude_stages: Optional[List[str]] = None,
         exclude_sweeps: Optional[List[str]] = None,
+        target_spoints: Optional[List[str]] = None,
         host: str = "local",
         worker_id: Optional[str] = None,
         lease_ttl: Optional[float] = None
@@ -211,93 +212,119 @@ class SPointScheduler:
             except Exception:
                 return {}
 
-        for sweep_name in sweeps.keys():
-            if allowed_sweeps and sweep_name not in allowed_sweeps:
-                continue
-            if exclude_sweeps and sweep_name in exclude_sweeps:
-                continue
+        target_set = set()
+        if target_spoints:
+            for tp in target_spoints:
+                tp_norm = os.path.normpath(tp).rstrip("/")
+                target_set.add(tp_norm)
+                target_set.add(os.path.abspath(tp_norm))
+                target_set.add(os.path.basename(tp_norm))
 
-            stage_names_list = sweeps[sweep_name]["stages"]
-            if gpu_avail > 0:
-                stage_names_list = sorted(stage_names_list, key=lambda s: int(_get_stage_res(s).get("gpus", 0)), reverse=True)
-
-            for stage_name in stage_names_list:
-                if allowed_stages and stage_name not in allowed_stages:
+        def _search(filter_targets: bool):
+            for sweep_name in sweeps.keys():
+                if allowed_sweeps and sweep_name not in allowed_sweeps:
                     continue
-                if exclude_stages and stage_name in exclude_stages:
-                    continue
-
-                stage = stages.get(stage_name)
-                if not stage:
+                if exclude_sweeps and sweep_name in exclude_sweeps:
                     continue
 
-                res = _get_stage_res(stage_name)
-                cpus_req = int(res.get("cpus", 1))
-                gpus_req = int(res.get("gpus", 0))
-                mem_str = res.get("mem", "0G")
-                mem_req = parse_memory_to_gb(mem_str) if isinstance(mem_str, str) else float(mem_str)
+                stage_names_list = sweeps[sweep_name]["stages"]
+                if gpu_avail > 0:
+                    stage_names_list = sorted(stage_names_list, key=lambda s: int(_get_stage_res(s).get("gpus", 0)), reverse=True)
 
-                if cpus_req > cpus_avail:
-                    continue
-                if gpu_avail != -1 and gpus_req > gpu_avail:
-                    continue
-                if mem_req > mem_avail and mem_avail > 0:
-                    continue
-
-                if gpus_req == 0 and gpu_avail > 0:
-                    pending_gpu_cpus = [
-                        int(_get_stage_res(st).get("cpus", 1))
-                        for sw in sweeps.values()
-                        for st in sw.get("stages", [])
-                        if int(_get_stage_res(st).get("gpus", 0)) > 0
-                    ]
-                    if pending_gpu_cpus:
-                        max_gpu_cpus = max(pending_gpu_cpus)
-                        if (cpus_avail - cpus_req) + min_cpu_running_gpu < max_gpu_cpus:
-                            continue
-
-                spoint_vars = stage.get("variables", [])
-                spoint_vals = [sweeps[sweep_name]["values"][v] for v in spoint_vars]
-                spoint_combinations = list(itertools.product(*spoint_vals))
-
-                for spoint_tuple in spoint_combinations:
-                    spoint_dict = create_spoint_dict(spoint_vars, spoint_tuple)
-                    sp_path = get_spoint_path(stage_name, spoint_dict)
-
-                    if not os.path.exists(sp_path):
-                        curr_status = "initialized"
-                    else:
-                        curr_status = status.load_status(sp_path)
-
-                    if curr_status in ("queued", "submitted", "running", "complete", "error"):
+                for stage_name in stage_names_list:
+                    if allowed_stages and stage_name not in allowed_stages:
+                        continue
+                    if exclude_stages and stage_name in exclude_stages:
                         continue
 
-                    deps = stage.get("dependencies") if "dependencies" in stage else stage.get("dependent_stages", [])
-                    deps_satisfied = True
-                    for dep_stage in deps:
-                        dep_spoint = self.get_spoint(sweep_name, dep_stage, spoint_dict)
-                        if not dep_spoint or dep_spoint["status"] != "complete":
-                            deps_satisfied = False
-                            break
+                    stage = stages.get(stage_name)
+                    if not stage:
+                        continue
 
-                    if deps_satisfied:
-                        ttl_val = lease_ttl if lease_ttl is not None else self.default_lease_ttl
-                        self.active_leases[sp_path] = {
-                            "lease_expires_at": time.time() + ttl_val,
-                            "worker_id": worker_id,
-                            "host": host,
-                            "stage": stage_name,
-                            "sweep": sweep_name,
-                            "spoint_dict": spoint_dict,
-                            "started_at": None,
-                            "pid": None
-                        }
-                        self.set_status(sweep_name, stage_name, spoint_dict, "submitted", host=host)
-                        vars_str = ", ".join(f"{k}={v}" for k, v in spoint_dict.items()) if isinstance(spoint_dict, dict) else str(spoint_dict)
-                        logger.info("[SCHEDULER] Assignment | Dispatcher : %s | Stage : %s | Spoint : %s", host, stage_name, vars_str)
-                        return (sweep_name, stage_name, spoint_dict, sp_path)
+                    res = _get_stage_res(stage_name)
+                    cpus_req = int(res.get("cpus", 1))
+                    gpus_req = int(res.get("gpus", 0))
+                    mem_str = res.get("mem", "0G")
+                    mem_req = parse_memory_to_gb(mem_str) if isinstance(mem_str, str) else float(mem_str)
 
-        return None
+                    if cpus_req > cpus_avail:
+                        continue
+                    if gpu_avail != -1 and gpus_req > gpu_avail:
+                        continue
+                    if mem_req > mem_avail and mem_avail > 0:
+                        continue
+
+                    if gpus_req == 0 and gpu_avail > 0:
+                        pending_gpu_cpus = [
+                            int(_get_stage_res(st).get("cpus", 1))
+                            for sw in sweeps.values()
+                            for st in sw.get("stages", [])
+                            if int(_get_stage_res(st).get("gpus", 0)) > 0
+                        ]
+                        if pending_gpu_cpus:
+                            max_gpu_cpus = max(pending_gpu_cpus)
+                            if (cpus_avail - cpus_req) + min_cpu_running_gpu < max_gpu_cpus:
+                                continue
+
+                    spoint_vars = stage.get("variables", [])
+                    spoint_vals = [sweeps[sweep_name]["values"][v] for v in spoint_vars]
+                    spoint_combinations = list(itertools.product(*spoint_vals))
+
+                    for spoint_tuple in spoint_combinations:
+                        spoint_dict = create_spoint_dict(spoint_vars, spoint_tuple)
+                        sp_path = get_spoint_path(stage_name, spoint_dict)
+                        sp_norm = os.path.normpath(sp_path).rstrip("/")
+                        sp_rel = os.path.relpath(sp_path, root_dir) if root_dir else sp_path
+
+                        if filter_targets and target_set:
+                            is_target = (
+                                sp_norm in target_set
+                                or os.path.abspath(sp_norm) in target_set
+                                or sp_rel in target_set
+                                or os.path.basename(sp_norm) in target_set
+                            )
+                            if not is_target:
+                                continue
+
+                        if not os.path.exists(sp_path):
+                            curr_status = "initialized"
+                        else:
+                            curr_status = status.load_status(sp_path)
+
+                        if curr_status in ("queued", "submitted", "running", "complete", "error"):
+                            continue
+
+                        deps = stage.get("dependencies") if "dependencies" in stage else stage.get("dependent_stages", [])
+                        deps_satisfied = True
+                        for dep_stage in deps:
+                            dep_spoint = self.get_spoint(sweep_name, dep_stage, spoint_dict)
+                            if not dep_spoint or dep_spoint["status"] != "complete":
+                                deps_satisfied = False
+                                break
+
+                        if deps_satisfied:
+                            ttl_val = lease_ttl if lease_ttl is not None else self.default_lease_ttl
+                            self.active_leases[sp_path] = {
+                                "lease_expires_at": time.time() + ttl_val,
+                                "worker_id": worker_id,
+                                "host": host,
+                                "stage": stage_name,
+                                "sweep": sweep_name,
+                                "spoint_dict": spoint_dict,
+                                "started_at": None,
+                                "pid": None
+                            }
+                            self.set_status(sweep_name, stage_name, spoint_dict, "submitted", host=host)
+                            vars_str = ", ".join(f"{k}={v}" for k, v in spoint_dict.items()) if isinstance(spoint_dict, dict) else str(spoint_dict)
+                            logger.info("[SCHEDULER] Assignment | Dispatcher : %s | Stage : %s | Spoint : %s", host, stage_name, vars_str)
+                            return (sweep_name, stage_name, spoint_dict, sp_path)
+            return None
+
+        if target_set:
+            candidate = _search(filter_targets=True)
+            if candidate:
+                return candidate
+        return _search(filter_targets=False)
 
     def are_all_complete(
         self,

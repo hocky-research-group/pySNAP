@@ -81,18 +81,7 @@ def get_existing_stage_name(kwargs, include_all=False, is_list=False, get_input=
         return default
 
 
-def get_sbatch_details(stage_name):
-    print("Does this stage use slurm?")
-    collector = io.make_yes_no_collector("Use sbatch (y/n)? ")
-    use_sbatch = io.is_yes(collector.collect())
-    if not use_sbatch:
-        return None
-    collector = io.make_yes_no_collector("Auto-requeue job if terminated by timeout/signal (y/n)? ")
-    collector.set_default("yes")
-    requeue = collector.collect()
-    if io.is_yes(requeue):
-        return {"--signal": "B:INT@60"}
-    return {}
+
 
 
 def get_submit_confirmation():

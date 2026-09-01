@@ -278,14 +278,14 @@ def get_submission_details(stage_name, stage):
     except Exception as e:
         print(f"Warning: Failed to load environment file for stage '{stage_name}': {e}")
 
-    sbatch_profile = env_data.get("sbatch_profile")
+    sbatch_profile = env_data.get("slurm_profile", env_data.get("sbatch_profile"))
     profile_flags = {}
     if sbatch_profile:
         profile_flags = io.load_sbatch_profile(sbatch_profile, root_dir=root)
         if not profile_flags:
             print(f"Warning: Sbatch profile '{sbatch_profile}' referenced by stage '{stage_name}' was not found in 'sbatch_profiles/' or '~/.config/snap_workflow/sbatch_profiles/'.")
 
-    custom_flags = env_data.get("sbatch", {})
+    custom_flags = env_data.get("slurm_flags", env_data.get("sbatch", {}))
 
     if sbatch_details is None and not profile_flags and not custom_flags:
         return None
@@ -305,8 +305,9 @@ def get_submission_details(stage_name, stage):
             sbatch_flags[dash_key] = v
 
     sbatch_flags["-o"] = os.path.join("slurm_out", "%j.out")
-    jobs_per_submit = int(sbatch_flags.pop("num_jobs", 1))
-    expect_multi = sbatch_flags.pop("multi_submission", False)
+    jobs_per_submit = int(env_data.get("spoints_per_sbatch", sbatch_flags.pop("num_jobs", 1)))
+    n_sub = int(env_data.get("chained_submissions", env_data.get("num_submits", 1)))
+    expect_multi = (n_sub > 1) or sbatch_flags.pop("multi_submission", False)
     sbatch_flags["-J"] = stage_name
 
     submit_script = os.path.join(".workflow", "spoint.sh")

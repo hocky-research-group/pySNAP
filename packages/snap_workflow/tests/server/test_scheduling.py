@@ -14,13 +14,18 @@ def test_stage_resource_validation(sandbox, env_dir):
     initialize(env_dir)
     add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     
+    # Set unconfigured resources (-1) to verify ValueError
+    env_file = os.path.join("stage1", "env.json")
+    with open(env_file, "r") as f:
+        env_data = json.load(f)
+    env_data["resources"] = {"cpus": -1, "gpus": -1, "mem": "-1"}
+    with open(env_file, "w") as f:
+        json.dump(env_data, f, indent=4)
+
     with pytest.raises(ValueError) as exc:
         validate_stage_resources()
     assert "unconfigured resources" in str(exc.value)
 
-    env_file = os.path.join("stage1", "env.json")
-    with open(env_file, "r") as f:
-        env_data = json.load(f)
     env_data["resources"] = {"cpus": 4, "gpus": 1, "mem": "16G"}
     with open(env_file, "w") as f:
         json.dump(env_data, f, indent=4)

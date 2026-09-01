@@ -38,13 +38,16 @@ if [ -z "$python_path" ]; then
     fi
 fi
 
-# Evaluate default activation commands and env_vars
+# Evaluate default activation/setup commands and env_vars
 eval $($python_path -c "
 import json
 try:
     with open('.workflow/config.json') as f:
         cfg = json.load(f)
-    for cmd in cfg.get('default_activate_cmd', []):
+    cmds = cfg.get('default_setup_cmds', cfg.get('default_activate_cmd', []))
+    if isinstance(cmds, str):
+        cmds = [cmds]
+    for cmd in cmds:
         print(cmd)
     for k, v in cfg.get('default_env_vars', {}).items():
         print(f'export {k}=\"{v}\"')

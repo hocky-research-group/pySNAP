@@ -52,12 +52,72 @@ def test_slurm_dispatcher_dispatch_and_script_generation(sandbox, env_dir):
         with open(script_path, "r") as f:
             script_content = f.read()
 
-        assert "#SBATCH --job-name=snap_stage1" in script_content
+        assert "#SBATCH -J snap_stage1" in script_content
         assert "#SBATCH --signal=B:INT@60" in script_content
-        assert "bash .workflow/spoint.sh" in script_content
-        assert "update_status" in script_content
+        assert "snap_workflow.dispatcher.runner" in script_content
+        assert "--assigned-spoints" in script_content
         assert spoint_dir in d.active_jobs
         assert d.active_jobs[spoint_dir]["job_id"] == "888123"
+
+
+def test_slurm_dispatcher_custom_profile_and_chained_submissions(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage_chained", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+
+    env_file = os.path.join("stage_chained", "env.json")
+    with open(env_file, "r") as f:
+        env_data = json.load(f)
+    env_data["setup_cmds"] = ["module load cuda/12.2", "export OMP_NUM_THREADS=1"]
+    env_data["chained_submissions"] = 3
+    env_data["slurm_flags"] = {"-p": "gpu-a100", "-N": 1, "-n": 1, "-t": "02:00:00"}
+    with open(env_file, "w") as f:
+        json.dump(env_data, f, indent=4)
+
+    spoint_dir = os.path.join("stage_chained", "spoints", "x_10")
+    os.makedirs(spoint_dir, exist_ok=True)
+
+    d = SlurmDispatcher(server_url="http://localhost:8000", token="token", max_queued_jobs=10)
+
+    task = {
+        "sweep": "sweep1",
+        "stage": "stage_chained",
+        "spoint_dict": {"x": 10},
+        "spoint_path": spoint_dir
+    }
+
+    call_count = 0
+    job_ids = ["10001", "10002", "10003"]
+    submitted_commands = []
+
+    def mock_subprocess_run(cmd, *args, **kwargs):
+        nonlocal call_count
+        submitted_commands.append(cmd)
+        jid = job_ids[call_count]
+        call_count += 1
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout=f"Submitted batch job {jid}\n")
+
+    with patch("subprocess.run", side_effect=mock_subprocess_run), \
+         patch.object(d, "send_request", return_value={"status": "ok"}):
+        d.dispatch_task(task)
+
+        assert call_count == 3
+        # Check script content from initial submission
+        script_file = os.path.join(spoint_dir, "run_spoint.sbatch")
+        with open(script_file, "r") as f:
+            content = f.read()
+
+        assert "#SBATCH -p gpu-a100" in content
+        assert "#SBATCH -N 1" in content
+        assert "#SBATCH -n 1" in content
+        assert "#SBATCH -t 02:00:00" in content
+        assert "module load cuda/12.2" in content
+        assert "export OMP_NUM_THREADS=1" in content
+
+        # Check dependency chaining on subsequent submissions
+        assert submitted_commands[0] == ["sbatch", script_file]
+        assert submitted_commands[1] == ["sbatch", "--dependency=afterany:10001", script_file]
+        assert submitted_commands[2] == ["sbatch", "--dependency=afterany:10002", script_file]
+        assert d.active_jobs[spoint_dir]["job_id"] == "10001"
 
 
 def test_slurm_dispatcher_reap_finished(sandbox, env_dir):

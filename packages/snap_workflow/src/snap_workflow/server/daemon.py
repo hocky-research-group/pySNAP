@@ -219,11 +219,13 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                 sweeps_str = params.get("sweeps", [""])[0]
                 exclude_stages_str = params.get("exclude_stages", [""])[0]
                 exclude_sweeps_str = params.get("exclude_sweeps", [""])[0]
+                target_spoints_str = params.get("target_spoints", [""])[0]
 
                 allowed_stages = {x.strip() for x in stages_str.split(",") if x.strip()} if stages_str else None
                 allowed_sweeps = {x.strip() for x in sweeps_str.split(",") if x.strip()} if sweeps_str else None
                 exclude_stages = {x.strip() for x in exclude_stages_str.split(",") if x.strip()} if exclude_stages_str else None
                 exclude_sweeps = {x.strip() for x in exclude_sweeps_str.split(",") if x.strip()} if exclude_sweeps_str else None
+                target_spoints = [x.strip() for x in target_spoints_str.split(",") if x.strip()] if target_spoints_str else None
 
                 logger.debug(
                     "[REQUEST_WORK] Dispatcher : %s | CPUs : %s | GPUs : %s | Mem : %.1f GB",
@@ -240,6 +242,7 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                         allowed_sweeps=allowed_sweeps,
                         exclude_stages=exclude_stages,
                         exclude_sweeps=exclude_sweeps,
+                        target_spoints=target_spoints,
                         host=host,
                         worker_id=worker_id,
                         lease_ttl=ttl

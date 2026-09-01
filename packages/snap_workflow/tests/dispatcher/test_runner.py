@@ -126,3 +126,43 @@ def test_subprocess_dispatcher_cleanup_and_reap(sandbox):
         assert len(reported) == 1
         assert reported[0][1]["status"] == "incomplete"
         assert len(dispatcher.active_jobs) == 0
+
+
+def test_subprocess_dispatcher_assigned_spoints_completion(sandbox):
+    from snap_workflow.dispatcher.runner import SubprocessDispatcher
+    from snap_workflow.core.domain import status as status_module
+    initialize(force=True)
+
+    sp_dir = os.path.join(os.getcwd(), "stage1", "spoints", "x_10")
+    os.makedirs(os.path.join(sp_dir, ".spoint_info"), exist_ok=True)
+    status_module.write_status("complete", sp_dir)
+
+    dispatcher = SubprocessDispatcher(
+        server_url="http://127.0.0.1:8080",
+        token="tok123",
+        cpus_total=4,
+        host="Lonestar",
+        assigned_spoints=[sp_dir]
+    )
+
+    assert len(dispatcher.assigned_spoints) == 1
+    assert len(dispatcher.pending_assigned) == 1
+
+    mock_proc = MagicMock()
+    mock_proc.poll.return_value = 0
+
+    dispatcher.active_jobs[sp_dir] = {
+        "proc": mock_proc,
+        "sweep": "sw1",
+        "stage": "stage1",
+        "spoint_dict": {"x": 10},
+        "spoint_path": sp_dir,
+        "assigned_cpus": [0],
+        "assigned_gpus": []
+    }
+
+    with patch.object(dispatcher, "send_request", return_value={"status": "ok"}):
+        dispatcher.reap_finished()
+        assert len(dispatcher.active_jobs) == 0
+        assert sp_dir in dispatcher.completed_assigned
+        assert dispatcher.shutdown_requested is True

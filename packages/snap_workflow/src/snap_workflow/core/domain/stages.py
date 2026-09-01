@@ -92,12 +92,14 @@ def make_new_stage_files(stage_name, sbatch_details=None):
     default_python = path.load_python_path(stage=stage_name)
     try:
         local_config = io.load_json(LOCAL_CONFIG)
-        default_activate = local_config.get("default_activate_cmd", [])
-        default_env_vars = local_config.get("default_env_vars", {})
+        default_setup = local_config.get("default_setup_cmds", local_config.get("default_activate_cmd", []))
     except Exception:
-        default_activate = []
-        default_env_vars = {}
+        default_setup = []
 
+    if isinstance(default_setup, str):
+        default_setup = [default_setup]
+    elif not isinstance(default_setup, list):
+        default_setup = []
 
     fmt = io.get_default_format()
     env_json = os.path.join(root, stage_name, "env.json")
@@ -105,26 +107,21 @@ def make_new_stage_files(stage_name, sbatch_details=None):
     env_yml = os.path.join(root, stage_name, "env.yml")
     if not os.path.isfile(env_json) and not os.path.isfile(env_yaml) and not os.path.isfile(env_yml):
         env_data = {
-            "python_path": default_python,
-            "activate_cmd": default_activate,
-            "env_vars": default_env_vars,
+            "python_path": default_python if default_python else "",
+            "setup_cmds": default_setup,
+            "spoints_per_sbatch": 1,
+            "chained_submissions": 1,
+            "slurm_profile": "",
+            "slurm_flags": {},
             "resources": {
-                "cpus": -1,
-                "gpus": -1,
-                "mem": "-1"
+                "cpus": 1,
+                "gpus": 0,
+                "mem": "2G"
             }
         }
-        if sbatch_details is not None:
-            env_data["sbatch"] = {
-                "partition": "FIXME",
-                "time": "FIXME",
-                "nodes": "FIXME",
-                "ntasks-per-node": "FIXME",
-                "mem": "FIXME"
-            }
         if fmt == "yaml":
             with open(env_yaml, 'w') as f:
-                yaml.safe_dump(env_data, f, default_flow_style=False)
+                yaml.safe_dump(env_data, f, default_flow_style=False, sort_keys=False)
         else:
             with open(env_json, 'w') as f:
                 json.dump(env_data, f, indent=4)

@@ -37,7 +37,8 @@ class SubprocessDispatcher(BaseDispatcher):
         worker_id: Optional[str] = None,
         idle_delay: float = 1.0,
         connect_timeout: float = 300.0,
-        log_file: Optional[Any] = None
+        log_file: Optional[Any] = None,
+        assigned_spoints: Optional[Union[List[str], str]] = None
     ):
         super().__init__(
             server_url=server_url,
@@ -68,6 +69,15 @@ class SubprocessDispatcher(BaseDispatcher):
             self.root = path.get_root()
         except Exception:
             pass
+
+        if isinstance(assigned_spoints, str):
+            self.assigned_spoints = [x.strip() for x in assigned_spoints.split(",") if x.strip()]
+        elif isinstance(assigned_spoints, list):
+            self.assigned_spoints = [str(x).strip() for x in assigned_spoints if str(x).strip()]
+        else:
+            self.assigned_spoints = []
+        self.pending_assigned = set(self.assigned_spoints)
+        self.completed_assigned = set()
 
     def get_available_resources(self) -> Dict[str, Any]:
         """Calculates currently available CPUs, GPUs, and Memory capacity."""
@@ -156,6 +166,13 @@ class SubprocessDispatcher(BaseDispatcher):
         except Exception:
             pass
 
+        if getattr(self, "pending_assigned", None):
+            sp_norm = os.path.normpath(spoint_path).rstrip("/")
+            for item in list(self.pending_assigned):
+                item_norm = os.path.normpath(item).rstrip("/")
+                if item_norm == sp_norm or os.path.basename(item_norm) == os.path.basename(sp_norm) or item_norm in sp_norm:
+                    self.pending_assigned.discard(item)
+
         self.active_jobs[spoint_path] = {
             "proc": proc,
             "sweep": sweep,
@@ -206,6 +223,16 @@ class SubprocessDispatcher(BaseDispatcher):
 
         for path_key in finished_paths:
             self.active_jobs.pop(path_key, None)
+            if getattr(self, "assigned_spoints", None):
+                pk_norm = os.path.normpath(path_key).rstrip("/")
+                for item in self.assigned_spoints:
+                    item_norm = os.path.normpath(item).rstrip("/")
+                    if item_norm == pk_norm or os.path.basename(item_norm) == os.path.basename(pk_norm) or item_norm in pk_norm:
+                        self.completed_assigned.add(item)
+
+        if getattr(self, "assigned_spoints", None) and len(self.completed_assigned) >= len(self.assigned_spoints) and len(self.active_jobs) == 0:
+            logger.info("[DISPATCHER] All %d assigned SPoints completed. Finishing runner loop.", len(self.assigned_spoints))
+            self.shutdown_requested = True
 
     def cleanup(self) -> None:
         """Terminates active child subprocesses on shutdown and reaps their final status."""
@@ -252,7 +279,8 @@ def dispatcher_loop(
     exclude_sweeps="",
     host="local",
     worker_id=None,
-    connect_timeout=300.0
+    connect_timeout=300.0,
+    assigned_spoints=None
 ):
     """Launches the SubprocessDispatcher loop."""
     if not server_url or not token:
@@ -305,6 +333,7 @@ def dispatcher_loop(
         worker_id=worker_id,
         idle_delay=idle_delay,
         connect_timeout=connect_timeout,
+        assigned_spoints=assigned_spoints
     )
     dispatcher.run()
 
@@ -354,6 +383,7 @@ def main():
     parser.add_argument("--host", type=str, default="local", help="Host identifier")
     parser.add_argument("--worker_id", type=str, default=None, help="Worker ID")
     parser.add_argument("--connect-timeout", type=float, default=300.0, help="Connection timeout in seconds")
+    parser.add_argument("--assigned-spoints", type=str, default=None, help="Comma-separated list of assigned SPoint paths")
 
     args = parser.parse_args()
 
@@ -370,7 +400,8 @@ def main():
             exclude_sweeps=args.exclude_sweeps,
             host=args.host,
             worker_id=args.worker_id,
-            connect_timeout=args.connect_timeout
+            connect_timeout=args.connect_timeout,
+            assigned_spoints=args.assigned_spoints
         )
     finally:
         notify_dispatcher_shutdown(args.server_url, args.token, args.worker_id or args.host, host=args.host)

@@ -209,8 +209,8 @@ def test_worker_loop_keyboard_interrupt(sandbox, env_dir):
             mem_total=8.0,
             idle_delay=0.1
         )
-    # Assert terminate was called to terminate active spoint on KeyboardInterrupt
-    assert mock_proc.terminate.called
+    # Assert signal/terminate was called to terminate active spoint on KeyboardInterrupt
+    assert mock_proc.send_signal.called or mock_proc.terminate.called
 
 def test_launch_remote_workers_errors_and_profiles(sandbox, env_dir):
     initialize(env_dir)

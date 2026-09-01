@@ -171,7 +171,7 @@ def test_remote_configs_and_spawning(sandbox, env_dir, tmp_path):
          patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", global_remotes_file):
         
         from snap_workflow.cli.remote import remote_add_cmd, remote_setup_cmd
-        from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+        from snap_workflow.remote.io import load_global_remotes, load_local_remotes
         
         with patch("subprocess.run") as mock_run_add:
             mock_res_add = MagicMock()
@@ -303,8 +303,8 @@ def test_remote_workstation_auto_scheduling(sandbox, env_dir, workflow_server):
         json.dump(server_info, f)
 
     with patch("snap_workflow.remote.exec.has_slurm", return_value=False), \
-         patch("snap_workflow.utils.io.load_global_remotes", return_value={"Workstation": {"host": "Lab_Main"}}), \
-         patch("snap_workflow.utils.io.load_local_remotes", return_value={"Workstation": {"path": "Research/polypatch"}}), \
+         patch("snap_workflow.remote.io.load_global_remotes", return_value={"Workstation": {"host": "Lab_Main"}}), \
+         patch("snap_workflow.remote.io.load_local_remotes", return_value={"Workstation": {"path": "Research/polypatch"}}), \
          patch("snap_workflow.remote.tunnels.ensure_remote_tunnel"), \
          patch("subprocess.run") as mock_ssh_run:
         server_auto_cmd("workflow server auto", ["Workstation"])

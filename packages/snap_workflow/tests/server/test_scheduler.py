@@ -97,3 +97,32 @@ def test_spoint_scheduler_ttl_leases_and_heartbeats(sandbox, env_dir):
     cand2 = scheduler.acquire_next_available(cpus_avail=1, worker_id="worker_2")
     assert cand2 is not None
     assert scheduler.active_leases[sp_path]["worker_id"] == "worker_2"
+
+
+def test_spoint_scheduler_worker_shutdown(sandbox, env_dir):
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=[], stage_dependencies=[])
+    env_file = os.path.join("stage1", "env.json")
+    with open(env_file, "r") as f:
+        env_data = json.load(f)
+    env_data["resources"] = {"cpus": 1, "gpus": 0, "mem": "1G"}
+    with open(env_file, "w") as f:
+        json.dump(env_data, f)
+
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=10)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [10, 20]})
+
+    scheduler = SPointScheduler()
+
+    # Worker 1 acquires and starts task 1
+    cand1 = scheduler.acquire_next_available(cpus_avail=1, worker_id="worker_ls6", host="Lonestar")
+    assert cand1 is not None
+    sp_path1 = cand1[3]
+    scheduler.record_start(sp_path1, worker_id="worker_ls6", host="Lonestar")
+    assert status.load_status(sp_path1) == "running"
+
+    # Worker 1 notifies shutdown with active task
+    affected = scheduler.handle_worker_shutdown(worker_id="worker_ls6", host="Lonestar", active_tasks=[sp_path1])
+    assert sp_path1 in affected
+    assert status.load_status(sp_path1) == "incomplete"
+    assert sp_path1 not in scheduler.active_leases

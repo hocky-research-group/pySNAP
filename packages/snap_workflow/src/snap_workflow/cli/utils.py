@@ -43,8 +43,12 @@ def execute_option(key, options, parsed_command, args):
     if val in options:
         args.pop(0)
         options[val](parsed_command, args)
+    elif val is not None:
+        valid_cmds = [k for k in options if not k.startswith('-')]
+        print(f"Error: Unknown subcommand '{val}' for '{parsed_command}'. Available subcommands: {', '.join(valid_cmds)}", file=sys.stderr)
+        sys.exit(1)
     else:
-        keys = list(options.keys())
+        keys = [k for k in options.keys() if not k.startswith('-')]
         prompt_label = key.replace('_', ' ')
         help_string = f"Action to be taken on {key.split('_')[0]}"
         collector = io.InputCollector(f"Select {prompt_label}: ", help_string, valid_options=keys, keys=[key])
@@ -152,7 +156,7 @@ def get_completions(args=None, prefix="", shell='bash'):
         if second_arg in ["auto", "autoschedule", "reserve"]:
             if len(args) == 2:
                 try:
-                    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                    from snap_workflow.remote.io import load_global_remotes, load_local_remotes
                     remotes = ["local"] + list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))
                     if prefix:
                         remotes = [r for r in remotes if r.startswith(prefix)]
@@ -191,7 +195,7 @@ def get_completions(args=None, prefix="", shell='bash'):
     elif first_arg == "remote":
         if second_arg in ["auto", "autoschedule"]:
             try:
-                from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                from snap_workflow.remote.io import load_global_remotes, load_local_remotes
                 remotes = ["local"] + list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))
                 if prefix:
                     remotes = [r for r in remotes if r.startswith(prefix)]
@@ -201,7 +205,7 @@ def get_completions(args=None, prefix="", shell='bash'):
         elif second_arg in ["reserve"]:
             if len(args) == 2:
                 try:
-                    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                    from snap_workflow.remote.io import load_global_remotes, load_local_remotes
                     remotes = list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))
                     if prefix:
                         remotes = [r for r in remotes if r.startswith(prefix)]
@@ -227,7 +231,7 @@ def get_completions(args=None, prefix="", shell='bash'):
                     return ["cpu", "gpu"]
         elif second_arg in ["sync", "connect", "setup", "print"]:
             try:
-                from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+                from snap_workflow.remote.io import load_global_remotes, load_local_remotes
                 remotes = list(dict.fromkeys(list(load_local_remotes().keys()) + list(load_global_remotes().keys())))
                 if prefix:
                     remotes = [r for r in remotes if r.startswith(prefix)]

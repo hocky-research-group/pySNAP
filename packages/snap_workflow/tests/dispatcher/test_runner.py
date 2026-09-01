@@ -82,3 +82,47 @@ def test_main_cli_execution():
         main()
         assert mock_loop.called
         assert mock_notify.called
+
+
+def test_subprocess_dispatcher_cleanup_and_reap(sandbox):
+    from snap_workflow.dispatcher.runner import SubprocessDispatcher
+    from snap_workflow.core.domain import status as status_module
+    initialize(force=True)
+
+    dispatcher = SubprocessDispatcher(
+        server_url="http://127.0.0.1:8080",
+        token="tok123",
+        cpus_total=4,
+        host="Lonestar"
+    )
+
+    mock_proc = MagicMock()
+    mock_proc.poll.return_value = 0
+    mock_proc.wait.return_value = 0
+
+    sp_dir = os.path.join(os.getcwd(), "stage1", "spoints", "x_10")
+    os.makedirs(os.path.join(sp_dir, ".spoint_info"), exist_ok=True)
+    status_module.write_status("incomplete", sp_dir)
+
+    dispatcher.active_jobs[sp_dir] = {
+        "proc": mock_proc,
+        "sweep": "sw1",
+        "stage": "stage1",
+        "spoint_dict": {"x": 10},
+        "spoint_path": sp_dir,
+        "assigned_cpus": [0],
+        "assigned_gpus": []
+    }
+
+    reported = []
+    def mock_send_req(url, data=None, **kwargs):
+        reported.append((url, data))
+        return {"status": "ok"}
+
+    with patch.object(dispatcher, "send_request", side_effect=mock_send_req):
+        dispatcher.cleanup()
+        assert mock_proc.send_signal.called
+        assert mock_proc.wait.called
+        assert len(reported) == 1
+        assert reported[0][1]["status"] == "incomplete"
+        assert len(dispatcher.active_jobs) == 0

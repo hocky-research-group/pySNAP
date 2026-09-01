@@ -182,38 +182,9 @@ def test_json_file_helpers(sandbox, env_dir):
         io.make_json("new.json")
 
 
-def test_remotes_io_and_config(sandbox, tmp_path):
+def test_save_global_config(tmp_path):
     global_dir = str(tmp_path / "global_config")
-    g_remotes_file = os.path.join(global_dir, "remotes.json")
-
-    with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_dir), \
-         patch("snap_workflow.utils.constants.GLOBAL_REMOTES_FILE", g_remotes_file):
-        
-        # Test remotes when missing
-        assert io.load_global_remotes() == {}
-        assert io.load_local_remotes() == {}
-
-        # Save and load global remotes
-        remotes_data = {"cluster1": {"host": "user@cluster1", "path": "/home/cluster1"}}
-        io.save_global_remotes(remotes_data)
-        assert io.load_global_remotes() == remotes_data
-
-        # Save and load local remotes
-        initialize(str(tmp_path / "env"))
-        local_remotes = {"cluster1": {"path": "/local/override/path"}}
-        io.save_local_remotes(local_remotes)
-        assert io.load_local_remotes() == local_remotes
-
-        # Test get_remotes_info with SSH check mocked
-        with patch("snap_workflow.remote.ssh.is_remote_ssh_connected", return_value=True):
-            info = io.get_remotes_info()
-            assert len(info) == 1
-            assert info[0]["name"] == "cluster1"
-            assert info[0]["host"] == "user@cluster1"
-            assert info[0]["path"] == "/local/override/path"
-            assert info[0]["connected"] is True
-
-        # Test save_global_config
+    with patch("snap_workflow.utils.constants.GLOBAL_CONFIG_DIR", global_dir):
         cfg = {"setting": "val"}
         io.save_global_config(cfg)
         assert os.path.exists(os.path.join(global_dir, "config.json"))

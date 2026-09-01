@@ -3,6 +3,7 @@ import json
 import subprocess
 import logging
 import importlib.resources
+from snap_workflow.remote import io as r_io, ssh as r_ssh, exec as r_exec
 from snap_workflow.remote.ssh import run_remote_python, run_remote_bash, get_control_path_args
 from snap_workflow.utils import path
 from snap_workflow.core.domain import stages as stage_tools
@@ -24,9 +25,8 @@ def get_template(name):
 def resolve_remote_host(remote_name_or_host):
     if not remote_name_or_host or remote_name_or_host == "local":
         return "local"
-    from snap_workflow.utils.io import load_global_remotes, load_local_remotes
-    l_remotes = load_local_remotes()
-    g_remotes = load_global_remotes()
+    l_remotes = r_io.load_local_remotes()
+    g_remotes = r_io.load_global_remotes()
     if remote_name_or_host in l_remotes and "host" in l_remotes[remote_name_or_host]:
         return l_remotes[remote_name_or_host]["host"]
     if remote_name_or_host in g_remotes and "host" in g_remotes[remote_name_or_host]:
@@ -183,8 +183,7 @@ def setup_remote_cluster(remote_host, remote_path):
         raise ValueError(f"Cannot connect to remote host '{remote_host}' via SSH: {e}. Please verify hostname and credentials.")
 
     resolved_path = resolve_remote_path(remote_host, remote_path)
-    from snap_workflow.remote.exec import has_slurm
-    remote_has_slurm = has_slurm(remote_host)
+    remote_has_slurm = r_exec.has_slurm(remote_host)
     logger.info("[REMOTE:SETUP] Setting up workflow structure on remote %s:%s (slurm=%s)...", remote_host, resolved_path, remote_has_slurm)
 
     mkdir_targets = [resolved_path, f"{resolved_path}/.workflow"]

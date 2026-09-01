@@ -6,7 +6,7 @@ import importlib.util
 import logging
 from snap_workflow.utils import path, io
 from snap_workflow.utils.constants import SPOINTS, SPOINT_INFO
-from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+from snap_workflow.remote.io import load_global_remotes, load_local_remotes
 from snap_workflow.core.domain import spoints as spoint_tools
 from snap_workflow.remote.ssh import get_control_path_args, ensure_remote_ssh_master
 

@@ -1,7 +1,7 @@
 import os
 import base64
 import subprocess
-from snap_workflow.utils.io import load_global_remotes
+from snap_workflow.remote.io import load_global_remotes, load_local_remotes
 
 
 def get_control_path_args():
@@ -25,11 +25,12 @@ def run_remote_python(remote_host, python_code, python_cmd=None, timeout=30):
     b64_payload = base64.b64encode(python_code.encode()).decode()
     b64_cmd = f"import base64; exec(base64.b64decode('{b64_payload}'))"
     py_exec = python_cmd or "python3"
-    cmd = ["ssh"] + get_control_path_args() + [remote_host, f"{py_exec} -c {repr(b64_cmd)}"]
+    env_vars = "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1"
+    cmd = ["ssh"] + get_control_path_args() + [remote_host, f"{env_vars} {py_exec} -c {repr(b64_cmd)}"]
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     ret = res.returncode if isinstance(res.returncode, int) else 0
     if ret != 0 and not python_cmd:
-        bash_payload = f"python3 -c {repr(b64_cmd)} 2>/dev/null || python -c {repr(b64_cmd)}"
+        bash_payload = f"{env_vars} python3 -c {repr(b64_cmd)} 2>/dev/null || {env_vars} python -c {repr(b64_cmd)}"
         b64_bash = base64.b64encode(bash_payload.encode()).decode()
         cmd = ["ssh"] + get_control_path_args() + [remote_host, f"echo '{b64_bash}' | base64 -d | bash -l"]
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
@@ -45,7 +46,7 @@ def run_remote_bash(remote_host, bash_script, timeout=30):
     """Executes a Bash script payload on remote host over SSH using base64 decoding for shell safety."""
     ensure_remote_ssh_master(remote_host)
     b64_payload = base64.b64encode(bash_script.encode()).decode()
-    b64_cmd = f"echo '{b64_payload}' | base64 -d | bash"
+    b64_cmd = f"echo '{b64_payload}' | base64 -d | bash -l"
     cmd = ["ssh"] + get_control_path_args() + [remote_host, b64_cmd]
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     ret = res.returncode if isinstance(res.returncode, int) else 0
@@ -96,7 +97,6 @@ def is_remote_ssh_connected(remote_host_or_name):
         return True
     host = remote_host_or_name
     try:
-        from snap_workflow.utils.io import load_local_remotes
         l_remotes = load_local_remotes()
         g_remotes = load_global_remotes()
         r_info = l_remotes.get(remote_host_or_name) or g_remotes.get(remote_host_or_name)
@@ -113,9 +113,27 @@ def is_remote_ssh_connected(remote_host_or_name):
         return False
 
 
+def get_remotes_info():
+    """Returns structured info for all configured remotes along with live SSH status."""
+    g_remotes = load_global_remotes()
+    l_remotes = load_local_remotes()
+    all_names = sorted(set(g_remotes.keys()) | set(l_remotes.keys()))
+    results = []
+    for name in all_names:
+        host = g_remotes.get(name, {}).get("host", "<unspecified>")
+        path_val = l_remotes.get(name, {}).get("path") or g_remotes.get(name, {}).get("path") or "<not set up>"
+        connected = is_remote_ssh_connected(name)
+        results.append({
+            "name": name,
+            "host": host,
+            "path": path_val,
+            "connected": connected
+        })
+    return results
+
+
 def connect_remote(remote_name_or_host):
     """Opens an interactive SSH shell session to remote host."""
-    from snap_workflow.utils.io import load_local_remotes, load_global_remotes
     g_remotes = load_global_remotes()
     l_remotes = load_local_remotes()
     r_info = l_remotes.get(remote_name_or_host) or g_remotes.get(remote_name_or_host)

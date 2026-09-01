@@ -4,14 +4,15 @@ from snap_workflow.cli.utils import parse_remaining, execute_option
 from snap_workflow.cli.prompts import prompt_each_stage, get_variable_name, get_variable_type, get_default_val
 
 
-def print_variable_cmd(parsed_command, args):
+def print_variable_cmd(parsed_command, args, show_helper=False):
     args, kwargs = parse_remaining(args)
     var_name = kwargs.pop("v", kwargs.pop("var", kwargs.pop("variable", "all")))
     if len(args) > 0 and var_name == "all":
         var_name = args.pop(0)
     io.warn_unused_kwargs(kwargs)
     var_tools.print_variables(var_name)
-    print("\n(For a list of all variable subcommands, run 'workflow variable help')")
+    if show_helper:
+        print("\n(For a list of all variable subcommands, run 'workflow variable help')")
 
 
 def add_variable_cmd(parsed_command, args):
@@ -40,7 +41,7 @@ def help_variable_cmd(parsed_command, args):
 
 def main_variable(parsed_command, args):
     if not args or args[0].startswith("-"):
-        return print_variable_cmd(parsed_command, args)
+        return print_variable_cmd(parsed_command, args, show_helper=True)
 
     variable_options = {
         "print": print_variable_cmd,

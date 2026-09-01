@@ -292,3 +292,44 @@ def test_cli_init_declined(mock_input, sandbox, env_dir):
     mock_input.side_effect = ["n"]
     with pytest.raises(SystemExit):
         main_init("workflow init", [])
+
+
+def test_cli_helper_strings_and_invalid_commands(sandbox, env_dir, capsys):
+    from snap_workflow.cli.workflow import main as main_wf
+    initialize(env_dir)
+    add_stage("stage1", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
+    add_variable("x", ["int"], add_to_stages=["stage1"], default_val=5)
+    add_sweep("sweep1", include_stages=["stage1"], variable_values={"x": [5]})
+
+    # 1. 'workflow status' prints helper string
+    main_status("workflow status", [])
+    out1 = capsys.readouterr().out
+    assert "(For a list of all status subcommands, run 'workflow status help')" in out1
+
+    # 2. 'workflow status print' does NOT print helper string
+    main_status("workflow status", ["print"])
+    out2 = capsys.readouterr().out
+    assert "(For a list of all status subcommands, run 'workflow status help')" not in out2
+
+    # 3. 'workflow stage' prints helper string, 'workflow stage print' does not
+    main_stage("workflow stage", [])
+    out3 = capsys.readouterr().out
+    assert "(For a list of all stage subcommands, run 'workflow stage help')" in out3
+
+    main_stage("workflow stage", ["print"])
+    out4 = capsys.readouterr().out
+    assert "(For a list of all stage subcommands, run 'workflow stage help')" not in out4
+
+    # 4. Unknown subcommand: 'workflow status show' raises SystemExit and prints error
+    with pytest.raises(SystemExit) as exc_info:
+        main_status("workflow status", ["show"])
+    assert exc_info.value.code == 1
+    err1 = capsys.readouterr().err
+    assert "Error: Unknown subcommand 'show' for 'workflow status'" in err1
+
+    # 5. Unknown top-level command: 'workflow print everything' raises SystemExit and prints error
+    with pytest.raises(SystemExit) as exc_info:
+        main_wf("print", ["everything"])
+    assert exc_info.value.code == 1
+    err2 = capsys.readouterr().err
+    assert "Error: Unknown command 'print'" in err2

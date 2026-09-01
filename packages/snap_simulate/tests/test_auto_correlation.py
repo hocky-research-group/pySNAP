@@ -132,7 +132,8 @@ def test_fskt_sampler():
     with tempfile.TemporaryDirectory() as tmpdir:
         state_file = os.path.join(tmpdir, "fskt_state.pkl")
         data_file = os.path.join(tmpdir, "fskt_data.txt")
-        sampler = FSKTSampler(sim=mock_sim, ptype=0, file_name=state_file)
+        sampler = FSKTSampler(sim=mock_sim, ptype=0, file_name=state_file, kmag=2.5)
+        assert sampler.kmag == 2.5
 
         # Mock frame snapshot
         mock_frame = MagicMock()
@@ -200,7 +201,8 @@ def test_fskt_multiprocessing_sampler():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         state_file = os.path.join(tmpdir, "fskt_mp_state.pkl")
-        sampler = FSKTSampler(sim=mock_sim, ptype=0, file_name=state_file, use_multiprocessing=True)
+        sampler = FSKTSampler(sim=mock_sim, ptype=0, file_name=state_file, kmag=1.8, use_multiprocessing=True)
+        assert sampler.kmag == 1.8
 
         try:
             mock_frame = MagicMock()

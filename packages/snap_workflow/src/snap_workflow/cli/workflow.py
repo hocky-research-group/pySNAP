@@ -94,6 +94,26 @@ def main_auto(parsed_command, args):
     return remote_auto_cmd(parsed_command, args)
 
 
+def help_workflow_cmd():
+    print("Usage: workflow <command> [options]\n")
+    print("Commands:")
+    print("  init              Initialize a new workflow project in the current directory")
+    print("  status [print]    Display status table of all simulation points")
+    print("  stage             Manage workflow simulation stages and dependencies")
+    print("  sweep             Manage parameter sweeps")
+    print("  variable          Manage sweep variables")
+    print("  spoint            Reset or submit simulation points")
+    print("  python            Configure Python interpreter environments")
+    print("  data              Aggregate and collect simulation results")
+    print("  params            Convert parameter file formats")
+    print("  remote            Configure and manage remote compute clusters")
+    print("  server            Start or control local orchestration server")
+    print("  local auto        Run automated scheduler/dispatcher on local machine")
+    print("  auto <target>     Run automated scheduler/dispatcher (local or remote)")
+    print("  zip <filename>    Package workflow data into an archive")
+    print("  help              Show this help message")
+
+
 def main(command_name=None, args=None):
     setup_logging()
     import os
@@ -106,7 +126,8 @@ def main(command_name=None, args=None):
     if command_name is None:
         sys_args = sys.argv
         if len(sys_args) < 2:
-            raise ValueError("Must provide a command")
+            help_workflow_cmd()
+            sys.exit(0)
         command_name = sys_args[1]
         args = sys_args[2:]
 
@@ -117,6 +138,9 @@ def main(command_name=None, args=None):
         "autocomplete": main_autocomplete,
         "completions": main_autocomplete,
         "_complete": main_complete,
+        "help": lambda p, a: (help_workflow_cmd(), sys.exit(0)),
+        "--help": lambda p, a: (help_workflow_cmd(), sys.exit(0)),
+        "-h": lambda p, a: (help_workflow_cmd(), sys.exit(0)),
 
         # Object-first routes
         "stage": main_stage,
@@ -136,7 +160,8 @@ def main(command_name=None, args=None):
     if command_name in cmd_map:
         cmd_map[command_name](f"workflow {command_name}", args)
     else:
-        raise ValueError(f"Unknown command '{command_name}'")
+        print(f"Error: Unknown command '{command_name}'. Run 'workflow --help' for a list of available commands.", file=sys.stderr)
+        sys.exit(1)
 
 
 def command_line_tool():

@@ -138,7 +138,7 @@ class SPointScheduler:
 
     def set_status(self, sweep_name: str, stage_name: str, spoint_dict: Dict[str, Any], status_val: str, host: str = "local") -> None:
         sp_path = get_spoint_path(stage_name, spoint_dict)
-        if status_val in ("complete", "error", "initialized"):
+        if status_val in ("complete", "error", "incomplete", "initialized"):
             norm_p = os.path.abspath(sp_path)
             for k in list(self.active_leases.keys()):
                 if os.path.abspath(k) == norm_p or k == sp_path:
@@ -152,6 +152,38 @@ class SPointScheduler:
             except Exception as e:
                 logger.warning("Failed to generate params.pkl for %s: %s", sp_path, e)
         status.write_status(status_val, sp_path)
+
+    def handle_worker_shutdown(
+        self,
+        worker_id: Optional[str] = None,
+        host: str = "local",
+        active_tasks: Optional[List[str]] = None
+    ) -> List[str]:
+        """Marks any in-flight active tasks associated with the shutting-down worker as 'incomplete'."""
+        affected = []
+        task_paths = set(active_tasks or [])
+
+        # Find leases belonging to this worker
+        for sp_path, lease_info in list(self.active_leases.items()):
+            if (worker_id and lease_info.get("worker_id") == worker_id) or (sp_path in task_paths):
+                task_paths.add(sp_path)
+
+        for sp_path in task_paths:
+            norm_sp = os.path.abspath(sp_path)
+            for k in list(self.active_leases.keys()):
+                if os.path.abspath(k) == norm_sp or k == sp_path:
+                    self.active_leases.pop(k, None)
+
+            try:
+                cur_stat = status.load_status(sp_path)
+                if cur_stat in ("running", "submitted", "queued"):
+                    status.write_status("incomplete", sp_path)
+                    affected.append(sp_path)
+                    logger.info("[SCHEDULER] Worker '%s' shut down; marked task '%s' as incomplete.", worker_id, sp_path)
+            except Exception as e:
+                logger.debug("Failed to update status to incomplete for %s on worker shutdown: %s", sp_path, e)
+
+        return affected
 
     def acquire_next_available(
         self,

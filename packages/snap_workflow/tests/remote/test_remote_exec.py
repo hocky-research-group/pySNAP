@@ -13,21 +13,21 @@ def test_get_remote_host_and_path(tmp_path, monkeypatch):
     assert exec_module.get_remote_path("local") == "."
     
     # Unregistered remote raises ValueError
-    monkeypatch.setattr("snap_workflow.utils.io.load_global_remotes", lambda: {})
+    monkeypatch.setattr("snap_workflow.remote.io.load_global_remotes", lambda: {})
     with pytest.raises(ValueError, match="is not registered globally"):
         exec_module.get_remote_host("nonexistent")
         
-    monkeypatch.setattr("snap_workflow.utils.io.load_global_remotes", lambda: {"cluster1": {"host": "myhost"}})
+    monkeypatch.setattr("snap_workflow.remote.io.load_global_remotes", lambda: {"cluster1": {"host": "myhost"}})
     assert exec_module.get_remote_host("cluster1") == "myhost"
     # Target is already a configured host value
     assert exec_module.get_remote_host("myhost") == "myhost"
     
     # Unset local remote raises ValueError
-    monkeypatch.setattr("snap_workflow.utils.io.load_local_remotes", lambda: {})
+    monkeypatch.setattr("snap_workflow.remote.io.load_local_remotes", lambda: {})
     with pytest.raises(ValueError, match="has not been set up locally"):
         exec_module.get_remote_path("cluster1")
         
-    monkeypatch.setattr("snap_workflow.utils.io.load_local_remotes", lambda: {"cluster1": {"host": "myhost", "path": "/scratch/sims"}})
+    monkeypatch.setattr("snap_workflow.remote.io.load_local_remotes", lambda: {"cluster1": {"host": "myhost", "path": "/scratch/sims"}})
     assert exec_module.get_remote_path("cluster1") == "/scratch/sims"
     assert exec_module.get_remote_path("myhost") == "/scratch/sims"
 

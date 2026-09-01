@@ -5,12 +5,13 @@ from snap_workflow.cli.utils import parse_remaining, execute_option
 from snap_workflow.cli.prompts import get_sweep_name, get_existing_sweep_name, get_variable_values, prompt_each_stage
 
 
-def print_sweeps_cmd(parsed_command, args):
+def print_sweeps_cmd(parsed_command, args, show_helper=False):
     args, kwargs = parse_remaining(args)
     sweep_name = get_existing_sweep_name(kwargs, include_all=True, get_input=False, default='all')
     io.warn_unused_kwargs(kwargs)
     sweep_tools.print_sweeps(sweep_name=sweep_name)
-    print("\n(For a list of all sweep subcommands, run 'workflow sweep help')")
+    if show_helper:
+        print("\n(For a list of all sweep subcommands, run 'workflow sweep help')")
 
 
 def add_sweep_cmd(parsed_command, args):
@@ -61,7 +62,7 @@ def help_sweeps_cmd(parsed_command, args):
 
 def main_sweep(parsed_command, args):
     if not args or args[0].startswith("-"):
-        return print_sweeps_cmd(parsed_command, args)
+        return print_sweeps_cmd(parsed_command, args, show_helper=True)
 
     sweep_options = {
         "print": print_sweeps_cmd,

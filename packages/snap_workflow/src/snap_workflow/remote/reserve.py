@@ -12,7 +12,8 @@ from snap_workflow.remote.setup import (
     validate_remote_stage_resources,
 )
 from snap_workflow.utils.constants import SPOINTS
-from snap_workflow.utils.io import load_global_remotes, load_local_remotes, load_server_info
+from snap_workflow.utils.io import load_server_info
+from snap_workflow.remote.io import load_global_remotes, load_local_remotes
 
 logger = logging.getLogger("snap_workflow.remote.reserve")
 
@@ -151,7 +152,7 @@ def reserve_remote_workers(server_port, token, remote_name, profile, num_workers
     )
 
     for _ in range(num_workers):
-        ssh_cmd = ["ssh"] + get_control_path_args() + [remote_host, sbatch_cmd]
+        ssh_cmd = ["ssh"] + get_control_path_args() + [remote_host, f"bash -l -c {repr(sbatch_cmd)}"]
         res_sbatch = subprocess.run(ssh_cmd, capture_output=True, text=True)
         ret_sbatch = res_sbatch.returncode if isinstance(res_sbatch.returncode, int) else 0
         if ret_sbatch != 0:

@@ -3,7 +3,7 @@ import time
 import json
 import subprocess
 import logging
-from snap_workflow.utils.io import load_global_remotes, load_local_remotes
+from snap_workflow.remote import io as r_io, ssh as r_ssh, exec as r_exec
 from snap_workflow.utils.constants import SERVER_INFO
 from snap_workflow.utils import path
 
@@ -24,12 +24,9 @@ def provision_remote_server_info(target_remote, server_obj=None, port=None, toke
     Synchronizes manager server connection credentials to {remote_workspace}/.workflow/server
     on the target remote host so compute nodes and workers can discover it automatically.
     """
-    from snap_workflow.remote.ssh import run_remote_bash
-    from snap_workflow.remote.exec import get_remote_host, get_remote_path
-
     try:
-        remote_host = get_remote_host(target_remote)
-        remote_path = get_remote_path(target_remote)
+        remote_host = r_exec.get_remote_host(target_remote)
+        remote_path = r_exec.get_remote_path(target_remote)
     except Exception as e:
         logger.debug("[TUNNEL] Skipping provision_remote_server_info for '%s': %s", target_remote, e)
         return
@@ -69,7 +66,7 @@ def provision_remote_server_info(target_remote, server_obj=None, port=None, toke
     token = str(token) if token and isinstance(token, str) else "dummy_token"
 
     try:
-        login_node = run_remote_bash(remote_host, "hostname -f").strip()
+        login_node = r_ssh.run_remote_bash(remote_host, "hostname -f").strip()
     except Exception:
         login_node = None
 
@@ -83,7 +80,7 @@ def provision_remote_server_info(target_remote, server_obj=None, port=None, toke
 
     try:
         cmd = f"mkdir -p {remote_path}/.workflow && cat << 'EOF' > {remote_path}/.workflow/server\n{server_json_content}\nEOF"
-        run_remote_bash(remote_host, cmd)
+        r_ssh.run_remote_bash(remote_host, cmd)
         logger.info("[TUNNEL] Synchronized .workflow/server to remote '%s' at %s/.workflow/server", target_remote, remote_path)
     except Exception as e:
         logger.warning("[TUNNEL] Failed to synchronize .workflow/server to remote '%s': %s", target_remote, e)
@@ -93,14 +90,11 @@ def cleanup_remote_server_info(target_remote):
     """
     Removes {remote_workspace}/.workflow/server from the remote host upon tunnel teardown.
     """
-    from snap_workflow.remote.ssh import run_remote_bash
-    from snap_workflow.remote.exec import get_remote_host, get_remote_path
-
     try:
-        remote_host = get_remote_host(target_remote)
-        remote_path = get_remote_path(target_remote)
+        remote_host = r_exec.get_remote_host(target_remote)
+        remote_path = r_exec.get_remote_path(target_remote)
         cmd = f"rm -f {remote_path}/.workflow/server"
-        run_remote_bash(remote_host, cmd)
+        r_ssh.run_remote_bash(remote_host, cmd)
         logger.info("[TUNNEL] Cleaned up .workflow/server on remote '%s'", target_remote)
     except Exception as e:
         logger.debug("[TUNNEL] Cleanup of remote server info failed for '%s': %s", target_remote, e)
@@ -134,9 +128,7 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
             )
             del active_dict[target_remote]
 
-    from snap_workflow.remote.exec import get_remote_host
-    from snap_workflow.remote.ssh import get_control_path_args
-    remote_host = get_remote_host(target_remote)
+    remote_host = r_exec.get_remote_host(target_remote)
 
     if port is None and server_obj is not None:
         port = getattr(server_obj, "server_port", None) or getattr(server_obj, "port", None)
@@ -170,7 +162,7 @@ def ensure_remote_tunnel(server_or_remote, remote_name=None, port=None):
         return None
 
     # 2. Check if the port is already listening on the remote host
-    check_port_cmd = ["ssh"] + get_control_path_args() + [remote_host, f"ss -tulpn 2>/dev/null | grep ':{port} ' || netstat -tulpn 2>/dev/null | grep ':{port} ' || true"]
+    check_port_cmd = ["ssh"] + r_ssh.get_control_path_args() + [remote_host, f"ss -tulpn 2>/dev/null | grep ':{port} ' || netstat -tulpn 2>/dev/null | grep ':{port} ' || true"]
     res_port = subprocess.run(check_port_cmd, capture_output=True, text=True)
     if res_port.stdout.strip():
         logger.info("[TUNNEL] Port %s is already active on remote '%s'. Reusing existing tunnel.", port, target_remote)

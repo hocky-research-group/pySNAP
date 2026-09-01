@@ -68,8 +68,8 @@ def test_server_autocompletions(sandbox):
     assert "reserve" in comp
 
     # server auto <remote>
-    with patch("snap_workflow.utils.io.load_local_remotes", return_value={"cluster1": {}, "ws1": {}}), \
-         patch("snap_workflow.utils.io.load_global_remotes", return_value={}):
+    with patch("snap_workflow.remote.io.load_local_remotes", return_value={"cluster1": {}, "ws1": {}}), \
+         patch("snap_workflow.remote.io.load_global_remotes", return_value={}):
         comp_remotes = get_completions(["server", "auto"], prefix="")
         assert "local" in comp_remotes
         assert "cluster1" in comp_remotes

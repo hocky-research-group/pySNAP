@@ -10,6 +10,7 @@ import subprocess
 from typing import Dict, Any, Optional
 
 from snap_workflow.utils import path, io
+from snap_workflow.remote.io import load_local_remotes
 from snap_workflow.core.domain import spoints as spoint_tools
 from snap_workflow.dispatcher.base import BaseDispatcher
 
@@ -60,7 +61,7 @@ class SlurmDispatcher(BaseDispatcher):
 
         if self.is_remote and not self.remote_path:
             try:
-                local_remotes = io.load_local_remotes()
+                local_remotes = load_local_remotes()
                 self.remote_path = local_remotes.get(self.remote_host, {}).get("path")
                 if not self.remote_path and self.root:
                     self.remote_path = f"~/{os.path.basename(self.root)}"

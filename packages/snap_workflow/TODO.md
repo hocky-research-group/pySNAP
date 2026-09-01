@@ -24,3 +24,10 @@
    - Implement `complete_auto`, `complete_reserve`, `complete_stop`, `complete_start` to autocomplete registered remotes (`local`, `Workstation`, `Lonestar`, etc.) and sbatch profiles.
 5. **Multi-terminal Interoperability**:
    - External CLI commands (`workflow server auto <target>`, `workflow server stop <target>`) from other terminals continue to communicate with the server via the standard REST API endpoints.
+
+### Specialized JSON IO Scoping (`snap_workflow.utils.io`)
+- **Objective**: Refactor the generic `load_json` / `save_json` functions into three distinct, explicitly scoped helpers:
+  1. **Global (`load_global_json` / `save_global_json`)**: Resolves against `~/.config/snap_workflow/` (`GLOBAL_CONFIG_DIR`).
+  2. **System / Local (`load_system_json` / `save_system_json`)**: Resolves against `<root>/.workflow/`.
+  3. **Stage (`load_stage_json` / `save_stage_json`)**: Resolves paths relative to individual stage directories.
+- **Benefits**: Eliminates ambiguous `full_path` flags and prevents path resolution confusion across global user configs, workspace metadata, and stage-level data.

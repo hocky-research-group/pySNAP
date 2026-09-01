@@ -15,6 +15,9 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from snap_workflow.utils.constants import *
 from snap_workflow.utils import path, io
 from snap_workflow.core.domain import spoints as spoint_tools, stages as stage_tools, sweeps as sweep_tools
+from snap_workflow.remote.io import load_global_remotes, load_local_remotes
+from snap_workflow.remote.ssh import get_control_path_args
+from snap_workflow.server.sync import push_dependency_data
 from snap_workflow.server.scheduler import SPointScheduler
 from snap_workflow.utils.logging import logger
 def start_server(host="127.0.0.1", port=0):
@@ -256,8 +259,6 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
                     }
                     if host != "local":
                         try:
-                            from snap_workflow.utils.io import load_global_remotes, load_local_remotes
-                            from snap_workflow.server.sync import push_dependency_data
                             g_remotes = load_global_remotes()
                             l_remotes = load_local_remotes()
                             r_path = l_remotes.get(host, {}).get("path") or g_remotes.get(host, {}).get("path")
@@ -394,8 +395,6 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
 
                     if host != "local" and stage_name and spoint_dict:
                         try:
-                            from snap_workflow.utils.io import load_global_remotes, load_local_remotes
-                            from snap_workflow.remote.ssh import get_control_path_args
                             g_remotes = load_global_remotes()
                             l_remotes = load_local_remotes()
                             r_path = (l_remotes.get(host) or {}).get("path") or (g_remotes.get(host) or {}).get("path")
@@ -438,8 +437,16 @@ class WorkflowRequestHandler(BaseHTTPRequestHandler):
             def _handle_notify_shutdown():
                 worker_id = data.get("worker_id", "unknown")
                 host = data.get("host", "local")
+                active_tasks = data.get("active_tasks", [])
                 logger.info("[WORKER] Worker '%s' on host '%s' notified server of shutdown.", worker_id, host)
-                return {"status": "ok"}, 200
+                affected = []
+                if hasattr(self.server, "spoint_manager") and hasattr(self.server.spoint_manager, "handle_worker_shutdown"):
+                    affected = self.server.spoint_manager.handle_worker_shutdown(
+                        worker_id=worker_id,
+                        host=host,
+                        active_tasks=active_tasks
+                    )
+                return {"status": "ok", "interrupted_tasks": affected}, 200
 
             self._submit_priority_job(0, _handle_notify_shutdown)
             return

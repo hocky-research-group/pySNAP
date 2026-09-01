@@ -335,13 +335,14 @@ class PESampler(BaseSampler):
 
 
 class _FSKTInternalWorker:
-    def __init__(self, box, dt, ptype, file_name, sampling_mode="linear", Nmag=10, Navg=1):
+    def __init__(self, box, dt, ptype, file_name, kmag=1.1, sampling_mode="linear", Nmag=10, Navg=1):
         from snap_analyze import Fskt
         self.box = box
         self.dt = dt
         self.ptype = ptype
         self.file_name = file_name
-        self.dyn = Fskt(box, kmag=1.1, min_avg_count=1, sampling_mode=sampling_mode, Nmag=Nmag)
+        self.kmag = kmag
+        self.dyn = Fskt(box, kmag=kmag, min_avg_count=1, sampling_mode=sampling_mode, Nmag=Nmag)
 
     def _internal_sample(self, timestep, payload):
         pos, image = payload
@@ -386,6 +387,7 @@ class FSKTSampler(BaseSampler):
         self,
         sim,
         ptype,
+        kmag=1.1,
         file_name="fskt_sampler.pkl",
         sampling_mode="linear",
         min_interval=10,
@@ -409,9 +411,10 @@ class FSKTSampler(BaseSampler):
         self.dt = sim.operations.integrator.dt
         self.box = sim.state.box.L
         self.ptype = ptype
+        self.kmag = kmag
 
         if not self.use_multiprocessing:
-            self.dyn = Fskt(self.box, kmag=1.1, min_avg_count=1, sampling_mode=sampling_mode, Nmag=Nmag)
+            self.dyn = Fskt(self.box, kmag=kmag, min_avg_count=1, sampling_mode=sampling_mode, Nmag=Nmag)
         else:
             self.dyn = None
             init_kwargs = {
@@ -419,6 +422,7 @@ class FSKTSampler(BaseSampler):
                 "dt": self.dt,
                 "ptype": ptype,
                 "file_name": file_name,
+                "kmag": kmag,
                 "sampling_mode": sampling_mode,
                 "Nmag": Nmag,
                 "Navg": Navg,
@@ -526,8 +530,8 @@ def minimize_autocorrelation(
     }
 
 
-def min_auto_FSKT(sim, ptype):
-    sampler = FSKTSampler(sim, ptype=ptype)
+def min_auto_FSKT(sim, ptype, kmag=1.1):
+    sampler = FSKTSampler(sim, ptype=ptype, kmag=kmag)
     return sampler.sample, sampler.check
 
 

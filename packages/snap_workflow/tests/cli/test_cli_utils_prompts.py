@@ -70,7 +70,7 @@ def test_get_completions_advanced(sandbox):
     rem_comp = get_completions(args=["remote"], prefix="s")
     assert sorted(rem_comp) == ["setup", "sync"]
 
-    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"my_cluster": {"host": "h"}}):
+    with patch("snap_workflow.remote.io.load_global_remotes", return_value={"my_cluster": {"host": "h"}}):
         rem_sync = get_completions(args=["remote", "sync"], prefix="")
         assert "my_cluster" in rem_sync
 

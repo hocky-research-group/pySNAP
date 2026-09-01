@@ -1,7 +1,13 @@
 import os
 import subprocess
 from snap_workflow.utils import io, path
-from snap_workflow.utils.io import load_global_remotes, save_global_remotes, load_local_remotes, save_local_remotes
+from snap_workflow.remote import (
+    load_global_remotes,
+    save_global_remotes,
+    load_local_remotes,
+    save_local_remotes,
+    get_remotes_info,
+)
 from snap_workflow.remote import setup as remote_setup, ssh as remote_ssh
 from snap_workflow.server import sync as remote_sync
 from snap_workflow.cli.utils import parse_remaining, execute_option, get_csv_arg
@@ -9,7 +15,7 @@ from snap_workflow.cli.utils import parse_remaining, execute_option, get_csv_arg
 
 def main_remote(parsed_command, args):
     if not args or args[0].startswith("-"):
-        return remote_print_cmd(parsed_command, args)
+        return remote_print_cmd(parsed_command, args, show_helper=True)
 
     remote_options = {
         "add": remote_add_cmd,
@@ -28,26 +34,30 @@ def main_remote(parsed_command, args):
 
 
 def help_remote_cmd(parsed_command, args):
-    print("Available subcommands for 'workflow remote':")
-    print("  print [name]                      Print registered remote cluster configurations")
-    print("  add <name> <host>                 Register a remote host (SSH connection tested)")
-    print("  setup <name> <path>               Provision workspace and validate remote resources")
-    print("  sync <name> [--pull|--push|--both] Sync files, statuses, and auto-sync outputs")
-    print("  connect <name>                    Open an interactive SSH session to remote host")
-    print("  reserve <name> <profile>          Reserve Slurm worker compute allocations")
-    print("  auto [name]                       Launch autonomous scheduling (defaults to local)")
+    print("Usage: workflow remote <command> [options]\n")
+    print("Commands:")
+    print("  add <name> <host>      Register a remote host globally in ~/.config/snap_workflow/remotes.json")
+    print("  setup <name> <path>    Deploy local workflow codebase to remote host")
+    print("  sync <name>            Synchronize data/results between local and remote cluster")
+    print("  connect <name>         Open interactive SSH session to remote host")
+    print("  print [name]           Print details of configured remotes")
+    print("  reserve <name> <prof>  Submit Slurm worker reservation allocation on remote cluster")
+    print("  auto <name>            Start automatic scheduler/dispatcher for remote host")
+    print("  help                   Show this help message")
 
 
-def remote_print_cmd(parsed_command, args):
+def remote_print_cmd(parsed_command, args, show_helper=False):
     args, kwargs = parse_remaining(args)
-    name = args[0] if len(args) > 0 else kwargs.pop("name", kwargs.pop("r", None))
+    name = args[0] if args else kwargs.get("name")
+    remotes_info = get_remotes_info()
     io.warn_unused_kwargs(kwargs)
     print_remotes_info(name)
-    print("\n(For a list of all remote subcommands, run 'workflow remote help')")
+    if show_helper:
+        print("\n(For a list of all remote subcommands, run 'workflow remote help')")
 
 
 def print_remotes_info(name=None):
-    remotes_info = io.get_remotes_info()
+    remotes_info = get_remotes_info()
     if not remotes_info:
         print("No remotes registered.")
         return

@@ -4,13 +4,14 @@ from snap_workflow.cli.utils import parse_remaining, execute_option
 from snap_workflow.cli.prompts import get_existing_sweep_name, get_existing_stage_name
 
 
-def print_status_cmd(parsed_command, args):
+def print_status_cmd(parsed_command, args, show_helper=False):
     args, kwargs = parse_remaining(args)
     sweep_name = get_existing_sweep_name(kwargs, include_all=True, get_input=False, default='all')
     stage_name = get_existing_stage_name(kwargs, include_all=True, is_list=False, get_input=False, default='all')
     io.warn_unused_kwargs(kwargs)
     status_tools.print_status(sweep_names=sweep_name, stage_names=stage_name)
-    print("\n(For a list of all status subcommands, run 'workflow status help')")
+    if show_helper:
+        print("\n(For a list of all status subcommands, run 'workflow status help')")
 
 
 def set_status_cmd(parsed_command, args):
@@ -56,7 +57,7 @@ def help_status_cmd(parsed_command, args):
 
 def main_status(parsed_command, args):
     if not args or args[0].startswith("-"):
-        return print_status_cmd(parsed_command, args)
+        return print_status_cmd(parsed_command, args, show_helper=True)
 
     status_options = {
         "print": print_status_cmd,

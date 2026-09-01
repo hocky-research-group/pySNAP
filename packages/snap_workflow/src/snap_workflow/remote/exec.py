@@ -5,6 +5,7 @@ import json
 from snap_workflow.utils import io
 from snap_workflow.utils import constants
 from snap_workflow.utils.logging import logger
+from snap_workflow.remote import io as r_io, ssh as r_ssh
 
 
 def get_remote_host(target: str) -> str:
@@ -13,8 +14,8 @@ def get_remote_host(target: str) -> str:
     """
     if target == "local":
         return "local"
-    global_remotes = io.load_global_remotes()
-    local_remotes = io.load_local_remotes()
+    global_remotes = r_io.load_global_remotes()
+    local_remotes = r_io.load_local_remotes()
 
     if target in local_remotes and "host" in local_remotes[target]:
         return local_remotes[target]["host"]
@@ -34,7 +35,7 @@ def get_remote_path(target: str) -> str:
     """
     if target == "local":
         return "."
-    local_remotes = io.load_local_remotes()
+    local_remotes = r_io.load_local_remotes()
     if target in local_remotes and "path" in local_remotes[target]:
         return local_remotes[target]["path"]
 
@@ -57,8 +58,7 @@ def run_command(target: str, cmd, **kwargs) -> subprocess.CompletedProcess:
     host = get_remote_host(target)
     cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
     try:
-        from snap_workflow.remote.ssh import get_control_path_args
-        ssh_cmd = ["ssh"] + get_control_path_args() + [host, cmd_str]
+        ssh_cmd = ["ssh"] + r_ssh.get_control_path_args() + [host, cmd_str]
     except Exception:
         ssh_cmd = ["ssh", host, cmd_str]
     return subprocess.run(ssh_cmd, **kwargs)
@@ -103,13 +103,12 @@ def detect_target_resources(target: str) -> tuple[int, int, float]:
         pass
 
     try:
-        from snap_workflow.remote import ssh
         host = get_remote_host(target)
 
         # 1. Query CPUs
         cpus = None
         try:
-            out_cpu = ssh.run_remote_bash(host, "nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null").strip()
+            out_cpu = r_ssh.run_remote_bash(host, "nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null").strip()
             if out_cpu:
                 cpus = int(out_cpu.split()[-1])
         except Exception:
@@ -118,7 +117,7 @@ def detect_target_resources(target: str) -> tuple[int, int, float]:
         # 2. Query GPUs (0 is valid for CPU-only machines)
         gpus = 0
         try:
-            out_gpu = ssh.run_remote_bash(host, "nvidia-smi -L 2>/dev/null || true").strip()
+            out_gpu = r_ssh.run_remote_bash(host, "nvidia-smi -L 2>/dev/null || true").strip()
             if out_gpu:
                 lines = [line for line in out_gpu.split("\n") if "GPU " in line]
                 gpus = len(lines)
@@ -128,7 +127,7 @@ def detect_target_resources(target: str) -> tuple[int, int, float]:
         # 3. Query Memory
         mem_gb = None
         try:
-            out_mem = ssh.run_remote_bash(host, "free -b 2>/dev/null || true").strip()
+            out_mem = r_ssh.run_remote_bash(host, "free -b 2>/dev/null || true").strip()
             if out_mem:
                 for line in out_mem.split("\n"):
                     if line.startswith("Mem:"):
@@ -141,8 +140,9 @@ def detect_target_resources(target: str) -> tuple[int, int, float]:
             pass
 
         if cpus is None or mem_gb is None:
-            raise RuntimeError(f"Could not determine CPU or Memory capacity on remote target '{target}'.")
+            raise RuntimeError(f"Failed to query hardware resources on remote '{target}': Could not determine CPU or Memory capacity.")
 
         return cpus, gpus, mem_gb
     except Exception as e:
+        logger.warning("Failed to detect hardware resources on remote '%s': %s", target, e)
         raise RuntimeError(f"Failed to query hardware resources on remote '{target}': {e}") from e

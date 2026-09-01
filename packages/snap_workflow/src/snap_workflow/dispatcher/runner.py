@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import json
+import signal
 import shutil
 import logging
 import subprocess
@@ -207,7 +208,9 @@ class SubprocessDispatcher(BaseDispatcher):
             self.active_jobs.pop(path_key, None)
 
     def cleanup(self) -> None:
-        """Terminates active child subprocesses on shutdown."""
+        """Terminates active child subprocesses on shutdown and reaps their final status."""
+        if not self.active_jobs:
+            return
         logger.info("[DISPATCHER] Cleaning up. Terminating %s active child processes...", len(self.active_jobs))
         for job in self.active_jobs.values():
             try:
@@ -217,6 +220,23 @@ class SubprocessDispatcher(BaseDispatcher):
                     job["proc"].terminate()
                 except Exception:
                     pass
+
+        # Allow child processes up to 45 seconds to finish handling SIGINT and write status
+        deadline = time.time() + 45.0
+        for job in list(self.active_jobs.values()):
+            proc = job.get("proc")
+            if proc is not None:
+                remaining = max(0.1, deadline - time.time())
+                try:
+                    proc.wait(timeout=remaining)
+                except Exception:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+
+        # Reap finished processes so their final (e.g. incomplete/error) status is reported to the server
+        self.reap_finished()
 
 
 def dispatcher_loop(

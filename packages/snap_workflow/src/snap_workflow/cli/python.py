@@ -8,7 +8,7 @@ from snap_workflow.cli.utils import parse_remaining, execute_option
 from snap_workflow.cli.prompts import get_existing_stage_name
 
 
-def print_python_cmd(parsed_command, args):
+def print_python_cmd(parsed_command, args, show_helper=False):
     args, kwargs = parse_remaining(args)
     root = path.get_root()
     
@@ -64,7 +64,8 @@ def print_python_cmd(parsed_command, args):
                     pass
             print(f"{st:<20} {st_py}")
     io.warn_unused_kwargs(kwargs)
-    print("\n(For a list of all python subcommands, run 'workflow python help')")
+    if show_helper:
+        print("\n(For a list of all python subcommands, run 'workflow python help')")
 
 
 def set_python_cmd(parsed_command, args):
@@ -103,7 +104,7 @@ def help_python_cmd(parsed_command, args):
 
 def main_python(parsed_command, args):
     if not args or args[0].startswith("-"):
-        return print_python_cmd(parsed_command, args)
+        return print_python_cmd(parsed_command, args, show_helper=True)
 
     python_options = {
         "print": print_python_cmd,

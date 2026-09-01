@@ -288,7 +288,7 @@ def test_tacc_lonestar_autosubmit_orchestrator(sandbox, workflow_server):
 
         local_remotes = {REMOTE_NAME: {"path": resolved_path}}
 
-        with patch("snap_workflow.utils.io.load_local_remotes", return_value=local_remotes):
+        with patch("snap_workflow.remote.io.load_local_remotes", return_value=local_remotes):
             print(f"\n[Auto-Submit Test] Registering auto-scheduler for remote '{REMOTE_NAME}'...")
             register_auto_scheduler(
                 server=srv,

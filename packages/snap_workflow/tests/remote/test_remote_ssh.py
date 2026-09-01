@@ -73,7 +73,7 @@ def test_ensure_remote_ssh_master():
     ssh.ensure_remote_ssh_master("local")
     ssh.ensure_remote_ssh_master(None)
 
-    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
+    with patch("snap_workflow.remote.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
          patch("subprocess.run") as mock_run:
         mock_res = MagicMock()
         mock_res.returncode = 0
@@ -87,7 +87,7 @@ def test_ensure_remote_ssh_master():
     with open(fake_sock, "w") as f:
         f.write("sock")
     try:
-        with patch("snap_workflow.utils.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
+        with patch("snap_workflow.remote.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
              patch("subprocess.run") as mock_run:
             mock_fail = MagicMock()
             mock_fail.returncode = 1
@@ -102,7 +102,7 @@ def test_is_remote_ssh_connected():
     assert ssh.is_remote_ssh_connected("local") is True
     assert ssh.is_remote_ssh_connected(None) is True
 
-    with patch("snap_workflow.utils.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
+    with patch("snap_workflow.remote.io.load_global_remotes", return_value={"c1": {"host": "user@c1"}}), \
          patch("subprocess.run") as mock_run:
         mock_res = MagicMock()
         mock_res.returncode = 0

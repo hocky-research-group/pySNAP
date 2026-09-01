@@ -5,6 +5,7 @@ from snap_workflow.utils import io
 from snap_workflow.remote.tunnels import ensure_remote_tunnel
 from snap_workflow.remote.exec import has_slurm
 from snap_workflow.remote.ssh import get_control_path_args
+from snap_workflow.remote.io import load_global_remotes, load_local_remotes
 
 
 def run_remote_auto(target="local", stages="", sweeps="", exclude_stages="", exclude_sweeps=""):
@@ -28,8 +29,8 @@ def run_remote_auto(target="local", stages="", sweeps="", exclude_stages="", exc
             host="local"
         )
     else:
-        global_remotes = io.load_global_remotes()
-        local_remotes = io.load_local_remotes()
+        global_remotes = load_global_remotes()
+        local_remotes = load_local_remotes()
         r_info = local_remotes.get(target) or global_remotes.get(target)
         if not r_info:
             raise ValueError(f"Remote '{target}' is not registered.")

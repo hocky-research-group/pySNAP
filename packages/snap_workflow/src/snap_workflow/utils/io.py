@@ -359,54 +359,6 @@ def get_default_format():
     return "json"
 
 
-def load_global_remotes():
-    if not os.path.exists(constants.GLOBAL_CONFIG_DIR):
-        os.makedirs(constants.GLOBAL_CONFIG_DIR, exist_ok=True)
-    if os.path.isfile(constants.GLOBAL_REMOTES_FILE):
-        try:
-            return load_json(constants.GLOBAL_REMOTES_FILE, full_path=True)
-        except Exception:
-            pass
-    return {}
-
-
-def save_global_remotes(remotes):
-    if not os.path.exists(constants.GLOBAL_CONFIG_DIR):
-        os.makedirs(constants.GLOBAL_CONFIG_DIR, exist_ok=True)
-    save_json(constants.GLOBAL_REMOTES_FILE, remotes, full_path=True)
-
-
-def load_local_remotes():
-    if os.path.isfile(f".workflow/{constants.LOCAL_REMOTES_FILE}"):
-        try:
-            return load_json(constants.LOCAL_REMOTES_FILE)
-        except Exception:
-            pass
-    return {}
-
-
-def save_local_remotes(remotes):
-    save_json(constants.LOCAL_REMOTES_FILE, remotes)
-
-
-def get_remotes_info():
-    """Returns structured info for all configured remotes along with live SSH status."""
-    from snap_workflow.remote.ssh import is_remote_ssh_connected
-    g_remotes = load_global_remotes()
-    l_remotes = load_local_remotes()
-    all_names = sorted(set(g_remotes.keys()) | set(l_remotes.keys()))
-    results = []
-    for name in all_names:
-        host = g_remotes.get(name, {}).get("host", "<unspecified>")
-        path_val = l_remotes.get(name, {}).get("path") or g_remotes.get(name, {}).get("path") or "<not set up>"
-        connected = is_remote_ssh_connected(name)
-        results.append({
-            "name": name,
-            "host": host,
-            "path": path_val,
-            "connected": connected
-        })
-    return results
 
 def save_global_config(cfg):
     if not os.path.exists(constants.GLOBAL_CONFIG_DIR):

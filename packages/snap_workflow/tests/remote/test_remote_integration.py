@@ -96,8 +96,8 @@ def test_remote_autosubmit_workstation(sandbox, env_dir, workflow_server):
         global_remotes = {"Lab_Main_Test": {"host": "Lab_Main"}}
         local_remotes = {"Lab_Main_Test": {"path": resolved_path}}
 
-        with patch("snap_workflow.utils.io.load_global_remotes", return_value=global_remotes), \
-             patch("snap_workflow.utils.io.load_local_remotes", return_value=local_remotes):
+        with patch("snap_workflow.remote.io.load_global_remotes", return_value=global_remotes), \
+             patch("snap_workflow.remote.io.load_local_remotes", return_value=local_remotes):
             
             # Start auto-scheduler thread for Lab_Main_Test
             # This triggers remote Workstation Mode since has_slurm is False
@@ -171,8 +171,8 @@ def test_remote_worker_tunnel(sandbox, env_dir, workflow_server):
         global_remotes = {"Lab_Main_Test": {"host": "Lab_Main"}}
         local_remotes = {"Lab_Main_Test": {"path": resolved_path}}
 
-        with patch("snap_workflow.utils.io.load_global_remotes", return_value=global_remotes), \
-             patch("snap_workflow.utils.io.load_local_remotes", return_value=local_remotes):
+        with patch("snap_workflow.remote.io.load_global_remotes", return_value=global_remotes), \
+             patch("snap_workflow.remote.io.load_local_remotes", return_value=local_remotes):
 
             # Run remote worker client manually with an SSH reverse tunnel connection
             # to connect back to the local manager server.

@@ -2,6 +2,7 @@ import os
 import json
 import pytest
 import time
+import subprocess
 from unittest.mock import patch, MagicMock
 from snap_workflow.core.workflow import initialize
 from snap_workflow.core.domain.stages import add_stage
@@ -10,6 +11,7 @@ from snap_workflow.core.domain.sweeps import add_sweep
 from snap_workflow.core.domain import spoints
 from snap_workflow.core.domain import status
 from snap_workflow.server.scheduler import SPointScheduler
+from snap_workflow.dispatcher.slurm import submit_spoints, SlurmDispatcher
 
 def test_spoint_still_defined(sandbox, env_dir):
     initialize(env_dir)
@@ -216,82 +218,63 @@ def test_get_spoint_parent_variable_filtering(sandbox, env_dir):
 
 def test_submit_spoints_logic(sandbox, env_dir, capsys):
     initialize(env_dir)
-    sbatch_details = {
-        "num_jobs": 1,
-        "multi_submission": True,
-        "partition": "test_part",
-        "--array": "1-2"
-    }
-    add_stage("stage_sbatch", sbatch_details=sbatch_details, stage_variables=["x"], stage_dependencies=[])
+    add_stage("stage_sbatch", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
     add_stage("stage_local", sbatch_details=None, stage_variables=["x"], stage_dependencies=[])
-    
+
     add_variable("x", ["int"], add_to_stages=["stage_sbatch", "stage_local"], default_val=5)
     add_sweep("sweep1", include_stages=["stage_sbatch", "stage_local"], variable_values={"x": [5, 6]})
-    
+
     os.makedirs("stage_sbatch", exist_ok=True)
     os.makedirs("stage_local", exist_ok=True)
     with open("stage_sbatch/env.json", "w") as f:
-        json.dump({"resources": {"cpus": 1, "gpus": 0, "mem": "1G"}}, f)
+        json.dump({
+            "slurm_flags": {"-p": "test_part"},
+            "resources": {"cpus": 1, "gpus": 0, "mem": "1G"}
+        }, f)
     with open("stage_local/env.json", "w") as f:
         json.dump({"resources": {"cpus": 1, "gpus": 0, "mem": "1G"}}, f)
-        
-    with open("stage_sbatch/env.json", "w") as f:
-        f.write("invalid json")
-    
-    details = spoints.get_submission_details("stage_sbatch", {"sbatch_details": sbatch_details})
-    captured = capsys.readouterr()
-    assert "Warning: Failed to load" in captured.out
-    
-    with open("stage_sbatch/env.json", "w") as f:
-        json.dump({"resources": {"cpus": 1, "gpus": 0, "mem": "1G"}, "sbatch": {"partition": "custom_part", "n": "4"}}, f)
-    details2 = spoints.get_submission_details("stage_sbatch", {"sbatch_details": sbatch_details})
-    assert details2["sbatch_flags"]["--partition"] == "custom_part"
-    assert details2["sbatch_flags"]["-n"] == "4"
-    
+
     spoints.create_spoint("stage_local", {"x": 5}, clear=True)
     spoints.create_spoint("stage_local", {"x": 6}, clear=True)
     spoints.create_spoint("stage_sbatch", {"x": 5}, clear=True)
     spoints.create_spoint("stage_sbatch", {"x": 6}, clear=True)
-    
+
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
-        spoints.submit_spoints(sweep_names="sweep1", stage_names="stage_local", no_sbatch=True)
+        submit_spoints(sweep_names="sweep1", stage_names="stage_local", no_sbatch=True)
         assert status.load_status(spoints.get_spoint_path("stage_local", {"x": 5})) == "complete"
         assert status.load_status(spoints.get_spoint_path("stage_local", {"x": 6})) == "complete"
-        
+
         status.write_status("initialized", spoints.get_spoint_path("stage_local", {"x": 5}))
         status.write_status("initialized", spoints.get_spoint_path("stage_local", {"x": 6}))
         mock_run.return_value.returncode = 1
-        spoints.submit_spoints(sweep_names="sweep1", stage_names="stage_local", no_sbatch=True)
+        submit_spoints(sweep_names="sweep1", stage_names="stage_local", no_sbatch=True)
         assert status.load_status(spoints.get_spoint_path("stage_local", {"x": 5})) == "error"
         assert status.load_status(spoints.get_spoint_path("stage_local", {"x": 6})) == "error"
 
     status.write_status("initialized", spoints.get_spoint_path("stage_sbatch", {"x": 5}))
     status.write_status("initialized", spoints.get_spoint_path("stage_sbatch", {"x": 6}))
-    with patch("snap_workflow.core.domain.spoints.params.set_params", side_effect=ValueError("Test Param Error")), \
+    with patch("snap_workflow.dispatcher.slurm.params.set_params", side_effect=ValueError("Test Param Error")), \
          patch("subprocess.run"):
-        spoints.submit_spoints(sweep_names="sweep1", stage_names="stage_sbatch")
+        submit_spoints(sweep_names="sweep1", stage_names="stage_sbatch")
         captured = capsys.readouterr()
         assert "Cannot submit spoints for stage stage_sbatch" in captured.out
 
     status.write_status("initialized", spoints.get_spoint_path("stage_sbatch", {"x": 5}))
     status.write_status("initialized", spoints.get_spoint_path("stage_sbatch", {"x": 6}))
     with patch("subprocess.run") as mock_run:
-        mock_run.return_value.returncode = 1
-        spoints.submit_spoints(sweep_names="sweep1", stage_names="stage_sbatch", num_submits=lambda: 2)
-        assert status.load_status(spoints.get_spoint_path("stage_sbatch", {"x": 5})) == "initialized"
-        
-        mock_run.return_value.returncode = 0
-        spoints.submit_spoints(sweep_names="sweep1", stage_names="stage_sbatch", num_submits=2)
+        mock_run.return_value = subprocess.CompletedProcess(args=["sbatch"], returncode=0, stdout="Submitted batch job 1234\n")
+        submit_spoints(sweep_names="sweep1", stage_names="stage_sbatch")
         assert status.load_status(spoints.get_spoint_path("stage_sbatch", {"x": 5})) == "submitted"
+        assert status.load_status(spoints.get_spoint_path("stage_sbatch", {"x": 6})) == "submitted"
 
-    with patch("subprocess.run"):
-        spoints.submit_spoints()
-        
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = subprocess.CompletedProcess(args=["sbatch"], returncode=0, stdout="Submitted batch job 1234\n")
+        submit_spoints()
+
     status.write_status("initialized", spoints.get_spoint_path("stage_sbatch", {"x": 5}))
-    details2["sbatch_flags"]["--array"] = "1-2"
     with patch("subprocess.run"):
-        spoints.submit_spoints(sweep_names="sweep1", stage_names="stage_sbatch", test_submit=True, num_submits=None)
+        submit_spoints(sweep_names="sweep1", stage_names="stage_sbatch", test_submit=True)
 
 def test_check_submittable_dependency_checks(sandbox, env_dir):
     initialize(env_dir)
@@ -328,7 +311,7 @@ def test_check_submittable_dependency_checks(sandbox, env_dir):
     assert spoints.check_submittable("sweep1", "stage_child_conv", {"x": 5}) is True
 
 
-def test_get_submission_details_sbatch_profile_and_overrides(sandbox, env_dir):
+def test_sbatch_profile_and_overrides_script_generation(sandbox, env_dir):
     initialize(env_dir)
     os.makedirs("sbatch_profiles", exist_ok=True)
     with open("sbatch_profiles/gpu.json", "w") as f:
@@ -341,21 +324,27 @@ def test_get_submission_details_sbatch_profile_and_overrides(sandbox, env_dir):
         }, f)
 
     add_stage("stage_prof", sbatch_details=None, stage_variables=[], stage_dependencies=[])
+    env_data = {
+        "slurm_profile": "gpu",
+        "slurm_flags": {
+            "-t": "04:00:00",
+            "--gres": "gpu:2"
+        },
+        "resources": {"cpus": 1, "gpus": 1, "mem": "32G"}
+    }
     with open("stage_prof/env.json", "w") as f:
-        json.dump({
-            "sbatch_profile": "gpu",
-            "sbatch": {
-                "time": "04:00:00",
-                "gres": "gpu:2"
-            }
-        }, f)
+        json.dump(env_data, f)
 
-    stage_data = {"sbatch_details": None}
-    details = spoints.get_submission_details("stage_prof", stage_data)
-    assert details is not None
-    flags = details["sbatch_flags"]
-    assert flags["--partition"] == "gpu-a100"
-    assert flags["--time"] == "04:00:00"  # overridden by stage
-    assert flags["--nodes"] == 1
-    assert flags["--gres"] == "gpu:2"
-    assert flags["-J"] == "stage_prof"
+    dispatcher = SlurmDispatcher(server_url="", token="")
+    task = {
+        "sweep": "sweep1",
+        "stage": "stage_prof",
+        "spoint_dict": {},
+        "spoint_path": "stage_prof/spoints/."
+    }
+    script = dispatcher._build_sbatch_script(task, env_data)
+    assert "#SBATCH --partition=gpu-a100" in script
+    assert "#SBATCH -t 04:00:00" in script
+    assert "#SBATCH --nodes=1" in script
+    assert "#SBATCH --gres=gpu:2" in script
+    assert "#SBATCH -J snap_stage_prof" in script

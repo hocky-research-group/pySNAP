@@ -11,7 +11,8 @@ from typing import Dict, Any, Optional
 
 from snap_workflow.utils import path, io
 from snap_workflow.remote.io import load_local_remotes
-from snap_workflow.core.domain import spoints as spoint_tools
+from snap_workflow.core.domain import spoints as spoint_tools, stages as stage_tools, sweeps as sweep_tools, status as status_module
+from snap_workflow.core.params import params
 from snap_workflow.dispatcher.base import BaseDispatcher
 
 logger = logging.getLogger("snap_workflow.dispatcher.slurm")
@@ -22,8 +23,8 @@ class SlurmDispatcher(BaseDispatcher):
 
     def __init__(
         self,
-        server_url: str,
-        token: str,
+        server_url: Optional[str] = None,
+        token: Optional[str] = None,
         max_queued_jobs: int = 50,
         stages: str = "",
         sweeps: str = "",
@@ -70,8 +71,8 @@ class SlurmDispatcher(BaseDispatcher):
 
     @property
     def is_remote(self) -> bool:
-        """Returns True if this dispatcher manages a remote Slurm cluster over SSH."""
-        return bool(self.remote_host and self.remote_host != "local")
+        """Returns True if dispatching jobs to a remote cluster via SSH."""
+        return bool(self.remote_host)
 
     def get_available_resources(self) -> Dict[str, Any]:
         """Slurm delegates node-level scheduling to the cluster, offering virtually unlimited capacity."""
@@ -88,8 +89,8 @@ class SlurmDispatcher(BaseDispatcher):
     def _build_sbatch_script(self, task: Dict[str, Any], env_data: Dict[str, Any]) -> str:
         """Generates the SBATCH script content running SubprocessDispatcher for assigned SPoints."""
         stage = task["stage"]
-        sweep = task["sweep"]
-        spoint_dict = task["spoint_dict"]
+        sweep = task.get("sweep", "")
+        spoint_dict = task.get("spoint_dict", {})
         spoint_path = task["spoint_path"]
         root_dir = self.root if self.root is not None else "."
 
@@ -133,7 +134,7 @@ class SlurmDispatcher(BaseDispatcher):
                 lines.append(f"#SBATCH {k} {v}")
 
         lines.append("")
-        notify_url = f"http://127.0.0.1:{self.remote_port or 8080}" if self.is_remote else self.server_url
+        notify_url = f"http://127.0.0.1:{self.remote_port or 8080}" if self.is_remote else (self.server_url or "")
 
         if self.is_remote:
             lines.append("# Forward port back to submission host")
@@ -160,11 +161,17 @@ class SlurmDispatcher(BaseDispatcher):
         if not python_path or python_path == "FIXME":
             python_path = "python3"
 
-        lines.append(f"exec {python_path} -m snap_workflow.dispatcher.runner \\")
-        lines.append(f"  {notify_url} '{self.token}' \\")
-        lines.append(f"  --host '{self.host}' \\")
-        lines.append(f"  --stage '{stage}' \\")
-        lines.append(f"  --assigned-spoints '{rel_spoint_path}'")
+        assigned_list = task.get("assigned_spoints") or [rel_spoint_path]
+        assigned_str = ",".join(assigned_list)
+
+        runner_cmd_parts = [f"exec {python_path} -m snap_workflow.dispatcher.runner"]
+        if notify_url and self.token:
+            runner_cmd_parts.append(f"  {notify_url} '{self.token}' \\")
+        runner_cmd_parts.append(f"  --host '{self.remote_host or self.host}' \\")
+        runner_cmd_parts.append(f"  --stage '{stage}' \\")
+        runner_cmd_parts.append(f"  --assigned-spoints '{assigned_str}'")
+
+        lines.append(" \\\n".join(runner_cmd_parts))
 
         return "\n".join(lines)
 
@@ -246,6 +253,21 @@ class SlurmDispatcher(BaseDispatcher):
             logger.error("Failed to submit sbatch job for %s: %s", spoint_path, e.stderr)
         except Exception as e:
             logger.error("Unexpected error submitting sbatch for %s: %s", spoint_path, e)
+
+    def submit_job(self, task: Dict[str, Any], test_submit: bool = False) -> Optional[str]:
+        """Submits an sbatch job for the given task, or returns the script if test_submit=True."""
+        if test_submit:
+            stage = task["stage"]
+            env_base = os.path.join(self.root if self.root is not None else ".", stage, "env")
+            try:
+                env_data = io.load_config(env_base, full_path=True)
+            except Exception:
+                env_data = {}
+            script_content = self._build_sbatch_script(task, env_data)
+            print(script_content)
+            return None
+        self.dispatch_task(task)
+        return self.active_jobs.get(task["spoint_path"], {}).get("job_id")
 
     def reap_finished(self) -> None:
         """Polls active Slurm job IDs via squeue to remove completed jobs from active tracking."""
@@ -333,6 +355,73 @@ def slurm_dispatcher_loop(
         remote_port=remote_port
     )
     dispatcher.run()
+
+
+def submit_spoints(
+    sweep_names: Optional[Union[str, list]] = None,
+    stage_names: Optional[Union[str, list]] = None,
+    test_submit: bool = False,
+    no_sbatch: bool = False,
+    num_submits: Optional[int] = None
+) -> None:
+    """Submits or executes ready SPoints across stages and sweeps using the server SPointScheduler and SlurmDispatcher."""
+    from snap_workflow.server.scheduler import SPointScheduler
+
+    root = path.get_root()
+    os.makedirs(os.path.join(root, "slurm_out"), exist_ok=True)
+
+    stages = stage_tools.load_stages()
+    scheduler = SPointScheduler()
+    dispatcher = SlurmDispatcher(server_url="", token="", max_queued_jobs=1000)
+
+    # Set parameters for requested stages
+    target_stages = [stage_names] if isinstance(stage_names, str) and stage_names != "all" else (list(stages.keys()) if (stage_names is None or stage_names == "all") else list(stage_names))
+    for st_name in target_stages:
+        try:
+            params.set_params(stage_name=st_name)
+        except Exception as e:
+            print(f"Cannot submit spoints for stage {st_name}: {e}")
+
+    stage_envs = {}
+    for st_name in stages:
+        env_base = os.path.join(root, st_name, "env")
+        try:
+            stage_envs[st_name] = io.load_config(env_base, full_path=True)
+        except Exception:
+            stage_envs[st_name] = {}
+
+    while (task := scheduler.get_task(stages=stage_names, sweeps=sweep_names)) is not None:
+        stage_name = task["stage"]
+        env_data = stage_envs.get(stage_name, {})
+        has_slurm = bool(
+            env_data.get("slurm_profile")
+            or env_data.get("slurm_flags")
+            or stages.get(stage_name, {}).get("sbatch_details")
+            or env_data.get("sbatch")
+        )
+
+        sp_str = spoint_tools.get_spoint_string(task["spoint_dict"])
+
+        if has_slurm and not no_sbatch:
+            print(f"Submitting spoint for stage {stage_name} to Slurm: {sp_str}")
+            dispatcher.submit_job(task, test_submit=test_submit)
+            if not test_submit:
+                status_module.write_status(status_module.SUBMITTED, task["spoint_path"])
+        else:
+            print(f"Running {stage_name}: {sp_str}")
+            if not test_submit:
+                script_path = os.path.join(root, ".workflow", "spoint.sh")
+                completed_job = subprocess.run(["bash", script_path, task["spoint_path"]], cwd=root)
+                if completed_job.returncode == 0:
+                    print(f"Completed {stage_name}: {sp_str}")
+                    status_module.write_status(status_module.COMPLETE, task["spoint_path"])
+                else:
+                    status_module.write_status(status_module.ERROR, task["spoint_path"])
+                    print(f"Error running {stage_name}: {sp_str}")
+            print()
+
+    print()
+    status_module.print_status()
 
 
 if __name__ == "__main__":

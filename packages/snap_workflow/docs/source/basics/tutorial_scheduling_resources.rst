@@ -3,40 +3,45 @@ Auto-Scheduling & Resource Management
 
 Efficient resource management is a key feature of ``snap_workflow``. This page details how to configure resource requirements, pack jobs concurrently on workstations, and coordinate large-scale runs on Slurm clusters.
 
-Stage-Specific Environment Configurations (env.yaml)
-----------------------------------------------------
+Stage-Specific Environment Configurations (env.yaml / env.json)
+--------------------------------------------------------------
 
-Each stage directory contains an ``env.yaml`` (or ``env.json``) configuration file that manages the execution environment, hardware limits, and Slurm options for its SPoints.
+Each stage directory contains an ``env.yaml`` (or ``env.json``) configuration file that manages the execution environment, pre-execution commands, Slurm options, and hardware resource limits.
 
 Here is a comprehensive ``env.yaml`` example:
 
 .. code-block:: yaml
 
-   # Path to the python interpreter executing the simulation script
-   python_path: /home/user/miniconda3/envs/cfd/bin/python
+   # Path to the python interpreter executing the simulation script (empty defaults to project/global python)
+   python_path: ""
 
-   # Shell commands executed prior to starting the run (e.g. module loading)
-   activate_cmd:
-     - module load cuda/12.1
-     - source /home/user/venv/bin/activate
+   # Shell commands executed prior to starting the run (e.g. module loading, environment setup)
+   setup_cmds:
+     - module load cuda/12.2
+     - export OMP_NUM_THREADS=1
 
-   # Custom environment variables exported during run
-   env_vars:
-     OMP_NUM_THREADS: "4"
-     CUDA_VISIBLE_DEVICES: "0"
+   # Number of primary SPoints assigned to each batch submission
+   spoints_per_sbatch: 1
 
-   # Compute hardware resource limits for workstation packing
+   # Number of sequential Slurm submissions chained with `--dependency=afterany:<job_id>` for multi-day continuation runs
+   chained_submissions: 1
+
+   # Optional reference to a reusable cluster profile from sbatch_profiles/ or remotes.json
+   slurm_profile: gpu
+
+   # Explicit user-defined Slurm directives formatted directly into #SBATCH header lines
+   slurm_flags:
+     -p: gpu-a100
+     -N: 1
+     -n: 1
+     -t: 02:00:00
+     -A: PHY21004
+
+   # Compute hardware resource limits used for node packing by SubprocessDispatcher
    resources:
      cpus: 4
      gpus: 1
-     mem: 8G
-
-   # Nested Slurm batch directives (used during direct 'workflow spoint submit' or by the auto-scheduler when Slurm is available)
-   sbatch:
-     partition: gpu-batch
-     time: 04:00:00
-     nodes: 1
-     ntasks-per-node: 1
+     mem: 16G
 
 Local vs. Remote Env Configurations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

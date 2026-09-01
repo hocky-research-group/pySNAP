@@ -173,11 +173,15 @@ Each stage directory contains an `env.json` specifying execution parameters:
 
 ```json
 {
-  "python_path": "python3",
-  "activate_cmd": "source ~/.bashrc && micromamba activate pySNAP",
-  "env_vars": {
-    "OMP_NUM_THREADS": "1"
-  },
+  "python_path": "",
+  "setup_cmds": [
+    "module load cuda/12.2",
+    "export OMP_NUM_THREADS=1"
+  ],
+  "spoints_per_sbatch": 1,
+  "chained_submissions": 1,
+  "slurm_profile": "",
+  "slurm_flags": {},
   "resources": {
     "cpus": 2,
     "gpus": 1,
@@ -187,10 +191,13 @@ Each stage directory contains an `env.json` specifying execution parameters:
 ```
 
 ### Environment Variable Definitions:
-- **`python_path`**: Absolute path or binary name for the Python executable (e.g. `python3` or `/home/user/micromamba/envs/pySNAP/bin/python`).
-- **`activate_cmd`**: Shell command executed to initialize the environment prior to running stage scripts (e.g. `source ~/.bashrc && micromamba activate pySNAP`).
-- **`env_vars`**: Dictionary of environment variables set in the subprocess environment during execution (e.g. `{"OMP_NUM_THREADS": "1"}`).
-- **`resources`**: Dictionary specifying resource requirements per sweep point:
+- **`python_path`**: Absolute path or binary name for the Python executable (defaults to project/global python if empty).
+- **`setup_cmds`**: List of shell commands executed to initialize the environment prior to running stage scripts (e.g. `["module load cuda/12.2", "export OMP_NUM_THREADS=1"]`).
+- **`spoints_per_sbatch`**: Number of primary SPoints assigned to each batch submission.
+- **`chained_submissions`**: Number of sequential Slurm submissions chained with `--dependency=afterany:<job_id>` for multi-day continuation runs.
+- **`slurm_profile`**: Name of reusable cluster profile template.
+- **`slurm_flags`**: Explicit user-defined Slurm directives formatted directly into `#SBATCH` header lines.
+- **`resources`**: Dictionary specifying resource requirements per sweep point for node packing:
   - `cpus`: Number of CPU cores requested.
   - `gpus`: Number of GPU devices requested (0 for CPU-only).
   - `mem`: RAM allocation string (e.g. `"4G"`, `"8G"`).

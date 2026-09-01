@@ -40,8 +40,8 @@ class BaseDispatcher(ABC):
 
     def __init__(
         self,
-        server_url: str,
-        token: str,
+        server_url: Optional[str] = None,
+        token: Optional[str] = None,
         stages: str = "",
         sweeps: str = "",
         exclude_stages: str = "",
@@ -50,7 +50,7 @@ class BaseDispatcher(ABC):
         connect_timeout: float = 5.0,
         host: Optional[str] = None
     ):
-        self.server_url = server_url.rstrip("/")
+        self.server_url = server_url.rstrip("/") if server_url else None
         self.token = token
         self.stages = stages
         self.sweeps = sweeps
@@ -73,6 +73,8 @@ class BaseDispatcher(ABC):
         **kwargs
     ) -> Optional[Dict[str, Any]]:
         """Sends an authenticated HTTP request to the workflow server."""
+        if not self.server_url or not self.token:
+            return None
         return send_request(url, self.token, data=data, retries=retries, backoff=backoff, timeout=timeout, *args, **kwargs)
 
     def get_available_resources(self) -> Dict[str, Any]:
@@ -81,6 +83,8 @@ class BaseDispatcher(ABC):
 
     def request_work(self) -> Optional[Dict[str, Any]]:
         """Polls the server for an unlocked SPoint task matching filter criteria."""
+        if not self.server_url or not self.token:
+            return None
         params = {}
         if self.stages:
             params["stages"] = self.stages
@@ -115,6 +119,8 @@ class BaseDispatcher(ABC):
         extra_data: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Notifies the workflow server that an SPoint task has started executing."""
+        if not self.server_url or not self.token:
+            return True
         url = f"{self.server_url}/api/tasks/start"
         payload = {
             "spoint_path": spoint_path,
@@ -129,7 +135,7 @@ class BaseDispatcher(ABC):
 
     def send_heartbeats(self) -> None:
         """Sends heartbeats for all active in-flight tasks to extend server lease TTL."""
-        if not self.active_jobs:
+        if not self.server_url or not self.token or not self.active_jobs:
             return
         url = f"{self.server_url}/api/tasks/heartbeat"
         payload = {
@@ -147,6 +153,8 @@ class BaseDispatcher(ABC):
         extra_data: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Notifies the workflow server that an SPoint task has completed."""
+        if not self.server_url or not self.token:
+            return True
         url = f"{self.server_url}/update_status"
         payload = {
             "spoint_path": spoint_path,
@@ -161,6 +169,8 @@ class BaseDispatcher(ABC):
 
     def notify_shutdown(self) -> None:
         """Notifies the server that this dispatcher is shutting down."""
+        if not self.server_url or not self.token:
+            return
         url = f"{self.server_url}/notify_worker_shutdown"
         payload = {
             "worker_id": getattr(self, "worker_id", self.host or "unknown"),
@@ -174,7 +184,7 @@ class BaseDispatcher(ABC):
 
     def run(self) -> None:
         """Main template method loop executing the dispatcher lifecycle."""
-        logger.info(f"Starting dispatcher targeting {self.server_url} (host: {self.host or 'local'})")
+        logger.info(f"Starting dispatcher targeting {self.server_url or 'standalone'} (host: {self.host or 'local'})")
         last_contact = time.time()
         last_heartbeat = time.time()
         try:
@@ -182,7 +192,7 @@ class BaseDispatcher(ABC):
                 self.reap_finished()
 
                 # Periodic heartbeat check (every 15s)
-                if self.active_jobs and (time.time() - last_heartbeat >= 15.0):
+                if self.server_url and self.active_jobs and (time.time() - last_heartbeat >= 15.0):
                     self.send_heartbeats()
                     last_heartbeat = time.time()
 
@@ -197,7 +207,7 @@ class BaseDispatcher(ABC):
                             break
                         elif status_val == "spoint":
                             self.dispatch_task(task)
-                    else:
+                    elif self.server_url:
                         # Server unreachable or error
                         if self.connect_timeout and (time.time() - last_contact >= self.connect_timeout):
                             logger.error(f"Failed to communicate with server for {self.connect_timeout}s. Exiting.")

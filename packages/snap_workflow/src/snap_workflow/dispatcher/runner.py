@@ -24,8 +24,8 @@ class SubprocessDispatcher(BaseDispatcher):
 
     def __init__(
         self,
-        server_url: str,
-        token: str,
+        server_url: Optional[str] = None,
+        token: Optional[str] = None,
         cpus_total: Optional[int] = None,
         gpus_total: Optional[int] = None,
         mem_total: Optional[float] = None,
@@ -110,6 +110,56 @@ class SubprocessDispatcher(BaseDispatcher):
         """Returns True if there is remaining CPU/memory capacity to accept another task."""
         res = self.get_available_resources()
         return res["cpus_avail"] > 0 and res["mem_avail"] > 0
+
+    def request_work(self) -> Optional[Dict[str, Any]]:
+        """Requests work from the server or falls back to local assigned SPoints in standalone mode."""
+        # 1. Try server if configured
+        if self.server_url and self.token:
+            task = super().request_work()
+            if task:
+                return task
+
+        # 2. If no server or server returned no task, check pending assigned SPoints
+        if self.pending_assigned:
+            for item in list(self.pending_assigned):
+                item_norm = os.path.normpath(item).rstrip("/")
+                parts = item_norm.split(os.sep)
+                if "spoints" in parts:
+                    idx = parts.index("spoints")
+                    stage_name = parts[idx - 1] if idx > 0 else "stage"
+                    spoint_str = parts[idx + 1] if idx + 1 < len(parts) else "."
+                else:
+                    stage_name = parts[0] if len(parts) > 1 else "stage"
+                    spoint_str = parts[-1]
+
+                spoint_dict = spoint_tools.parse_spoint_string(spoint_str)
+                root_dir = self.root if self.root is not None else os.getcwd()
+                full_sp_path = os.path.join(root_dir, stage_name, "spoints", spoint_str)
+
+                # Check if already complete
+                try:
+                    cur_status = status_module.load_status(full_sp_path)
+                except Exception:
+                    cur_status = None
+
+                if cur_status == "complete":
+                    self.pending_assigned.discard(item)
+                    self.completed_assigned.add(item)
+                    continue
+
+                return {
+                    "status": "spoint",
+                    "sweep": "",
+                    "stage": stage_name,
+                    "spoint_dict": spoint_dict,
+                    "spoint_path": full_sp_path
+                }
+
+        # If standalone and nothing remains to execute, signal shutdown
+        if not self.server_url and not self.pending_assigned and not self.active_jobs:
+            self.shutdown_requested = True
+
+        return None
 
     def dispatch_task(self, task: Dict[str, Any]) -> None:
         """Acquires hardware resources and spawns the SPoint subprocess."""
@@ -306,18 +356,8 @@ def dispatcher_loop(
                 server_url = server_url or f"http://{t_host}:{t_port}"
                 token = token or os.getenv("SERVER_TOKEN")
 
-    if not server_url or not token:
+    if (not server_url or not token) and not assigned_spoints:
         raise ValueError("Manager server connection details not found. Please specify server_url and token, or ensure .workflow/server exists.")
-
-    try:
-        root = path.get_root()
-        log_dir = os.path.join(root, "workers", "logs")
-        os.makedirs(log_dir, exist_ok=True)
-        w_id = worker_id or f"{host}_{int(time.time())}"
-        log_file_path = os.path.join(log_dir, f"worker_{w_id}.log")
-        setup_logging(log_file=log_file_path)
-    except Exception:
-        pass
 
     dispatcher = SubprocessDispatcher(
         server_url=server_url,

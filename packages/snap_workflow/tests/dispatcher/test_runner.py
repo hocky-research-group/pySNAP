@@ -166,3 +166,72 @@ def test_subprocess_dispatcher_assigned_spoints_completion(sandbox):
         assert len(dispatcher.active_jobs) == 0
         assert sp_dir in dispatcher.completed_assigned
         assert dispatcher.shutdown_requested is True
+
+
+def test_subprocess_dispatcher_standalone_mode(sandbox):
+    from snap_workflow.dispatcher.runner import SubprocessDispatcher
+    from snap_workflow.core.domain import status as status_module
+    initialize(force=True)
+
+    sp_dir1 = os.path.join(os.getcwd(), "stage1", "spoints", "x_10")
+    sp_dir2 = os.path.join(os.getcwd(), "stage1", "spoints", "x_20")
+    os.makedirs(os.path.join(sp_dir1, ".spoint_info"), exist_ok=True)
+    os.makedirs(os.path.join(sp_dir2, ".spoint_info"), exist_ok=True)
+    status_module.write_status("initialized", sp_dir1)
+    status_module.write_status("initialized", sp_dir2)
+
+    dispatcher = SubprocessDispatcher(
+        server_url=None,
+        token=None,
+        cpus_total=4,
+        host="slurm_node",
+        assigned_spoints=[sp_dir1, sp_dir2]
+    )
+
+    assert dispatcher.server_url is None
+    assert len(dispatcher.assigned_spoints) == 2
+
+    # Request first task in standalone mode
+    task1 = dispatcher.request_work()
+    assert task1 is not None
+    assert task1["status"] == "spoint"
+    assert task1["stage"] == "stage1"
+    assert task1["spoint_dict"] in ({"x": "10"}, {"x": "20"})
+
+    # Mock subprocess run for dispatch
+    mock_proc1 = MagicMock()
+    mock_proc1.pid = 12345
+    mock_proc1.poll.return_value = None
+
+    with patch("subprocess.Popen", return_value=mock_proc1):
+        dispatcher.dispatch_task(task1)
+        assert task1["spoint_path"] in dispatcher.active_jobs
+
+    # Request second task
+    task2 = dispatcher.request_work()
+    assert task2 is not None
+    assert task2["spoint_dict"] in ({"x": "10"}, {"x": "20"})
+    assert task2["spoint_dict"] != task1["spoint_dict"]
+
+    mock_proc2 = MagicMock()
+    mock_proc2.pid = 12346
+    mock_proc2.poll.return_value = None
+
+    with patch("subprocess.Popen", return_value=mock_proc2):
+        dispatcher.dispatch_task(task2)
+        assert task2["spoint_path"] in dispatcher.active_jobs
+
+    # No more pending assigned tasks
+    task3 = dispatcher.request_work()
+    assert task3 is None
+
+    # Simulate completion of both jobs
+    mock_proc1.poll.return_value = 0
+    mock_proc2.poll.return_value = 0
+    status_module.write_status("complete", sp_dir1)
+    status_module.write_status("complete", sp_dir2)
+
+    dispatcher.reap_finished()
+    assert len(dispatcher.active_jobs) == 0
+    assert len(dispatcher.completed_assigned) == 2
+    assert dispatcher.shutdown_requested is True

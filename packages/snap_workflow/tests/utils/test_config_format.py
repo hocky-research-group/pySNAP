@@ -58,14 +58,19 @@ def test_stage_add_yaml(sandbox, env_dir):
             
         # validate_stage_resources should run without exceptions
         stages.validate_stage_resources()
-        
-        details = spoints.get_submission_details("stage_yaml", {"sbatch_details": {
-            "num_jobs": 1,
-            "multi_submission": False,
-            "partition": "default_part"
-        }})
-        assert details["sbatch_flags"]["--partition"] == "gpu_part"
-        assert details["sbatch_flags"]["--time"] == "24:00:00"
+
+        from snap_workflow.dispatcher.slurm import SlurmDispatcher
+        dispatcher = SlurmDispatcher(server_url="", token="")
+        task = {
+            "sweep": "sweep1",
+            "stage": "stage_yaml",
+            "spoint_dict": {},
+            "spoint_path": "stage_yaml/spoints/."
+        }
+        env_data = io.load_config("stage_yaml/env", full_path=True)
+        script = dispatcher._build_sbatch_script(task, env_data)
+        assert "#SBATCH --partition=gpu_part" in script
+        assert "#SBATCH --time=24:00:00" in script
 
 def test_cli_init_prompt_json(sandbox, env_dir):
     # Test main_init interactive prompt defaulting to json

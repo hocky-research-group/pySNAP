@@ -366,3 +366,49 @@ class SPointScheduler:
                         return False
 
         return True
+
+    def get_task(
+        self,
+        stages: Optional[Union[str, List[str]]] = None,
+        sweeps: Optional[Union[str, List[str]]] = None,
+        exclude_stages: Optional[Union[str, List[str]]] = None,
+        exclude_sweeps: Optional[Union[str, List[str]]] = None,
+        target_spoints: Optional[Union[str, List[str]]] = None,
+        host: str = "local",
+        worker_id: Optional[str] = None,
+        cpus_avail: int = 999999,
+        gpu_avail: int = 999999,
+        mem_avail: float = 999999.0,
+        lease_ttl: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Returns the next ready SPoint task dictionary or None if no tasks are available."""
+        def _to_list(val):
+            if val is None or val == "" or val == "all":
+                return None
+            if isinstance(val, str):
+                return [x.strip() for x in val.split(",") if x.strip()]
+            return list(val)
+
+        res = self.acquire_next_available(
+            cpus_avail=cpus_avail,
+            gpu_avail=gpu_avail,
+            mem_avail=mem_avail,
+            allowed_stages=_to_list(stages),
+            allowed_sweeps=_to_list(sweeps),
+            exclude_stages=_to_list(exclude_stages),
+            exclude_sweeps=_to_list(exclude_sweeps),
+            target_spoints=_to_list(target_spoints),
+            host=host,
+            worker_id=worker_id,
+            lease_ttl=lease_ttl
+        )
+        if res:
+            sweep_name, stage_name, spoint_dict, spoint_path = res
+            return {
+                "status": "spoint",
+                "sweep": sweep_name,
+                "stage": stage_name,
+                "spoint_dict": spoint_dict,
+                "spoint_path": spoint_path
+            }
+        return None

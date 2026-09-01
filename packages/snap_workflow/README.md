@@ -193,40 +193,41 @@ workflow remote auto my_workstation
 
 ## Configuration Files
 
-### `env.yaml` (per-stage)
+### `env.yaml` / `env.json` (per-stage)
 
-Controls the execution environment, CPU/GPU/Memory requirements, optional sbatch profile reference, and nested Slurm sbatch flags:
+Controls the execution environment, pre-execution commands, SPoint bundling, Slurm continuation chaining, Slurm profile/flags, and hardware resource limits:
 
 ```yaml
 # Path to Python interpreter used to run simulation scripts.
-# Run `which python` in your environment to get the exact path.
-python_path: /path/to/python
+python_path: ""
 
-# Optional shell commands executed before invoking the simulation (e.g. module loading, virtualenv activation).
-activate_cmd:
-  - module load cuda/12.1
-  - source /path/to/venv/bin/activate
+# Shell commands executed prior to invoking the simulation (e.g. module loading, environment exports).
+setup_cmds:
+  - module load cuda/12.2
+  - export OMP_NUM_THREADS=1
 
-# Optional custom environment variables exported during execution.
-env_vars:
-  OMP_NUM_THREADS: "4"
-  CUDA_VISIBLE_DEVICES: "0"
+# Number of primary SPoints assigned to each batch submission.
+spoints_per_sbatch: 1
 
-# Compute resource limits requested for each individual SPoint.
+# Number of sequential Slurm submissions chained with `--dependency=afterany:<job_id>` for multi-day continuation runs.
+chained_submissions: 1
+
+# Optional reference to a shared cluster profile from sbatch_profiles/ or remotes.json
+slurm_profile: gpu
+
+# Explicit user-defined Slurm directives formatted directly into `#SBATCH` header lines.
+slurm_flags:
+  -p: gpu-a100
+  -N: 1
+  -n: 1
+  -t: 02:00:00
+  -A: PHY21004
+
+# Compute resource limits requested for node packing by SubprocessDispatcher.
 resources:
   cpus: 4
   gpus: 1
   mem: 16G
-
-# Optional reference to a shared sbatch profile from sbatch_profiles/
-sbatch_profile: gpu
-
-# Optional Slurm directives used when submitting jobs directly via `workflow spoint submit`.
-sbatch:
-  partition: gpu-batch
-  time: 08:00:00
-  nodes: 1
-  ntasks-per-node: 1
 ```
 
 ### `sbatch_profiles/*.yaml` (allocation profiles)

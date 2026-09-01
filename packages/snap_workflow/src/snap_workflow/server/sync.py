@@ -183,26 +183,26 @@ def transit_sync_dependency(source_remote, source_host, source_path, dest_remote
 
 
 def pull_worker_logs(remote_type, host, remote_path, verbose=False):
-    """Pulls all worker logs from the remote Spoke back to the local Hub's workers/logs directory."""
+    """Pulls all slurm logs from the remote Spoke back to the local Hub's slurm_out directory."""
     if remote_type == "local":
         return
 
     root = path.get_root()
-    local_dest = os.path.join(root, "workers", "logs")
+    local_dest = os.path.join(root, "slurm_out")
     os.makedirs(local_dest, exist_ok=True)
 
     rsync_flag = "-avz" if verbose else "-az"
     rsync_cmd = [
         "rsync", rsync_flag,
         "-e", "ssh " + " ".join(get_control_path_args()),
-        f"{host}:{remote_path}/workers/logs/", f"{local_dest}/"
+        f"{host}:{remote_path}/slurm_out/", f"{local_dest}/"
     ]
     if verbose:
-        logger.info("[SYNC] Pulling worker logs: %s", " ".join(rsync_cmd))
+        logger.info("[SYNC] Pulling slurm logs: %s", " ".join(rsync_cmd))
     try:
         subprocess.run(rsync_cmd, check=True, capture_output=not verbose)
     except Exception as e:
-        logger.error("Failed to pull worker logs: %s", e)
+        logger.debug("Remote slurm_out logs not present or failed to pull from %s: %s", host, e)
 
 
 def push_workflow_structure(remote_name_or_host, remote_path=None, verbose=False):
@@ -250,7 +250,6 @@ def push_workflow_structure(remote_name_or_host, remote_path=None, verbose=False
         "--exclude", "**/env.yaml",
         "--exclude", "**/env.yml",
         "--exclude", ".workflow/config.json",
-        "--exclude", "workers/logs/",
         f"{root}/", dest_uri
     ]
     if verbose:
@@ -322,5 +321,5 @@ def sync_remote(remote_name_or_host, direction="push", stages=None, sweeps=None,
     if direction in ["pull", "both", "all"]:
         pull_worker_logs("remote", host, remote_path, verbose=verbose)
         pull_spoint_statuses(host, remote_path, stages=stages, sweeps=sweeps, verbose=verbose)
-        print(f"Pulled status, worker logs, and data from '{remote_name_or_host}' ({host}:{remote_path}).")
+        print(f"Pulled status, logs, and data from '{remote_name_or_host}' ({host}:{remote_path}).")
 

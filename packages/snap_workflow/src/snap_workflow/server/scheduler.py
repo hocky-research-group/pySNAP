@@ -2,7 +2,7 @@ import os
 import time
 import itertools
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 
 from snap_workflow.utils import path, io
 from snap_workflow.utils.constants import PARAMS

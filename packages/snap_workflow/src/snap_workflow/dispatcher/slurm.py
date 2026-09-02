@@ -7,7 +7,7 @@ import shlex
 import logging
 import argparse
 import subprocess
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union, List
 
 from snap_workflow.utils import path, io
 from snap_workflow.remote.io import load_local_remotes

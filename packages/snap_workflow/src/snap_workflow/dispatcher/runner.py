@@ -6,7 +6,7 @@ import signal
 import shutil
 import logging
 import subprocess
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 
 from snap_workflow.utils.constants import SERVER_INFO
 from snap_workflow.utils import path, io

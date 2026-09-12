@@ -78,17 +78,21 @@ class ResourcePool:
     def __init__(self, cpus_total: Optional[int] = None, gpus_total: Optional[int] = None):
         self._lock = threading.Lock()
 
-        if cpus_total is not None and cpus_total > 0:
-            self.all_cpus: List[int] = list(range(cpus_total))
+        # Cores this process may actually run on. Under a batch scheduler the job's
+        # cgroup exposes an arbitrary subset of the node's cores, and pinning to any
+        # core outside it fails.
+        if hasattr(os, "sched_getaffinity"):
+            try:
+                allowed = sorted(os.sched_getaffinity(0))
+            except Exception:
+                allowed = list(range(os.cpu_count() or 1))
         else:
-            # Detect baseline CPU cores
-            if hasattr(os, "sched_getaffinity"):
-                try:
-                    self.all_cpus = sorted(list(os.sched_getaffinity(0)))
-                except Exception:
-                    self.all_cpus = list(range(os.cpu_count() or 1))
-            else:
-                self.all_cpus = list(range(os.cpu_count() or 1))
+            allowed = list(range(os.cpu_count() or 1))
+
+        if cpus_total is not None and cpus_total > 0:
+            self.all_cpus: List[int] = allowed[:cpus_total]
+        else:
+            self.all_cpus = allowed
 
         # Detect baseline GPU IDs
         cuda_vis = os.getenv("CUDA_VISIBLE_DEVICES")

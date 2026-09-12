@@ -281,6 +281,10 @@ def build_filters(Filter):# {{{
         print("    ",filt_name,filt_info['class'])
 
         options = get_options(filt_info)
+        # A parameter file has no tuples, and some filters insist on one:
+        # hoomd.filter.Rigid takes its flags as a tuple and refuses a list.
+        options = {key: tuple(value) if isinstance(value, list) else value
+                   for key, value in options.items()}
         if filt_info["composite"]:
             filt_comps = [filters[name] for name in options]
             print("    "*2,"Components: ", options)
@@ -442,6 +446,7 @@ def build_rigid(particles,molecules):# {{{
         from snap_simulate.system import build_rigid
         import hoomd
         rigid = hoomd.md.constrain.Rigid()
+        from snap_simulate.system.rigid import rigid_constituents
         for mol_name,mol in molecules.items():
             if not dict_defines(mol,"rigid") or not mol["rigid"]:
                 continue
@@ -449,11 +454,13 @@ def build_rigid(particles,molecules):# {{{
             positions = mol["particle_positions"]
             type_id = mol["particle_typeid"]
             names = np.array(particles["types"])[type_id]
+            # A molecule may be rigid only in its core, the rest of it staying free.
+            last = rigid_constituents(mol, len(type_id)) + 1
 
             rigid.body[names[0]] = {
-                                "constituent_types" : names[1:],
-                                "positions"   : positions[1:],
-                                "orientations" : orientations[1:]}
+                                "constituent_types" : names[1:last],
+                                "positions"   : positions[1:last],
+                                "orientations" : orientations[1:last]}
         return rigid
     #}}}
 #: Where a stage records the timestep it began at, so a resumed run knows how much of

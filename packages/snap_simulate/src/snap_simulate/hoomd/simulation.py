@@ -456,6 +456,123 @@ def build_rigid(particles,molecules):# {{{
                                 "orientations" : orientations[1:]}
         return rigid
     #}}}
+#: Where a stage records the timestep it began at, so a resumed run knows how much of
+#: its length it has already covered.
+STAGE_START_FILE = "stage_start_timestep.txt"
+
+
+def stage_trajectory_files(params):# {{{
+    """Return the GSD trajectory filenames this stage writes.
+
+    params: the parameter tree, whose "writers" section declares the output.
+    """
+    writers = params["writers"] if dict_defines(params, "writers") else {}
+    paths = []
+    for info in (writers or {}).values():
+        if not isinstance(info, dict) or info.get("class") != "GSD":
+            continue
+        filename = (info.get("options") or {}).get("filename")
+        if filename:
+            paths.append(filename)
+    return paths# }}}
+
+
+def _has_frames(path):# {{{
+    """Return True if `path` is a GSD file holding at least one frame."""
+    import gsd.hoomd
+    if not os.path.isfile(path):
+        return False
+    try:
+        with gsd.hoomd.open(path) as traj:
+            return len(traj) > 0
+    except Exception:
+        return False# }}}
+
+
+def resolve_continuation(params):# {{{
+    """Return the trajectory this stage should resume from, or None to start fresh.
+
+    A `continue_file` named in the simulation parameters wins. Otherwise a stage
+    resumes from its own trajectory, which is what makes a stage restartable by
+    submitting it again: the run left off where that file ends.
+
+    params: the parameter tree.
+    """
+    sim_info = params["simulation"]
+    explicit = sim_info.get("continue_file") if hasattr(sim_info, "get") else None
+    if explicit:
+        return explicit if _has_frames(explicit) else None
+    for path in stage_trajectory_files(params):
+        if _has_frames(path):
+            return path
+    return None# }}}
+
+
+def _append_to_continued_trajectories(params, continue_path):# {{{
+    """Switch the GSD writer that owns `continue_path` to appending.
+
+    A writer left in "wb" truncates on the next run, destroying the very trajectory the
+    run resumed from.
+
+    params: the parameter tree, modified in place.
+    continue_path: the trajectory being resumed from.
+    """
+    writers = params["writers"] if dict_defines(params, "writers") else {}
+    for info in (writers or {}).values():
+        if not isinstance(info, dict) or info.get("class") != "GSD":
+            continue
+        options = info.setdefault("options", {})
+        if options.get("filename") == continue_path:
+            options["mode"] = "ab"# }}}
+
+
+def _record_stage_start(timestep):# {{{
+    """Write the timestep this stage began at, for a later resumption to read."""
+    try:
+        with open(STAGE_START_FILE, "w") as f:
+            f.write(str(int(timestep)))
+    except OSError as err:
+        logger.warning("Could not record the stage start timestep: %s", err)# }}}
+
+
+def stage_start_timestep(sim, continue_path=None):# {{{
+    """Return the timestep at which this stage began.
+
+    Read from the file the stage wrote when it first ran. Where that is missing — a run
+    started before this was recorded — the first frame of the trajectory being resumed
+    from is used instead, which is accurate to one output period.
+
+    sim: the simulation, whose timestep gives the answer on a fresh start.
+    continue_path: the trajectory being resumed from, if any.
+    """
+    if os.path.isfile(STAGE_START_FILE):
+        try:
+            with open(STAGE_START_FILE) as f:
+                return int(f.read().strip())
+        except (OSError, ValueError):
+            pass
+    if continue_path and _has_frames(continue_path):
+        import gsd.hoomd
+        with gsd.hoomd.open(continue_path) as traj:
+            return int(traj[0].configuration.step)
+    return int(sim.timestep)# }}}
+
+
+def remaining_steps(sim, total_steps, continue_path=None):# {{{
+    """Return how many of this stage's steps are left to run.
+
+    A stage that was interrupted and submitted again picks up the steps it has yet to
+    run; one that already finished its length returns zero rather than running again.
+
+    sim: the simulation, already restored to where the stage left off.
+    total_steps: the stage's full length, from run_details.
+    continue_path: the trajectory resumed from, if any.
+    """
+    start = stage_start_timestep(sim, continue_path)
+    done = max(0, int(sim.timestep) - start)
+    return max(0, int(total_steps) - done)# }}}
+
+
 def build_simulation(params, output_file = None, print_objs = False):# {{{
     import hoomd
     from datetime import datetime
@@ -514,7 +631,15 @@ def build_simulation(params, output_file = None, print_objs = False):# {{{
     
 
     sim = hoomd.Simulation(device=proc, seed=seed)
+    # A stage resumes from its own trajectory when one is there, so re-submitting an
+    # interrupted stage continues it instead of starting over.
+    continue_path = resolve_continuation(params)
+    if continue_path:
+        sim_info = dict(sim_info)
+        sim_info["continue_file"] = continue_path
     continue_successful = _set_initial_configuration(sim, sim_info, "continue_file")
+    if continue_successful:
+        _append_to_continued_trajectories(params, continue_path)
     if not continue_successful:
         init_successful = _set_initial_configuration(sim, sim_info, "init_file")
         if not init_successful:
@@ -525,7 +650,10 @@ def build_simulation(params, output_file = None, print_objs = False):# {{{
             therm_options["filter"] = hoomd_objects["filters"][therm_info["filter"]]
             sim.state.thermalize_particle_momenta(**therm_options)
 
+    if not continue_successful:
+        _record_stage_start(sim.timestep)
     hoomd_objects["simulation"] = sim
+    hoomd_objects["continue_file"] = continue_path if continue_successful else None
 
     # ---- Integrator ----
     if "integrator" in params:

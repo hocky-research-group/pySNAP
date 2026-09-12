@@ -19,6 +19,36 @@ from snap_workflow.dispatcher.resource_allocator import ResourcePool, detect_sys
 logger = logging.getLogger("snap_workflow.dispatcher.runner")
 
 
+def taskset_prefix(assigned_cpus: List[int]) -> List[str]:
+    """Return the taskset command that pins a child to `assigned_cpus`, or [] for none.
+
+    Only cores this process is allowed to run on can be pinned to: a scheduler's cgroup
+    commonly exposes a subset of the node's cores, and taskset refuses anything outside
+    it, taking the job down with it. Cores outside the allowance are dropped, and if
+    none remain the child runs unpinned rather than not at all.
+
+    assigned_cpus: core ids the resource pool handed out for this job.
+    """
+    if sys.platform == "win32" or not assigned_cpus or not shutil.which("taskset"):
+        return []
+    try:
+        allowed = os.sched_getaffinity(0)
+    except (AttributeError, OSError):
+        return []
+
+    cores = sorted(c for c in assigned_cpus if c in allowed)
+    if not cores:
+        logger.warning(
+            "None of the assigned cores %s are available to this process (allowed: %s); "
+            "running without CPU pinning", assigned_cpus, sorted(allowed))
+        return []
+    if len(cores) > 1 and cores == list(range(cores[0], cores[-1] + 1)):
+        core_str = f"{cores[0]}-{cores[-1]}"
+    else:
+        core_str = ",".join(map(str, cores))
+    return ["taskset", "-c", core_str]
+
+
 class SubprocessDispatcher(BaseDispatcher):
     """Dispatcher executing SPoints as local or compute-node subprocesses using a ResourcePool."""
 
@@ -202,13 +232,7 @@ class SubprocessDispatcher(BaseDispatcher):
 
         spoint_rel_path = os.path.join(stage, "spoints", spoint_tools.get_spoint_string(spoint_dict))
 
-        cmd = ["bash", spoint_sh_script, spoint_rel_path]
-        if sys.platform != "win32" and shutil.which("taskset") and assigned_cpus:
-            if len(assigned_cpus) > 1 and assigned_cpus == list(range(assigned_cpus[0], assigned_cpus[-1] + 1)):
-                core_str = f"{assigned_cpus[0]}-{assigned_cpus[-1]}"
-            else:
-                core_str = ",".join(map(str, assigned_cpus))
-            cmd = ["taskset", "-c", core_str] + cmd
+        cmd = taskset_prefix(assigned_cpus) + ["bash", spoint_sh_script, spoint_rel_path]
 
         proc = subprocess.Popen(cmd, env=proc_env, cwd=root_dir, stdin=subprocess.DEVNULL)
         try:

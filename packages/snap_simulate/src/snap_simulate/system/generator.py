@@ -3,7 +3,9 @@ import numpy as np
 from snap_simulate.tools import dict_defines
 from snap_simulate.system.spatial import Container, OverlapChecker
 from snap_simulate.system.placement import place_simple_cubic, place_random
-from snap_simulate.system.rigid import build_rigid, check_rigid
+from snap_simulate.system.rigid import (build_rigid, check_rigid,
+                                        constituent_flags, offset_bodies,
+                                        renumber_bodies)
 from snap_simulate.system.molecules import MOLECULE_TEMPLATES
 from snap_simulate.system.box import calc_box_length
 from snap_simulate.system.molecules.resolver import (
@@ -97,9 +99,9 @@ def gen_mixture(params, outfile=None):
             if new_bodies:
                 full_body = []
                 for i in range(N):
-                    full_body += (np.array(body) + body_count).tolist()
+                    full_body += offset_bodies(body, body_count)
                     body_count += 1
-                is_constituent += N * ([False] + (num_particles - 1) * [True])
+                is_constituent += N * constituent_flags(mol, num_particles)
             else:
                 full_body = N * body
                 is_constituent += N * num_particles * [False]
@@ -216,6 +218,11 @@ def gen_mixture(params, outfile=None):
         s.particles.moment_inertia = np.array(s.particles.moment_inertia)[sort_flags]
         s.particles.orientation = np.array(s.particles.orientation)[sort_flags]
         s.particles.velocity = np.array(s.particles.velocity)[sort_flags]
+
+        # HOOMD names a body by its central particle's tag, which is only known once
+        # the particles have been put in their final order.
+        s.particles.body = renumber_bodies(
+            s.particles.body, np.array(is_constituent)[sort_flags])
 
         s.bonds.group = old_to_new_idx[s.bonds.group]
         s.angles.group = old_to_new_idx[s.angles.group]

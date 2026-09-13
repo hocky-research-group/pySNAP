@@ -4,6 +4,18 @@ from unittest.mock import patch
 from snap_workflow.dispatcher.resource_allocator import ResourcePool
 
 
+@pytest.fixture(autouse=True)
+def unrestricted_cores(monkeypatch):
+    """Give the process cores 0-63, so these cases test pool accounting, not the host.
+
+    The pool takes its cores from the process's CPU allowance, which under a batch
+    scheduler is an arbitrary, often small, subset of the node. Cases that patch the
+    allowance themselves still take precedence.
+    """
+    # raising=False: macOS has no sched_getaffinity.
+    monkeypatch.setattr(os, "sched_getaffinity", lambda pid: set(range(64)), raising=False)
+
+
 def test_resource_pool_init_defaults(monkeypatch):
     monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
     pool = ResourcePool(cpus_total=4, gpus_total=2)

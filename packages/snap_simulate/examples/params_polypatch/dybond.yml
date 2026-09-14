@@ -10,6 +10,5 @@ specs:
     koff: 0.1
     rmin: 0.5
     rmax: 1.5
-    r0: 1.0
     metropolis: true
     self_avoid_chain: false

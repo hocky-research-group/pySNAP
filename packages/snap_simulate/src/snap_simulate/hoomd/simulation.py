@@ -178,6 +178,25 @@ def _resolve_dybond_rates(spec_name, spec_info, dt_check):
     return kon, koff
 
 
+def _check_dybond_spec(spec_name, spec_info):
+    """Refuse a dynamic-bond spec that leaves self-avoidance unstated or sets r0.
+
+    DyBond-v2 has no default for a reaction's selfAvoidFlag, and it reads the reaction's
+    rest length from the bond potential the reaction names.
+
+    spec_name (str): the spec's key under ``specs``, named in the error.
+    spec_info (dict): the spec's options.
+    """
+    if "self_avoid_chain" not in spec_info:
+        raise ValueError(
+            f"dybond spec '{spec_name}' must set self_avoid_chain: true to exclude bonds "
+            "between sites of the same molecule, false to permit them")
+    if "r0" in spec_info:
+        raise ValueError(
+            f"dybond spec '{spec_name}' sets r0, but the rest length is read from its bond "
+            f"potential '{spec_info.get('bond')}'; remove r0 from the spec")
+
+
 def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
     import hoomd
     from hoomd.dybond import DyBond, DyBondUpdater
@@ -219,6 +238,7 @@ def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
     # 3. Add specifications to the updater
     specs = Dybond.get("specs", {})
     for spec_name, spec_info in specs.items():
+        _check_dybond_spec(spec_name, spec_info)
         pair = spec_info["pair"]
         bond_name = spec_info["bond"]
         bond = hoomd_objs["bonds"][bond_name]
@@ -232,9 +252,8 @@ def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
             "koff": koff,
             "rmin": spec_info.get("rmin", 0.8),
             "rmax": spec_info.get("rmax", 1.2),
-            "r0": spec_info.get("r0", 1.0),
             "metropolisFlag": spec_info.get("metropolis", True),
-            "selfAvoidFlag": spec_info.get("self_avoid_chain", False)
+            "selfAvoidFlag": spec_info["self_avoid_chain"]
         }
         
         if "bond_typename" in spec_info and "bond_typeid" in spec_info:

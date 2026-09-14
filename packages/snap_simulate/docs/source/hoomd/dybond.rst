@@ -25,9 +25,8 @@ This function parses the `dybond` block to configure dynamic bonding constraints
        koff: 0.1
        rmin: 0.7
        rmax: 1.2
-       r0: 1.0                 # (Optional, default 1.0)
        metropolis: true        # (Optional, default True)
-       self_avoid_chain: false # (Optional, default False)
+       self_avoid_chain: false # (Required) Whether sites of one molecule may not bond to each other
        force_a: 1.0            # (Optional) Force dependence parameter
        Tmelt: 1.0              # (Optional) Melt temperature
        alpha: 200.0            # (Optional, default 200.0)
@@ -50,9 +49,10 @@ Each specification inside the ``specs`` block supports the following keys:
 * **koff** (*float*, *optional*): Reaction rate for bond breaking (default ``0.0``).
 * **rmin** (*float*, *optional*): Minimum distance for bond formation (default ``0.8``).
 * **rmax** (*float*, *optional*): Maximum distance for bond formation/breaking (default ``1.2``).
-* **r0** (*float*, *optional*): The rest length of the formed bond (default ``1.0``).
 * **metropolis** (*bool*, *optional*): Enable Metropolis acceptance criteria for bonding decisions (default ``True``).
-* **self_avoid_chain** (*bool*, *optional*): Restrict bonding to prevent self-bonding within the same molecule chain (default ``False``).
+* **self_avoid_chain** (*bool*, *required*): ``true`` excludes bonds between sites of the same molecule, as traced from the static bond topology; ``false`` permits them. There is no default, as in DyBond-v2's ``selfAvoidFlag``.
+
+The rest length of a formed bond is not a spec key: DyBond-v2 reads it from the bond potential named by ``bond``, so a spec that sets ``r0`` is refused.
 * **force_a** (*float*, *optional*): Force dependence parameter.
 * **Tmelt** (*float*, *optional*): Melting temperature.
 * **alpha** (*float*, *optional*): Temperature dependence scaling factor (default ``200.0``).

@@ -106,7 +106,6 @@ def test_dybond_simulation():
                     "koff": 1.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
                     "metropolis": True,
                     "self_avoid_chain": False
                 }
@@ -143,7 +142,6 @@ def test_dybond_bond_typename():
                     "koff": 1.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
                     "metropolis": True,
                     "self_avoid_chain": False
                 }
@@ -172,7 +170,6 @@ def test_dybond_bond_typeid():
                     "koff": 1.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
                     "metropolis": True,
                     "self_avoid_chain": False
                 }
@@ -204,7 +201,6 @@ def test_dybond_mutual_exclusion():
                     "koff": 1.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
                     "metropolis": True,
                     "self_avoid_chain": False
                 }
@@ -230,7 +226,7 @@ def test_dybond_pon_and_epsilon():
                     "epsilon": 2.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
+                    "self_avoid_chain": False,
                 }
             }
         }
@@ -245,3 +241,29 @@ def test_dybond_pon_and_epsilon():
         assert math.isclose(dybond_spec.koff, math.exp(-2.0))
         sim.run(1)
 
+
+def test_dybond_self_avoid_chain_reaches_the_plugin_and_is_required():
+    """The spec's self_avoid_chain becomes the reaction's selfAvoidFlag; omitting it is refused."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        params = _setup_params_and_gsd(tmpdir)
+        spec = {
+            "pair": ["A", "B"],
+            "bond": "Harmonic",
+            "kon": 10.0,
+            "koff": 1.0,
+            "rmin": 0.5,
+            "rmax": 1.5,
+            "self_avoid_chain": True,
+        }
+        params["dybond"] = {"nlist": "cell", "thermo": "thermo", "check_steps": 10,
+                            "specs": {"a_b_bond": dict(spec)}}
+        sim, hoomd_objs = build_simulation(params)
+        assert hoomd_objs["dybond"][("A", "B")].selfAvoidFlag is True
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        params = _setup_params_and_gsd(tmpdir)
+        del spec["self_avoid_chain"]
+        params["dybond"] = {"nlist": "cell", "thermo": "thermo", "check_steps": 10,
+                            "specs": {"a_b_bond": spec}}
+        with pytest.raises(ValueError, match="self_avoid_chain"):
+            build_simulation(params)

@@ -1,0 +1,27 @@
+# Mock parameter configuration for tetra-arm Poly(ethylene glycol) (tPEG) macromers
+# Uses the 'star_polymer' molecule template (with 4 arms) in snap_simulate.system.molecules
+
+particles:
+  types: ["core", "PEG", "end"]
+  diameters: [1.0, 1.0, 1.0]
+  mass: [1.0, 1.0, 1.0]
+
+box:
+  dimensions: 3
+  box_length: [30.0, 30.0, 30.0]
+  placement_style: "random"
+
+bonds:
+  types: ["PEG_backbone"]
+
+molecules:
+  # Tetra-arm PEG macromer (tPEG) modeled using 4-arm star polymer template
+  tPEG:
+    molecule_type: "star_polymer"
+    num_arms: 4              # 4 arms for tetra-PEG (tPEG)
+    beads_per_arm: 10        # Number of monomer beads along each arm
+    center_type: 0           # Central junction core bead ('core')
+    arm_type: 1              # PEG backbone chain beads ('PEG')
+    end_type: 2              # Reactive terminal end group ('end')
+    bond_type: 0             # Bond type index connecting core-arm and arm-arm beads
+    num_molecules: 100       # Total number of tPEG star molecules in system

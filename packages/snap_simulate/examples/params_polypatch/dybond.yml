@@ -1,15 +1,16 @@
 nlist: "cell"
 thermo: "thermo"
-check_steps: 100
+trigger: 100
 nearestNeighbor: true
 specs:
   patch_linker:
     pair: ["patch", "linker_end"]
     bond: "Harmonic"
+    bond_typename: "patch-linker_end"
     kon: 10.0
     koff: 0.1
     rmin: 0.5
     rmax: 1.5
-    r0: 1.0
-    metropolis: true
-    self_avoid_chain: false
+    metropolisFlag: true
+    selfAvoidFlag: true
+

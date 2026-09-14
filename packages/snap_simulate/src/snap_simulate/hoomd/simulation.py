@@ -163,40 +163,49 @@ def _resolve_dybond_rates(spec_name, spec_info, dt_check):
         elif kon is not None:
             koff = kon * math.exp(-eps_val)
         else:
-            kon = 1000.0
-            koff = kon * math.exp(-eps_val)
+            raise ValueError(
+                f"Incomplete dybond spec '{spec_name}': epsilon ({eps_val}) was specified without 'kon', 'Pon', or 'koff'. "
+                f"At least one transition rate or probability must be specified."
+            )
     else:
-        if has_koff:
-            koff = koff_val
-            if kon is None:
-                kon = 1000.0
-        else:
-            if kon is None:
-                kon = 1000.0
-            koff = 0.0
+        if kon is None or koff_val is None:
+            raise KeyError(
+                f"Missing required rate parameter for dybond spec '{spec_name}': both 'kon' (or 'Pon') and 'koff' "
+                f"(or an 'epsilon' relationship) must be specified."
+            )
+        koff = koff_val
 
     return kon, koff
 
 
 def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
     import hoomd
-    from hoomd.dybond import DyBond, DyBondUpdater
+    from hoomd.dybond import DyBondUpdater
 
     print("Dybond:")
     
     # 1. Parse shared updater parameters
-    nlist_name = Dybond.get("nlist")
+    if "nlist" not in Dybond:
+        raise KeyError("Missing required parameter 'nlist' in dybond configuration.")
+    nlist_name = Dybond["nlist"]
     nlist = hoomd_objs["nlists"][nlist_name]
     
-    thermo_name = Dybond.get("thermo")
+    if "thermo" not in Dybond:
+        raise KeyError("Missing required parameter 'thermo' in dybond configuration.")
+    thermo_name = Dybond["thermo"]
     thermo = hoomd_objs["computes"][thermo_name]
     
-    check_steps = Dybond.get("check_steps", 100)
-    if isinstance(check_steps, str):
-        trigger = hoomd_objs["triggers"][check_steps]
+    if "trigger" not in Dybond:
+        raise KeyError("Missing required parameter 'trigger' in dybond configuration.")
+    trigger_spec = Dybond["trigger"]
+    if isinstance(trigger_spec, str):
+        trigger = hoomd_objs["triggers"][trigger_spec]
+        period = getattr(trigger, "period", 100)
+    elif isinstance(trigger_spec, hoomd.trigger.Trigger):
+        trigger = trigger_spec
         period = getattr(trigger, "period", 100)
     else:
-        period = int(check_steps)
+        period = int(trigger_spec)
         trigger = hoomd.trigger.Periodic(period)
         
     dt_check = float(period) * float(dt)
@@ -204,7 +213,7 @@ def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
     
     print("    ", "nlist:", nlist_name)
     print("    ", "thermo:", thermo_name)
-    print("    ", "check_steps:", check_steps)
+    print("    ", "trigger:", trigger_spec)
     print("    ", "nearestNeighbor:", nearest_neighbor)
     print()
 
@@ -225,24 +234,34 @@ def build_dybond(Dybond,snap,dt,seed,hoomd_objs):# {{{
         
         kon, koff = _resolve_dybond_rates(spec_name, spec_info, dt_check)
 
+        if "rmin" not in spec_info:
+            raise KeyError(f"Missing required parameter 'rmin' for dybond spec '{spec_name}'.")
+        if "rmax" not in spec_info:
+            raise KeyError(f"Missing required parameter 'rmax' for dybond spec '{spec_name}'.")
+        if "selfAvoidFlag" not in spec_info:
+            raise KeyError(f"Missing required parameter 'selfAvoidFlag' for dybond spec '{spec_name}'.")
+
         # Build options dictionary for DyBond updater __setitem__
         val_dict = {
             "bond": bond,
             "kon": kon,
             "koff": koff,
-            "rmin": spec_info.get("rmin", 0.8),
-            "rmax": spec_info.get("rmax", 1.2),
-            "r0": spec_info.get("r0", 1.0),
-            "metropolisFlag": spec_info.get("metropolis", True),
-            "selfAvoidFlag": spec_info.get("self_avoid_chain", False)
+            "rmin": float(spec_info["rmin"]),
+            "rmax": float(spec_info["rmax"]),
+            "metropolisFlag": spec_info.get("metropolisFlag", True),
+            "selfAvoidFlag": bool(spec_info["selfAvoidFlag"])
         }
         
-        if "bond_typename" in spec_info and "bond_typeid" in spec_info:
-            raise ValueError("Only one of 'bond_typename' or 'bond_typeid' can be specified in dybond specs, not both.")
-        if "bond_typename" in spec_info:
+        has_typename = "bond_typename" in spec_info
+        has_typeid = "bond_typeid" in spec_info
+        if has_typename and has_typeid:
+            raise ValueError(f"Only one of 'bond_typename' or 'bond_typeid' can be specified in dybond spec '{spec_name}', not both.")
+        if has_typename:
             val_dict["bond_typename"] = spec_info["bond_typename"]
-        elif "bond_typeid" in spec_info:
+        elif has_typeid:
             val_dict["bond_typeid"] = spec_info["bond_typeid"]
+        else:
+            raise KeyError(f"Each dybond spec requires either 'bond_typename' or 'bond_typeid', none specified in '{spec_name}'.")
         
         if "force_a" in spec_info:
             val_dict["force_a"] = spec_info["force_a"]

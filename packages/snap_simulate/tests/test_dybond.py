@@ -97,18 +97,18 @@ def test_dybond_simulation():
         params["dybond"] = {
             "nlist": "cell",
             "thermo": "thermo",
-            "check_steps": 10,
+            "trigger": 10,
             "specs": {
                 "a_b_bond": {
                     "pair": ["A", "B"],
                     "bond": "Harmonic",
+                    "bond_typename": "A-B",
                     "kon": 10.0,
                     "koff": 1.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
-                    "metropolis": True,
-                    "self_avoid_chain": False
+                    "metropolisFlag": True,
+                    "selfAvoidFlag": False
                 }
             }
         }
@@ -121,7 +121,6 @@ def test_dybond_simulation():
         assert isinstance(updater, DyBondUpdater)
         assert updater in sim.operations.updaters
         
-        # Verify default naming: pair is ["A", "B"], so the DyBond name should be "A-B"
         dybond_spec = updater[("A", "B")]
         assert dybond_spec.name == "A-B"
         
@@ -133,7 +132,7 @@ def test_dybond_bond_typename():
         params["dybond"] = {
             "nlist": "cell",
             "thermo": "thermo",
-            "check_steps": 10,
+            "trigger": 10,
             "specs": {
                 "a_b_bond": {
                     "pair": ["A", "B"],
@@ -143,9 +142,8 @@ def test_dybond_bond_typename():
                     "koff": 1.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
-                    "metropolis": True,
-                    "self_avoid_chain": False
+                    "metropolisFlag": True,
+                    "selfAvoidFlag": False
                 }
             }
         }
@@ -162,7 +160,7 @@ def test_dybond_bond_typeid():
         params["dybond"] = {
             "nlist": "cell",
             "thermo": "thermo",
-            "check_steps": 10,
+            "trigger": 10,
             "specs": {
                 "a_b_bond": {
                     "pair": ["A", "B"],
@@ -172,9 +170,8 @@ def test_dybond_bond_typeid():
                     "koff": 1.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
-                    "metropolis": True,
-                    "self_avoid_chain": False
+                    "metropolisFlag": True,
+                    "selfAvoidFlag": False
                 }
             }
         }
@@ -184,7 +181,6 @@ def test_dybond_bond_typeid():
         dybond_spec = updater[("A", "B")]
         
         sim.run(1)
-        # Verify it resolves to "A-B" since typeid 1 corresponds to "A-B"
         assert dybond_spec.name == "A-B"
 
 def test_dybond_mutual_exclusion():
@@ -193,7 +189,7 @@ def test_dybond_mutual_exclusion():
         params["dybond"] = {
             "nlist": "cell",
             "thermo": "thermo",
-            "check_steps": 10,
+            "trigger": 10,
             "specs": {
                 "a_b_bond": {
                     "pair": ["A", "B"],
@@ -204,9 +200,8 @@ def test_dybond_mutual_exclusion():
                     "koff": 1.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
-                    "metropolis": True,
-                    "self_avoid_chain": False
+                    "metropolisFlag": True,
+                    "selfAvoidFlag": False
                 }
             }
         }
@@ -221,16 +216,17 @@ def test_dybond_pon_and_epsilon():
         params["dybond"] = {
             "nlist": "cell",
             "thermo": "thermo",
-            "check_steps": 10,
+            "trigger": 10,
             "specs": {
                 "a_b_bond": {
                     "pair": ["A", "B"],
                     "bond": "Harmonic",
+                    "bond_typename": "A-B",
                     "Pon": 0.01,
                     "epsilon": 2.0,
                     "rmin": 0.5,
                     "rmax": 1.5,
-                    "r0": 1.0,
+                    "selfAvoidFlag": True,
                 }
             }
         }
@@ -238,10 +234,87 @@ def test_dybond_pon_and_epsilon():
         sim, hoomd_objs = build_simulation(params)
         updater = hoomd_objs["dybond"]
         dybond_spec = updater[("A", "B")]
-        # dt = 0.001, check_steps = 10 -> dt_check = 0.01
+        # dt = 0.001, trigger period = 10 -> dt_check = 0.01
         # Pon = 0.01 -> kon = 0.01 / 0.01 = 1.0
         # epsilon = 2.0 -> koff = 1.0 * exp(-2.0)
         assert math.isclose(dybond_spec.kon, 1.0)
         assert math.isclose(dybond_spec.koff, math.exp(-2.0))
         sim.run(1)
+
+def test_dybond_missing_required_keys():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # 1. Missing trigger
+        params = _setup_params_and_gsd(tmpdir)
+        params["dybond"] = {
+            "nlist": "cell",
+            "thermo": "thermo",
+            "specs": {}
+        }
+        with pytest.raises(KeyError, match="Missing required parameter 'trigger'"):
+            build_simulation(params)
+
+        # 2. Missing bond_typename and bond_typeid
+        params = _setup_params_and_gsd(tmpdir)
+        params["dybond"] = {
+            "nlist": "cell",
+            "thermo": "thermo",
+            "trigger": 10,
+            "specs": {
+                "a_b_bond": {
+                    "pair": ["A", "B"],
+                    "bond": "Harmonic",
+                    "kon": 10.0,
+                    "koff": 1.0,
+                    "rmin": 0.5,
+                    "rmax": 1.5,
+                    "selfAvoidFlag": True,
+                }
+            }
+        }
+        with pytest.raises(KeyError, match="requires either 'bond_typename' or 'bond_typeid'"):
+            build_simulation(params)
+
+        # 3. Missing rmin/rmax
+        params = _setup_params_and_gsd(tmpdir)
+        params["dybond"] = {
+            "nlist": "cell",
+            "thermo": "thermo",
+            "trigger": 10,
+            "specs": {
+                "a_b_bond": {
+                    "pair": ["A", "B"],
+                    "bond": "Harmonic",
+                    "bond_typename": "A-B",
+                    "kon": 10.0,
+                    "koff": 1.0,
+                    "rmin": 0.5,
+                    "selfAvoidFlag": True,
+                }
+            }
+        }
+        with pytest.raises(KeyError, match="Missing required parameter 'rmax'"):
+            build_simulation(params)
+
+        # 4. Missing selfAvoidFlag
+        params = _setup_params_and_gsd(tmpdir)
+        params["dybond"] = {
+            "nlist": "cell",
+            "thermo": "thermo",
+            "trigger": 10,
+            "specs": {
+                "a_b_bond": {
+                    "pair": ["A", "B"],
+                    "bond": "Harmonic",
+                    "bond_typename": "A-B",
+                    "kon": 10.0,
+                    "koff": 1.0,
+                    "rmin": 0.5,
+                    "rmax": 1.5,
+                }
+            }
+        }
+        with pytest.raises(KeyError, match="Missing required parameter 'selfAvoidFlag'"):
+            build_simulation(params)
+
+
 

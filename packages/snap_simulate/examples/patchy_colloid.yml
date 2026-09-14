@@ -1,0 +1,41 @@
+# Mock parameter configuration for patchy colloid systems
+# Uses the 'patchy_colloid' molecule template in snap_simulate.system.molecules
+
+particles:
+  types: ["colloid", "patch"]
+  diameters: [2.0, 0.4]
+  mass: [8.0, 1.0]
+
+box:
+  dimensions: 3
+  box_length: [20.0, 20.0, 20.0]
+  placement_style: "random"
+
+bonds:
+  types: ["colloid_patch"]
+
+angles:
+  types: ["patch_colloid_patch"]
+
+molecules:
+  # Example 1: Tetrahedral (4 patches) patchy colloid
+  tetrahedral_colloid:
+    molecule_type: "patchy_colloid"
+    colloid_type: 0          # Index of 'colloid' in particles.types
+    patch_type: 1            # Index of 'patch' in particles.types
+    num_patches: 4
+    patch_geometry: "tetrahedral"
+    bond_type: 0             # Index of 'colloid_patch' in bonds.types
+    angle_type: 0            # Index of 'patch_colloid_patch' in angles.types (optional)
+    num_molecules: 50
+
+  # Example 2: Octahedral (6 patches) patchy colloid
+  octahedral_colloid:
+    molecule_type: "patchy_colloid"
+    colloid_type: 0
+    patch_type: 1
+    num_patches: 6
+    patch_geometry: "octahedral"
+    bond_type: 0
+    angle_type: 0
+    num_molecules: 50

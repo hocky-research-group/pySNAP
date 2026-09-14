@@ -32,11 +32,16 @@ def test_rate_resolution_koff_epsilon():
     assert math.isclose(koff, 0.5)
     assert math.isclose(kon, 0.5 * math.exp(3.0))
 
-def test_rate_resolution_epsilon_defaults():
-    # epsilon = 2.0, default kon = 1000.0
-    kon, koff = _resolve_dybond_rates("spec1", {"epsilon": 2.0}, dt_check=0.01)
-    assert math.isclose(kon, 1000.0)
-    assert math.isclose(koff, 1000.0 * math.exp(-2.0))
+def test_rate_resolution_epsilon_alone_raises():
+    # epsilon alone without kon, Pon, or koff should raise ValueError
+    with pytest.raises(ValueError, match="without 'kon', 'Pon', or 'koff'"):
+        _resolve_dybond_rates("spec1", {"epsilon": 2.0}, dt_check=0.01)
+
+def test_rate_resolution_missing_rates_raises():
+    # Missing both kon and koff without epsilon should raise KeyError
+    with pytest.raises(KeyError, match="Missing required rate parameter"):
+        _resolve_dybond_rates("spec1", {}, dt_check=0.01)
+
 
 def test_rate_resolution_aliases():
     # eps / P_on aliases

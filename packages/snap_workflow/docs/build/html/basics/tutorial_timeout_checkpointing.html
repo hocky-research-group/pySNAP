@@ -3,12 +3,12 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Handling Upstream Stage Dependencies" href="tutorial_stage_dependencies.html"><link rel="prev" title="Tutorials" href="tutorials.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Data Collection &amp; Analytics" href="tutorial_data_collection.html"><link rel="prev" title="Parameters &amp; Dynamic Directives" href="tutorial_system_parameters.html">
         <link rel="prefetch" href="../_static/logo_light.png" as="image">
         <link rel="prefetch" href="../_static/logo.png" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Automatic Timeout Checkpointing - snap_workflow documentation</title>
+        <title>Checkpointing &amp; Submission Chaining - snap_workflow documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -174,7 +174,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -200,61 +200,79 @@
 <li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="tutorials.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Automatic Timeout Checkpointing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_stage_dependencies.html">Handling Upstream Stage Dependencies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_data_collection.html">Advanced Data Collection &amp; Analytics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_system_parameters.html">System Parameters &amp; Dynamic Directives</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_scheduling_resources.html">Auto-Scheduling &amp; Resource Management</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_tab_autocomplete.html">Command-Line Tab Autocomplete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_stage_dependencies.html">Upstream Stage Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_stage_runtime_environment.html">Stage Runtime Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_system_parameters.html">Parameters &amp; Dynamic Directives</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Checkpointing &amp; Submission Chaining</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_data_collection.html">Data Collection &amp; Analytics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_server_remote_execution.html">Remote Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_tab_autocomplete.html">CLI Tab Completion</a></li>
 </ul>
 </li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Command Line Tools</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../cli/cli.html">workflow</a><input aria-label="Toggle navigation of workflow" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/add/add.html">workflow add</a><input aria-label="Toggle navigation of workflow add" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/add/variable.html">workflow add variable</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/add/stage.html">workflow add stage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/add/sweep.html">workflow add sweep</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../cli/collect.html">workflow collect</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cli/init.html">workflow init</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/print/print.html">workflow print</a><input aria-label="Toggle navigation of workflow print" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/print/stage.html">workflow print stages</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/print/status.html">workflow print status</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/print/sweep.html">workflow print sweeps</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/stage/stage.html">workflow stage</a><input aria-label="Toggle navigation of workflow stage" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/stage/print.html">workflow stage print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/stage/add.html">workflow stage add</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/remove/remove.html">workflow remove</a><input aria-label="Toggle navigation of workflow remove" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/remove/sweep.html">workflow remove sweep</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/sweep/sweep.html">workflow sweep</a><input aria-label="Toggle navigation of workflow sweep" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/sweep/print.html">workflow sweep print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/sweep/add.html">workflow sweep add</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/sweep/remove.html">workflow sweep remove</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/reset/reset.html">workflow reset</a><input aria-label="Toggle navigation of workflow reset" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/reset/errors.html">workflow reset errors</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/reset/sweep.html">workflow reset sweep</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/reset/params.html">workflow reset params</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/reset/spoint.html">workflow reset spoint</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/variable/variable.html">workflow variable</a><input aria-label="Toggle navigation of workflow variable" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/variable/print.html">workflow variable print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/variable/add.html">workflow variable add</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/set/set.html">workflow set</a><input aria-label="Toggle navigation of workflow set" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/set/status.html">workflow set status</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/status/status.html">workflow status</a><input aria-label="Toggle navigation of workflow status" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/status/print.html">workflow status print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/status/set.html">workflow status set</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/status/reset.html">workflow status reset</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../cli/submit.html">workflow submit</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../cli/update.html">workflow update</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/remote/remote.html">workflow remote</a><input aria-label="Toggle navigation of workflow remote" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/spoint/spoint.html">workflow spoint</a><input aria-label="Toggle navigation of workflow spoint" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/spoint/reset.html">workflow spoint reset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/spoint/submit.html">workflow spoint submit</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/python/python.html">workflow python</a><input aria-label="Toggle navigation of workflow python" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/python/print.html">workflow python print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/python/set.html">workflow python set</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/params/params.html">workflow params</a><input aria-label="Toggle navigation of workflow params" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/params/set.html">workflow params set</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/params/convert.html">workflow params convert</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/data/data.html">workflow data</a><input aria-label="Toggle navigation of workflow data" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/data/collect.html">workflow data collect</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/remote/remote.html">workflow remote</a><input aria-label="Toggle navigation of workflow remote" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../cli/remote/add.html">workflow remote add</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cli/remote/setup.html">workflow remote setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/sync.html">workflow remote sync</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/connect.html">workflow remote connect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/print.html">workflow remote print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/reserve.html">workflow remote reserve</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/auto.html">workflow remote auto</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/server/server.html">workflow server</a><input aria-label="Toggle navigation of workflow server" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/server/server.html">workflow server</a><input aria-label="Toggle navigation of workflow server" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../cli/server/start.html">workflow server start</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/server/auto.html">workflow server auto</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/server/reserve.html">workflow server reserve</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/server/status.html">workflow server status</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/server/shutdown.html">workflow server shutdown</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../cli/zip.html">workflow zip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/autocomplete.html">workflow autocomplete</a></li>
 </ul>
 </li>
 </ul>
@@ -296,56 +314,85 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="automatic-timeout-checkpointing">
-<h1>Automatic Timeout Checkpointing<a class="headerlink" href="#automatic-timeout-checkpointing" title="Link to this heading">¶</a></h1>
-<p>When running computational experiments, SPoints can time out or get interrupted. Using <code class="xref py py-class docutils literal notranslate"><span class="pre">SPoint_Manager</span></code> ensures that you can register a custom callback function to automatically save intermediate state variables.</p>
-<p>Here is an example structure to run a computation loop, check for timeouts, and save your state to file:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">snap_workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">SPoint_Manager</span>
+          <section id="checkpointing-submission-chaining">
+<h1>Checkpointing &amp; Submission Chaining<a class="headerlink" href="#checkpointing-submission-chaining" title="Link to this heading">¶</a></h1>
+<p>Long-running computational tasks can be interrupted by Slurm walltime limits or system signals. Combining <code class="xref py py-class docutils literal notranslate"><span class="pre">SPointManager</span></code> with automated <strong>submission chaining</strong> allows multi-day simulations to survive cluster time limits and execute to completion with zero manual intervention.</p>
+<section id="script-level-checkpointing-python">
+<h2>1. Script-Level Checkpointing (Python)<a class="headerlink" href="#script-level-checkpointing-python" title="Link to this heading">¶</a></h2>
+<p>Complete checkpointing requires two basic steps in your stage script:</p>
+<ol class="arabic simple">
+<li><p><strong>Saving on Interrupt</strong>: Register a custom callback function with <code class="docutils literal notranslate"><span class="pre">sm.set_save_func(callback)</span></code>. When an interrupt or timeout signal is received, <code class="docutils literal notranslate"><span class="pre">SPointManager</span></code> runs your callback to write current state to disk and sets the SPoint status to <code class="docutils literal notranslate"><span class="pre">incomplete</span></code>.</p></li>
+<li><p><strong>Restoring on Restart</strong>: When the job starts, the script checks for an existing checkpoint file. If found, it loads the saved state and resumes the computation loop from the last completed step.</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snap_workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">SPointManager</span>
 
-<span class="k">with</span> <span class="n">SPoint_Manager</span><span class="p">()</span> <span class="k">as</span> <span class="n">sm</span><span class="p">:</span>
-    <span class="c1"># Load parameters and variables for the current SPoint</span>
-    <span class="n">params</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">load_params</span><span class="p">()</span>
-    <span class="n">steps</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;steps&quot;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">SPointManager</span><span class="p">()</span> <span class="k">as</span> <span class="n">sm</span><span class="p">:</span>
+    <span class="n">total_steps</span> <span class="o">=</span> <span class="mi">1000000</span>
 
-    <span class="c1"># Initialize state variables</span>
-    <span class="n">current_state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
-    <span class="n">start_step</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># 1. Restore on Restart: check for saved checkpoint</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">&quot;checkpoint.npz&quot;</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;checkpoint.npz&quot;</span><span class="p">)</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">]</span>
+        <span class="n">start_step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;step&quot;</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resuming from step </span><span class="si">{</span><span class="n">start_step</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">start_step</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Starting from scratch...&quot;</span><span class="p">)</span>
 
-    <span class="c1"># Try loading from a saved checkpoint if this is a resumed run</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">current_state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;state.npy&quot;</span><span class="p">)</span>
-        <span class="n">start_step</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;step.npy&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resuming computation from step </span><span class="si">{</span><span class="n">start_step</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No checkpoint found. Starting from scratch.&quot;</span><span class="p">)</span>
+    <span class="c1"># 2. Save on Interrupt: define and register save callback</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_checkpoint</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Timeout received! Saving checkpoint...&quot;</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="s2">&quot;checkpoint.npz&quot;</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">)</span>
 
-    <span class="c1"># Define a function to automatically save progress state on timeout or signal interrupt</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">save_progress</span><span class="p">():</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Saving checkpoint progress before shutdown...&quot;</span><span class="p">)</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;state.npy&quot;</span><span class="p">,</span> <span class="n">current_state</span><span class="p">)</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;step.npy&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">step</span><span class="p">]))</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">set_save_func</span><span class="p">(</span><span class="n">save_checkpoint</span><span class="p">)</span>
 
-    <span class="c1"># Register the save function with the SPoint_Manager instance</span>
-    <span class="n">sm</span><span class="o">.</span><span class="n">set_save_func</span><span class="p">(</span><span class="n">save_progress</span><span class="p">)</span>
-
-    <span class="c1"># Run the computation loop</span>
-    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_step</span><span class="p">,</span> <span class="n">steps</span><span class="p">):</span>
-        <span class="c1"># Perform your numerical steps</span>
-        <span class="n">current_state</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
-        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-
-        <span class="c1"># Periodically update the SPoint&#39;s progress status (0.0 to 1.0)</span>
-        <span class="k">if</span> <span class="n">step</span> <span class="o">%</span> <span class="mi">50</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">sm</span><span class="o">.</span><span class="n">set_progress</span><span class="p">(</span><span class="n">step</span> <span class="o">/</span> <span class="n">steps</span><span class="p">)</span>
+    <span class="c1"># 3. Main computation loop</span>
+    <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_step</span><span class="p">,</span> <span class="n">total_steps</span><span class="p">):</span>
+        <span class="c1"># Perform computation step to update state</span>
+        <span class="o">...</span>
 </pre></div>
 </div>
+</section>
+<section id="automating-multi-day-runs-with-chained-submissions">
+<h2>2. Automating Multi-Day Runs with <cite>chained_submissions</cite><a class="headerlink" href="#automating-multi-day-runs-with-chained-submissions" title="Link to this heading">¶</a></h2>
+<p>Many HPC clusters enforce strict maximum job walltimes (e.g., 24 or 48 hours). If a simulation takes 5 days of compute time, submitting it once will cause it to be terminated before completion.</p>
+<p>Instead of manually checking and re-submitting jobs each day, you can configure <strong>automated submission chaining</strong> in your stage’s <code class="docutils literal notranslate"><span class="pre">env.yaml</span></code>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Number of sequential Slurm submissions chained with `--dependency=afterany:&lt;job_id&gt;`</span>
+<span class="nt">chained_submissions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+
+<span class="c1"># Slurm queue configuration</span>
+<span class="nt">slurm_flags</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">-p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">normal</span>
+<span class="w">  </span><span class="nt">-t</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;24:00:00&quot;</span>
+<span class="w">  </span><span class="nt">-N</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">-n</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">-A</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MY_ALLOCATION</span>
+</pre></div>
+</div>
+<section id="how-chaining-works">
+<h3>How Chaining Works<a class="headerlink" href="#how-chaining-works" title="Link to this heading">¶</a></h3>
+<p>When you run <code class="docutils literal notranslate"><span class="pre">workflow</span> <span class="pre">spoint</span> <span class="pre">submit</span></code>:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">snap_workflow</span></code> submits the first job to Slurm and captures its Job ID.</p></li>
+<li><p>It automatically submits the remaining 4 jobs linked with the Slurm flag <code class="docutils literal notranslate"><span class="pre">--dependency=afterany:&lt;prior_job_id&gt;</span></code>.</p></li>
+<li><p><strong>Execution Flow</strong>:</p>
+<ul class="simple">
+<li><p><strong>Day 1 (Job 1)</strong>: Runs for 24 hours. Upon reaching the walltime limit, <code class="docutils literal notranslate"><span class="pre">save_checkpoint()</span></code> saves <code class="docutils literal notranslate"><span class="pre">checkpoint.npz</span></code>, and the SPoint status is marked <code class="docutils literal notranslate"><span class="pre">incomplete</span></code>.</p></li>
+<li><p><strong>Day 2 (Job 2)</strong>: Automatically starts when Job 1 exits. It loads <code class="docutils literal notranslate"><span class="pre">checkpoint.npz</span></code>, resumes from the saved step, and continues computing.</p></li>
+<li><p><strong>Completion</strong>: Once the loop finishes completely, the status transitions to <code class="docutils literal notranslate"><span class="pre">complete</span></code>. Subsequent chained jobs will see the <code class="docutils literal notranslate"><span class="pre">complete</span></code> status and immediately exit without wasting compute time.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
 </section>
 
         </article>
@@ -353,23 +400,23 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="tutorial_stage_dependencies.html">
+          <a class="next-page" href="tutorial_data_collection.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Handling Upstream Stage Dependencies</div>
+                <div class="title">Data Collection &amp; Analytics</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="tutorials.html">
+          <a class="prev-page" href="tutorial_system_parameters.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Tutorials</div>
+                <div class="title">Parameters &amp; Dynamic Directives</div>
                 
               </div>
             </a>
@@ -391,8 +438,31 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Checkpointing &amp; Submission Chaining</a><ul>
+<li><a class="reference internal" href="#script-level-checkpointing-python">1. Script-Level Checkpointing (Python)</a></li>
+<li><a class="reference internal" href="#automating-multi-day-runs-with-chained-submissions">2. Automating Multi-Day Runs with <cite>chained_submissions</cite></a><ul>
+<li><a class="reference internal" href="#how-chaining-works">How Chaining Works</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

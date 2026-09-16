@@ -25,11 +25,11 @@ Available Commands
    * - ``workflow init``
      - Initialize a new workflow in the current working directory.
    * - ``workflow stage``
-     - Manage workflow stages (``add``, ``print``).
+     - Manage workflow stages (``print``, ``add``).
    * - ``workflow sweep``
-     - Manage parametric sweeps (``add``, ``print``, ``remove``).
+     - Manage parametric sweeps (``print``, ``add``, ``remove``).
    * - ``workflow variable``
-     - Manage sweep variables (``add``, ``print``).
+     - Manage sweep variables (``print``, ``add``).
    * - ``workflow status``
      - View and manage execution states across SPoints (``print``, ``set``, ``reset``).
    * - ``workflow spoint``
@@ -42,10 +42,8 @@ Available Commands
      - Execute stage data aggregation routines (``collect``).
    * - ``workflow remote``
      - Manage remote HPC clusters, worker reservations, and auto-schedulers (``add``, ``setup``, ``sync``, ``connect``, ``print``, ``reserve``, ``auto``).
-   * - ``workflow local auto``
-     - Launch auto-scheduler locally on the current machine (alias for ``workflow remote auto local``).
    * - ``workflow server``
-     - Manage central coordinator server daemon (``start``, ``stop``, ``shutdown``).
+     - Manage central coordinator server daemon (``start``, ``status``, ``shutdown``).
    * - ``workflow zip``
      - Compress and bundle workflow state into a ``.zip`` archive.
    * - ``workflow autocomplete``
@@ -56,7 +54,15 @@ Available Commands
    :hidden:
 
    init
-   collect
-   zip
+   stage/stage
+   sweep/sweep
+   variable/variable
+   status/status
+   spoint/spoint
+   python/python
+   params/params
+   data/data
    remote/remote
    server/server
+   zip
+   autocomplete

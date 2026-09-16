@@ -4,7 +4,9 @@ workflow server start
 Synopsis
 """"""""
 
-**workflow server start** [\--host <*address*>] [\--port <*port_number*>]
+.. code-block:: bash
+
+   workflow server start [--host <address>] [--port <port_number>]
 
 Description
 """"""""""""

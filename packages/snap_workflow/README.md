@@ -258,7 +258,7 @@ time: 04:00:00
 | `workflow remote [add\|setup\|sync\|connect\|print\|reserve\|auto]` | Register remote clusters, provision workspaces, sync files/statuses, reserve workers, or launch auto-schedulers |
 | `workflow local auto` | Launch auto-scheduler locally (alias for `workflow remote auto local`) |
 | `workflow auto [target]` | Top-level shortcut to launch auto-scheduling (defaults to `local`) |
-| `workflow server [start\|stop\|shutdown]` | Launch central coordinator server daemon or terminate running dispatchers |
+| `workflow server [start\|status\|shutdown]` | Launch central coordinator server daemon, inspect status, or shut down |
 | `workflow zip <filename>` | Package the workflow and parameter state into a `.zip` archive |
 | `workflow autocomplete [shell]` | Generate shell auto-completion installation instructions for Bash or Zsh |
 

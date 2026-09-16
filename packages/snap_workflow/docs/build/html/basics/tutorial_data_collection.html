@@ -3,12 +3,12 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="System Parameters &amp; Dynamic Directives" href="tutorial_system_parameters.html"><link rel="prev" title="Handling Upstream Stage Dependencies" href="tutorial_stage_dependencies.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Remote Execution" href="tutorial_server_remote_execution.html"><link rel="prev" title="Checkpointing &amp; Submission Chaining" href="tutorial_timeout_checkpointing.html">
         <link rel="prefetch" href="../_static/logo_light.png" as="image">
         <link rel="prefetch" href="../_static/logo.png" as="image">
 
     <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
-        <title>Advanced Data Collection &amp; Analytics - snap_workflow documentation</title>
+        <title>Data Collection &amp; Analytics - snap_workflow documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -200,61 +200,79 @@
 <li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="tutorials.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="tutorial_timeout_checkpointing.html">Automatic Timeout Checkpointing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_stage_dependencies.html">Handling Upstream Stage Dependencies</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Advanced Data Collection &amp; Analytics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_system_parameters.html">System Parameters &amp; Dynamic Directives</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_scheduling_resources.html">Auto-Scheduling &amp; Resource Management</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial_tab_autocomplete.html">Command-Line Tab Autocomplete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_stage_dependencies.html">Upstream Stage Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_stage_runtime_environment.html">Stage Runtime Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_system_parameters.html">Parameters &amp; Dynamic Directives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_timeout_checkpointing.html">Checkpointing &amp; Submission Chaining</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Data Collection &amp; Analytics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_server_remote_execution.html">Remote Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial_tab_autocomplete.html">CLI Tab Completion</a></li>
 </ul>
 </li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Command Line Tools</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../cli/cli.html">workflow</a><input aria-label="Toggle navigation of workflow" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/add/add.html">workflow add</a><input aria-label="Toggle navigation of workflow add" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/add/variable.html">workflow add variable</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/add/stage.html">workflow add stage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/add/sweep.html">workflow add sweep</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../cli/collect.html">workflow collect</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../cli/init.html">workflow init</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/print/print.html">workflow print</a><input aria-label="Toggle navigation of workflow print" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/print/stage.html">workflow print stages</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/print/status.html">workflow print status</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/print/sweep.html">workflow print sweeps</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/stage/stage.html">workflow stage</a><input aria-label="Toggle navigation of workflow stage" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/stage/print.html">workflow stage print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/stage/add.html">workflow stage add</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/remove/remove.html">workflow remove</a><input aria-label="Toggle navigation of workflow remove" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/remove/sweep.html">workflow remove sweep</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/sweep/sweep.html">workflow sweep</a><input aria-label="Toggle navigation of workflow sweep" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/sweep/print.html">workflow sweep print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/sweep/add.html">workflow sweep add</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/sweep/remove.html">workflow sweep remove</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/reset/reset.html">workflow reset</a><input aria-label="Toggle navigation of workflow reset" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/reset/errors.html">workflow reset errors</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/reset/sweep.html">workflow reset sweep</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/reset/params.html">workflow reset params</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/reset/spoint.html">workflow reset spoint</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/variable/variable.html">workflow variable</a><input aria-label="Toggle navigation of workflow variable" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/variable/print.html">workflow variable print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/variable/add.html">workflow variable add</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/set/set.html">workflow set</a><input aria-label="Toggle navigation of workflow set" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../cli/set/status.html">workflow set status</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/status/status.html">workflow status</a><input aria-label="Toggle navigation of workflow status" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/status/print.html">workflow status print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/status/set.html">workflow status set</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/status/reset.html">workflow status reset</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../cli/submit.html">workflow submit</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../cli/update.html">workflow update</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/remote/remote.html">workflow remote</a><input aria-label="Toggle navigation of workflow remote" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/spoint/spoint.html">workflow spoint</a><input aria-label="Toggle navigation of workflow spoint" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/spoint/reset.html">workflow spoint reset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/spoint/submit.html">workflow spoint submit</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/python/python.html">workflow python</a><input aria-label="Toggle navigation of workflow python" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/python/print.html">workflow python print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/python/set.html">workflow python set</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/params/params.html">workflow params</a><input aria-label="Toggle navigation of workflow params" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/params/set.html">workflow params set</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/params/convert.html">workflow params convert</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/data/data.html">workflow data</a><input aria-label="Toggle navigation of workflow data" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/data/collect.html">workflow data collect</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/remote/remote.html">workflow remote</a><input aria-label="Toggle navigation of workflow remote" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../cli/remote/add.html">workflow remote add</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../cli/remote/setup.html">workflow remote setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/sync.html">workflow remote sync</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/connect.html">workflow remote connect</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/print.html">workflow remote print</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/reserve.html">workflow remote reserve</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/remote/auto.html">workflow remote auto</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/server/server.html">workflow server</a><input aria-label="Toggle navigation of workflow server" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../cli/server/server.html">workflow server</a><input aria-label="Toggle navigation of workflow server" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../cli/server/start.html">workflow server start</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/server/auto.html">workflow server auto</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../cli/server/reserve.html">workflow server reserve</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/server/status.html">workflow server status</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../cli/server/shutdown.html">workflow server shutdown</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../cli/zip.html">workflow zip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/autocomplete.html">workflow autocomplete</a></li>
 </ul>
 </li>
 </ul>
@@ -301,8 +319,8 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="advanced-data-collection-analytics">
-<h1>Advanced Data Collection &amp; Analytics<a class="headerlink" href="#advanced-data-collection-analytics" title="Link to this heading">¶</a></h1>
+          <section id="data-collection-analytics">
+<h1>Data Collection &amp; Analytics<a class="headerlink" href="#data-collection-analytics" title="Link to this heading">¶</a></h1>
 <p>Data collection is defined via a <code class="docutils literal notranslate"><span class="pre">collect.py</span></code> script placed inside each stage directory.</p>
 <section id="custom-collect-py-implementation">
 <h2>1. Custom <cite>collect.py</cite> Implementation<a class="headerlink" href="#custom-collect-py-implementation" title="Link to this heading">¶</a></h2>
@@ -320,21 +338,9 @@
 </pre></div>
 </div>
 </section>
-<section id="automating-with-auto-sync-globs">
-<h2>2. Automating with AUTO_SYNC Globs<a class="headerlink" href="#automating-with-auto-sync-globs" title="Link to this heading">¶</a></h2>
-<p>If you want to sync raw files (such as logs, models, or images) back during remote execution, specify globs in <cite>collect.py</cite>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># This copies all validation image plots back to the manager</span>
-<span class="n">AUTO_SYNC</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;plots/val_*.png&quot;</span><span class="p">,</span> <span class="s2">&quot;logs/*.txt&quot;</span><span class="p">]</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">collect</span><span class="p">():</span>
-    <span class="c1"># (Optional) compile metrics</span>
-    <span class="k">return</span> <span class="p">{}</span>
-</pre></div>
-</div>
-</section>
 <section id="analyzing-data-with-the-data-manager-api">
-<h2>3. Analyzing Data with the Data_Manager API<a class="headerlink" href="#analyzing-data-with-the-data-manager-api" title="Link to this heading">¶</a></h2>
-<p>After running <code class="docutils literal notranslate"><span class="pre">workflow</span> <span class="pre">collect</span></code>, data is compiled into a single data container located at <code class="docutils literal notranslate"><span class="pre">data/{stage_name}.dm</span></code>. Load and query it:</p>
+<h2>2. Analyzing Data with the Data_Manager API<a class="headerlink" href="#analyzing-data-with-the-data-manager-api" title="Link to this heading">¶</a></h2>
+<p>After running <code class="docutils literal notranslate"><span class="pre">workflow</span> <span class="pre">data</span> <span class="pre">collect</span></code>, data is compiled into a single data container located at <code class="docutils literal notranslate"><span class="pre">data/{stage_name}.dm</span></code>. Load and query it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">snap_workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">Data_Manager</span>
 
 <span class="c1"># Load stage output</span>
@@ -361,23 +367,23 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="tutorial_system_parameters.html">
+          <a class="next-page" href="tutorial_server_remote_execution.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">System Parameters &amp; Dynamic Directives</div>
+                <div class="title">Remote Execution</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="tutorial_stage_dependencies.html">
+          <a class="prev-page" href="tutorial_timeout_checkpointing.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Handling Upstream Stage Dependencies</div>
+                <div class="title">Checkpointing &amp; Submission Chaining</div>
                 
               </div>
             </a>
@@ -411,10 +417,9 @@
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Advanced Data Collection &amp; Analytics</a><ul>
+<li><a class="reference internal" href="#">Data Collection &amp; Analytics</a><ul>
 <li><a class="reference internal" href="#custom-collect-py-implementation">1. Custom <cite>collect.py</cite> Implementation</a></li>
-<li><a class="reference internal" href="#automating-with-auto-sync-globs">2. Automating with AUTO_SYNC Globs</a></li>
-<li><a class="reference internal" href="#analyzing-data-with-the-data-manager-api">3. Analyzing Data with the Data_Manager API</a></li>
+<li><a class="reference internal" href="#analyzing-data-with-the-data-manager-api">2. Analyzing Data with the Data_Manager API</a></li>
 </ul>
 </li>
 </ul>

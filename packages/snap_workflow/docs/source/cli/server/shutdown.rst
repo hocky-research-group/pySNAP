@@ -4,7 +4,9 @@ workflow server shutdown
 Synopsis
 """"""""
 
-**workflow server shutdown**
+.. code-block:: bash
+
+   workflow server shutdown
 
 Description
 """"""""""""

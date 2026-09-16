@@ -11,8 +11,7 @@ def main_server(parsed_command, args):
         "auto": server_auto_cmd,
         "autoschedule": server_auto_cmd,
         "reserve": server_reserve_cmd,
-        "stop": server_stop_cmd,
-        "shutdown": server_shutdown_cmd
+        "shutdown": server_shutdown_cmd,
     }
     execute_option("server_option", server_options, parsed_command=parsed_command, args=args)
 
@@ -45,12 +44,6 @@ def server_auto_cmd(parsed_command, args):
 def server_reserve_cmd(parsed_command, args):
     from snap_workflow.cli.remote import remote_reserve_cmd
     remote_reserve_cmd(parsed_command, args)
-
-
-def server_stop_cmd(parsed_command, args):
-    args, kwargs = parse_remaining(args)
-    print("Notice: Dispatchers are decoupled standalone processes. To terminate all server tasks, run 'workflow server shutdown'.")
-    io.warn_unused_kwargs(kwargs)
 
 
 def server_shutdown_cmd(parsed_command, args):

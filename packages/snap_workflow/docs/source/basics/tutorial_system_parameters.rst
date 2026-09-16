@@ -1,5 +1,5 @@
-System Parameters & Dynamic Directives
-======================================
+Parameters & Dynamic Directives
+=================================
 
 The ``snap_workflow`` engine features a unified parameter parsing system governed by the :py:class:`System_Params` class. 
 
@@ -27,7 +27,15 @@ Example ``params/mesh.json``:
      "mesh_size": "!v_mesh_size"
    }
 
-All files are nested under their base filename. 
+All files are nested under their base filename. In your Python script, these values are loaded as:
+
+.. code-block:: python
+
+   # Access key 'tolerance' nested inside 'solver.yaml'
+   tol = params["solver", "tolerance"]
+
+   # Access key 'mesh_size' nested inside 'mesh.json'
+   size = params["mesh", "mesh_size"]
 
 Nested Subdirectories
 ^^^^^^^^^^^^^^^^^^^^^
@@ -47,16 +55,6 @@ You can query it in Python by adding the directory name to the lookup tuple:
 
    # Access key 'density' inside 'physics/fluid.yaml'
    density = params["physics", "fluid", "density"]
-
-In your Python script, these values are loaded as:
-
-.. code-block:: python
-
-   # Access key 'tolerance' nested inside 'solver.yaml'
-   tol = params["solver", "tolerance"]
-
-   # Access key 'mesh_size' nested inside 'mesh.json'
-   size = params["mesh", "mesh_size"]
 
 Dynamic Directives (The ! Syntax)
 ---------------------------------
@@ -106,7 +104,7 @@ Multiple directives can be chained together (e.g., ``!iv_my_var`` to inject a va
 Accessing and Updating Parameters in Python
 -------------------------------------------
 
-Within your stage's ``simulation.py`` script, parameter files are accessed via the :py:class:`System_Params` instance returned by ``sm.load_params()``:
+Within your stage script, parameter files are accessed via the :py:class:`System_Params` instance returned by ``sm.load_params()``:
 
 .. code-block:: python
 

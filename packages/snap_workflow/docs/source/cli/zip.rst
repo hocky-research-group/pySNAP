@@ -4,7 +4,9 @@ workflow zip
 Synopsis
 """"""""
 
-**workflow zip** <*zip_name*> [*options*]
+.. code-block:: bash
+
+   workflow zip <zip_name> [options...]
 
 Description
 """"""""""""

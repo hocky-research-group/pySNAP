@@ -6,20 +6,33 @@ Synopsis
 
 .. code-block:: bash
 
-   workflow remote <action> [arguments...] [flags...]
+   workflow remote <verb> [arguments...] [flags...]
 
 Description
 """""""""""
 
-Registers, provisions, and synchronizes remote HPC systems and workstations for distributed execution and Slurm worker allocation.
+Registers, provisions, synchronizes, and manages remote HPC systems, Slurm worker allocations, and auto-schedulers.
+Running ``workflow remote`` bare automatically displays all registered remotes and connection states.
 
-Subcommands
-"""""""""""
+Available Verbs
+"""""""""""""""
 
-* **add <name> <host>**: Registers a remote cluster host connection globally.
-* **setup <name> <path>**: Provisions remote directory structure and validates remote Python and Slurm capabilities.
-* **sync <name> [--pull|--push|--both]**: Synchronizes code, parameters, worker logs, statuses, and auto-sync outputs between local and remote environments. Defaults to bidirectional (``both``).
-* **connect <name>**: Establishes an interactive SSH session to the remote cluster login node, automatically establishing reverse SSH tunnels if the manager server is active.
-* **print [name]**: Displays registered remote host configurations, paths, and connectivity status.
-* **reserve <name> <profile> [--num-workers N]**: Submits and reserves persistent Slurm worker compute allocations on the cluster.
-* **auto [name]**: Launches auto-scheduling on the target machine (defaults to ``local`` if target is omitted).
+* **print [name]**: Displays registered remote host configurations, paths, and connectivity status (default action).
+* **add <name> <host>**: Registers a remote host globally in ``~/.config/snap_workflow/remotes.json``.
+* **setup <name> <path>**: Initializes and validates remote directory structure, environment profiles, and Slurm capabilities.
+* **sync <name> [--pull|--push|--both]**: Synchronizes code, parameters, worker logs, statuses, and auto-sync outputs between local and remote environments.
+* **connect <name>**: Opens an interactive SSH session to the remote host, establishing reverse SSH tunnels.
+* **reserve <remote> <profile> [--num-workers N]**: Submits and reserves persistent Slurm worker compute allocations on the cluster.
+* **auto [target]**: Launches autonomous scheduling on the target machine (defaults to ``local``).
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   add
+   setup
+   sync
+   connect
+   print
+   reserve
+   auto

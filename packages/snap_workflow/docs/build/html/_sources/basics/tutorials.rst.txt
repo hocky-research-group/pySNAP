@@ -6,9 +6,10 @@ This section provides in-depth walkthroughs of how to utilize the Python API and
 .. toctree::
    :maxdepth: 1
 
-   tutorial_timeout_checkpointing
    tutorial_stage_dependencies
-   tutorial_data_collection
+   tutorial_stage_runtime_environment
    tutorial_system_parameters
-   tutorial_scheduling_resources
+   tutorial_timeout_checkpointing
+   tutorial_data_collection
+   tutorial_server_remote_execution
    tutorial_tab_autocomplete

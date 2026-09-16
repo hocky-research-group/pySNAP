@@ -1,5 +1,5 @@
-Command-Line Tab Autocomplete
-=============================
+CLI Tab Completion
+==================
 
 Enable tab-completion for all workflow actions, stage names, and registered sweeps:
 

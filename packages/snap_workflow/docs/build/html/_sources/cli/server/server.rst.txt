@@ -4,31 +4,26 @@ workflow server
 Synopsis
 """"""""
 
-**workflow server** <*action*> ...
+.. code-block:: bash
+
+   workflow server <verb> [arguments...] [flags...]
 
 Description
-""""""""""""
+"""""""""""
 
-Manages worker coordination server start, autonomous scheduling, and compute allocation reservation routines.
+Controls the central worker coordination server daemon, queries daemon status, and terminates active server processes.
 
-Arguments
-""""""""""
+Available Verbs
+"""""""""""""""
 
-<*action*>
-    Can be any of the following:
-
-    * :doc:`start <start>`
-    * :doc:`auto <auto>`
-    * :doc:`reserve <reserve>`
-    * :doc:`stop <stop>`
-    * :doc:`shutdown <shutdown>`
+* **start [--host <host>] [--port <port>] [--debug]**: Launch the worker manager server process.
+* **status**: Query and print active manager server runtime status and dispatcher health as JSON.
+* **shutdown**: Cleanly shut down the running coordinator server and active tunnels.
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    start
-   auto
-   reserve
-   stop
+   status
    shutdown

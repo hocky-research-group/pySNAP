@@ -4,21 +4,20 @@ workflow remote add
 Synopsis
 """"""""
 
-**workflow remote add** <*name*> \--host <*host_address*>
+.. code-block:: bash
+
+   workflow remote add <name> <host>
 
 Description
-""""""""""""
+"""""""""""
 
-Registers a remote connection address globally in `~/.snap_workflow/remotes.json`.
+Registers a remote cluster or host connection globally in ``~/.config/snap_workflow/remotes.json``. Validates SSH connectivity before saving.
 
 Arguments
 """""""""
 
 <*name*>
-    The unique identifier name for the remote system (e.g. ``Lab_Main``).
+    Unique identifier name for the remote system (e.g. ``Lonestar``, ``gpu_node``).
 
-Options
-"""""""
-
-**\--host** *host_address*
-    The SSH connection string or host address (e.g. ``user@cluster.domain.edu`` or SSH config alias).
+<*host*>
+    SSH host address or SSH config alias (e.g. ``user@cluster.domain.edu``).

@@ -1,5 +1,5 @@
-Handling Upstream Stage Dependencies
-====================================
+Upstream Stage Dependencies
+===========================
 
 When a stage depends on upstream stages, ``snap_workflow`` automatically creates soft links to the parent SPoint output directory inside the child runner directory.
 

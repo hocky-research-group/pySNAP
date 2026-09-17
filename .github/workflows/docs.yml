@@ -1,0 +1,65 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/**'
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install sphinx furo gsd pyyaml numpy
+          pip install -e packages/snap_workflow
+          pip install -e packages/snap_simulate --no-deps
+
+      - name: Build snap_workflow Documentation
+        run: |
+          sphinx-build -b html packages/snap_workflow/docs/source _site/workflow -W
+
+      - name: Build snap_simulate Documentation
+        run: |
+          sphinx-build -b html packages/snap_simulate/docs/source _site/simulate -W
+
+      - name: Assemble Documentation Portal
+        run: |
+          cp docs/index.html _site/index.html
+          touch _site/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

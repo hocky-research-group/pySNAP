@@ -20,6 +20,7 @@ extensions = [
 
 templates_path = ['_templates']
 exclude_patterns = []
+autodoc_mock_imports = ['hoomd']
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'furo'

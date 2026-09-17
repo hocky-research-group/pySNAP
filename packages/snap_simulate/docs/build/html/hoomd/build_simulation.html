@@ -198,6 +198,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul class="current">
@@ -217,21 +218,29 @@
 <li class="toctree-l3"><a class="reference internal" href="writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2"><a class="reference internal" href="minimize_autocorrelation.html">minimize_autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="samplers.html">Autocorrelation Samplers</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/ring_polymer.html">Ring Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../system/box.html">box</a></li>
@@ -332,14 +341,23 @@
 <span class="nt">seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">42</span><span class="w">                  </span><span class="c1"># (Optional) Seed for random number generator</span>
 <span class="nt">random_seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">         </span><span class="c1"># (Optional) Generate/read seed from seed.txt automatically</span>
 <span class="nt">init_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;init.gsd&quot;</span><span class="w">     </span><span class="c1"># (Optional) Path to initial frame GSD file</span>
-<span class="nt">continue_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;run.gsd&quot;</span><span class="w">  </span><span class="c1"># (Optional) Path to resume simulation frame</span>
-<span class="nt">has_rigid_bodies</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">   </span><span class="c1"># (Optional) Set to true if the system includes rigid bodies</span>
+<span class="nt">continue_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;run.gsd&quot;</span><span class="w">  </span><span class="c1"># (Optional) Explicit path to resume simulation frame</span>
 <span class="nt">thermalize_initial</span><span class="p">:</span><span class="w">       </span><span class="c1"># (Optional) Settings to thermalize velocities</span>
 <span class="w">  </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;all&quot;</span><span class="w">           </span><span class="c1"># Target filter (refer to filters documentation)</span>
 <span class="w">  </span><span class="nt">options</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">kT</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">               </span><span class="c1"># Temperature for thermalization</span>
 </pre></div>
 </div>
+</section>
+<section id="automatic-continuation-stage-resumption">
+<h2>Automatic Continuation &amp; Stage Resumption<a class="headerlink" href="#automatic-continuation-stage-resumption" title="Link to this heading">¶</a></h2>
+<p>When running long-running computational stages that may be split across walltime limits or interrupted by cluster signals:</p>
+<ol class="arabic simple">
+<li><p><strong>Automatic Trajectory Detection</strong>: If <code class="docutils literal notranslate"><span class="pre">continue_file</span></code> is not supplied in the simulation configuration, <code class="xref py py-func docutils literal notranslate"><span class="pre">build_simulation()</span></code> checks whether any output trajectory file (declared under <code class="docutils literal notranslate"><span class="pre">writers</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">trajdump.gsd</span></code>) already exists in the run directory and contains valid frames. If found, it automatically resumes the simulation state from the last frame of that trajectory. If an explicit <code class="docutils literal notranslate"><span class="pre">continue_file</span></code> is supplied, that file takes precedence.</p></li>
+<li><p><strong>Safe Trajectory Appending</strong>: The GSD writer associated with the continued trajectory is automatically switched to append mode (<code class="docutils literal notranslate"><span class="pre">mode:</span> <span class="pre">&quot;ab&quot;</span></code>), ensuring newly generated frames append to the existing trajectory rather than truncating it.</p></li>
+<li><p><strong>Tracking Resumed Files</strong>: The returned <code class="docutils literal notranslate"><span class="pre">hoomd_objects[&quot;continue_file&quot;]</span></code> contains the path of the resumed trajectory (or <code class="docutils literal notranslate"><span class="pre">None</span></code> if starting fresh).</p></li>
+</ol>
+<p>To determine the number of timesteps remaining to run when a stage resumes, see <a class="reference internal" href="remaining_steps.html"><span class="doc">remaining_steps</span></a>.</p>
 </section>
 <section id="builder-components">
 <h2>Builder Components<a class="headerlink" href="#builder-components" title="Link to this heading">¶</a></h2>
@@ -424,6 +442,7 @@
 <li><a class="reference internal" href="#configuration-sections">Configuration Sections</a></li>
 <li><a class="reference internal" href="#returns">Returns</a></li>
 <li><a class="reference internal" href="#simulation-parameters">Simulation Parameters</a></li>
+<li><a class="reference internal" href="#automatic-continuation-stage-resumption">Automatic Continuation &amp; Stage Resumption</a></li>
 <li><a class="reference internal" href="#builder-components">Builder Components</a></li>
 </ul>
 </li>

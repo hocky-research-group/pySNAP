@@ -41,12 +41,12 @@ A standard workflow consists of two main steps:
 2. **Build and Run Simulation**: Load the generated GSD file, build HOOMD-blue simulation objects (potentials, integrators, loggers, writers), and execute the run steps using :doc:`hoomd/build_simulation`.
 
 
-Integrating with nyut_workflow & Modular Parameters
+Integrating with snap_workflow & Modular Parameters
 ---------------------------------------------------
 
-When scaling up to large parametric sweeps with the companion package ``nyut_workflow``, simulation configurations are orchestrated via a ``System_Params`` parameter dictionary.
+When scaling up to large parametric sweeps with the companion package ``snap_workflow``, simulation configurations are orchestrated via a ``SystemParams`` parameter dictionary.
 
-To keep your configurations clean, modular, and easy to manage, ``nyut_workflow`` supports dividing parameters into a nested directory structure within a ``params`` directory. 
+To keep your configurations clean, modular, and easy to manage, ``snap_workflow`` supports dividing parameters into a nested directory structure within a ``params`` directory. 
 
 Recursive Parameter File Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,4 +82,4 @@ This folder structure is automatically resolved and compiled at runtime into a n
        # (Loaded from molecules/linear_polymer.yml)
 
 .. seealso::
-   For more details on setting up sweeps, orchestrating jobs, and running modular parameter configurations, please refer to the companion **nyut_workflow** package documentation.
+   For more details on setting up sweeps, orchestrating jobs, and running modular parameter configurations, please refer to the companion **snap_workflow** package documentation.

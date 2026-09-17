@@ -688,11 +688,15 @@ def build_simulation(params, output_file = None, print_objs = False):# {{{
         raise Exception("Integrator information must be defined to build a simulation")
     integrator = build_integrator(int_info, hoomd_objects)
 
-    if dict_defines(sim_info,"has_rigid_bodies") and sim_info["has_rigid_bodies"]:
-        if not dict_defines(params,"molecules") or not dict_defines(params, "particles"):
+    with sim.state.cpu_local_snapshot as data:
+        body = np.array(data.particles.body, copy=False).view(np.int32)
+        has_rigid_bodies = bool(np.any(body >= 0))
+
+    if has_rigid_bodies:
+        if not dict_defines(params, "molecules") or not dict_defines(params, "particles"):
             raise Exception("Molecule and particle data must be supplied if system "\
                              +"is to be built with rigid bodies")
-        rigid = build_rigid(params["particles"],params["molecules"])
+        rigid = build_rigid(params["particles"], params["molecules"])
         integrator.rigid = rigid
 
     sim.operations.integrator = integrator
@@ -706,11 +710,14 @@ def build_simulation(params, output_file = None, print_objs = False):# {{{
     hoomd_objects["nlists"] = nlists
     #}}}
     #---- Pair Potentials ----{{{
-    atom_types = params["particles","types"]
     pairs = dict()
 
     if "pairs" in params:
-        general_pairs = build_pairs(params['pairs'],atom_types,nlists)
+        if dict_defines(params, "particles") and dict_defines(params["particles"], "types"):
+            atom_types = params["particles"]["types"]
+        else:
+            atom_types = params["particles", "types"]
+        general_pairs = build_pairs(params['pairs'], atom_types, nlists)
         pairs.update(general_pairs)
 
     for pair in pairs.values():

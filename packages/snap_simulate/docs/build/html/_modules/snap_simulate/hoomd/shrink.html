@@ -197,6 +197,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -216,21 +217,29 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../hoomd/writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../../../hoomd/remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../hoomd/samplers.html">Autocorrelation Samplers</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/ring_polymer.html">Ring Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../system/box.html">box</a></li>
@@ -376,16 +385,14 @@
         <span class="n">calc_box_cfg</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dimensions</span>
         <span class="k">if</span> <span class="n">final_vol_frac</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">calc_box_cfg</span><span class="p">[</span><span class="s2">&quot;vol_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_vol_frac</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;final_vol_frac&quot;</span> <span class="ow">in</span> <span class="n">shrink_cfg</span><span class="p">:</span>
-                <span class="n">box_cfg</span><span class="p">[</span><span class="s2">&quot;vol_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_vol_frac</span>
+            <span class="n">calc_box_cfg</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;box_length&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">calc_box_cfg</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;area_frac&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">final_area_frac</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">calc_box_cfg</span><span class="p">[</span><span class="s2">&quot;area_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_area_frac</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;final_area_frac&quot;</span> <span class="ow">in</span> <span class="n">shrink_cfg</span><span class="p">:</span>
-                <span class="n">box_cfg</span><span class="p">[</span><span class="s2">&quot;area_frac&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_area_frac</span>
+            <span class="n">calc_box_cfg</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;box_length&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">calc_box_cfg</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;vol_frac&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">final_aspect_ratio</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">calc_box_cfg</span><span class="p">[</span><span class="s2">&quot;aspect_ratio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_aspect_ratio</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">shrink_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;final_aspect_ratio&quot;</span> <span class="ow">in</span> <span class="n">shrink_cfg</span><span class="p">:</span>
-                <span class="n">box_cfg</span><span class="p">[</span><span class="s2">&quot;aspect_ratio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">final_aspect_ratio</span>
 
         <span class="k">if</span> <span class="n">molecules</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">particles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;molecules and particles must be provided to compute target box length from volume/area fraction.&quot;</span><span class="p">)</span>
@@ -400,6 +407,11 @@
         <span class="n">n_box_length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
         <span class="n">n_box_length</span><span class="p">[:</span><span class="n">dimensions</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_box_length</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dimensions</span><span class="p">)</span>
         <span class="n">new_box_length</span> <span class="o">=</span> <span class="n">n_box_length</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">box_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">box_cfg</span><span class="p">[</span><span class="s2">&quot;box_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">new_box_length</span><span class="p">)</span>
+        <span class="n">box_cfg</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;vol_frac&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">box_cfg</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;area_frac&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
     <span class="n">initial_box</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">box</span>
     <span class="n">final_box</span> <span class="o">=</span> <span class="n">hoomd</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="o">*</span><span class="n">new_box_length</span><span class="p">)</span>

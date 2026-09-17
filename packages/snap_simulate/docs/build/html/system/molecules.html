@@ -198,6 +198,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul class="current">
@@ -217,21 +218,29 @@
 <li class="toctree-l3"><a class="reference internal" href="../hoomd/writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../hoomd/remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../hoomd/samplers.html">Autocorrelation Samplers</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../hoomd/BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hoomd/PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hoomd/FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2 current has-children"><a class="reference internal" href="gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="particles.html">particles</a></li>
-<li class="toctree-l3 current has-children current-page"><a class="current reference internal" href="#">molecules</a><input aria-label="Toggle navigation of molecules" checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 current has-children current-page"><a class="current reference internal" href="#">molecules</a><input aria-label="Toggle navigation of molecules" checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="molecules/ring_polymer.html">Ring Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="box.html">box</a></li>
@@ -293,9 +302,9 @@
 </pre></div>
 </div>
 </section>
-<section id="molecule-type-templates">
-<h2>Molecule Type Templates<a class="headerlink" href="#molecule-type-templates" title="Link to this heading">¶</a></h2>
-<p>Specify the structure type using one of the templates below. Each template has its own dedicated page with configuration details, API documentation, and rendered examples:</p>
+<section id="molecule-types-templates">
+<h2>Molecule Types &amp; Templates<a class="headerlink" href="#molecule-types-templates" title="Link to this heading">¶</a></h2>
+<p>Specify the structure type using one of the templates or custom structure options below. Each option has its own dedicated page with configuration details, examples, and options:</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="molecules/star_polymer.html">Star Polymer</a></li>
@@ -304,54 +313,10 @@
 <li class="toctree-l1"><a class="reference internal" href="molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l1"><a class="reference internal" href="molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l1"><a class="reference internal" href="molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l1"><a class="reference internal" href="molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l1"><a class="reference internal" href="molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
-</div>
-</section>
-<section id="custom-structures">
-<h2>Custom Structures<a class="headerlink" href="#custom-structures" title="Link to this heading">¶</a></h2>
-<p>For structures not covered by standard templates, you can define them explicitly using particle coordinates and connectivity.</p>
-<p><strong>Option G: Custom Structure (e.g. Linear Tetramer)</strong></p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">molecule_type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;custom&quot;</span>
-<span class="nt">num_molecules</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<span class="nt">particle_positions</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.0</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.866</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.5</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.866</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2.366</span><span class="p p-Indicator">]</span>
-<span class="nt">particle_typeid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">]</span>
-<span class="nt">bond_groups</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">]</span>
-<span class="nt">bond_typeid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">]</span>
-<span class="nt">angle_groups</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">]</span>
-<span class="nt">angle_typeid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">]</span>
-<span class="nt">dihedral_groups</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">]</span>
-<span class="nt">dihedral_typeid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">]</span>
-</pre></div>
-</div>
-<p><strong>Option H: Rigid Custom Structure (e.g. 12-bead Monoclonal Antibody)</strong></p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">molecule_type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;custom&quot;</span>
-<span class="nt">rigid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">num_molecules</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="nt">particle_positions</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-0.2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">]</span><span class="w">    </span><span class="c1"># Bead 0: Hinge dimer (reference point)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">]</span><span class="w">     </span><span class="c1"># Bead 1: Hinge dimer</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-1.0</span><span class="p p-Indicator">]</span><span class="w">    </span><span class="c1"># Bead 2: Fc stem (blue)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-2.0</span><span class="p p-Indicator">]</span><span class="w">    </span><span class="c1"># Bead 3: Fc stem tip (red)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">-0.866</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.5</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># Bead 4: Left Fab arm base (1-2-1 segment 1)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">-1.732</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.0</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># Bead 5: Left Fab arm split A (1-2-1 segment 2)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">-1.732</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.0</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># Bead 6: Left Fab arm split B (1-2-1 segment 2)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">-2.598</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.5</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># Bead 7: Left Fab arm tip (1-2-1 segment 3)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.866</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.5</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># Bead 8: Right Fab arm base (1-2-1 segment 1)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.732</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.0</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># Bead 9: Right Fab arm split A (1-2-1 segment 2)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1.732</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.0</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># Bead 10: Right Fab arm split B (1-2-1 segment 2)</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2.598</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.5</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># Bead 11: Right Fab arm tip (1-2-1 segment 3)</span>
-<span class="nt">particle_typeid</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">]</span>
-</pre></div>
 </div>
 </section>
 </section>
@@ -413,8 +378,7 @@
             <ul>
 <li><a class="reference internal" href="#">molecules</a><ul>
 <li><a class="reference internal" href="#quantity-specifications">Quantity Specifications</a></li>
-<li><a class="reference internal" href="#molecule-type-templates">Molecule Type Templates</a></li>
-<li><a class="reference internal" href="#custom-structures">Custom Structures</a></li>
+<li><a class="reference internal" href="#molecule-types-templates">Molecule Types &amp; Templates</a></li>
 </ul>
 </li>
 </ul>

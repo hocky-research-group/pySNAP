@@ -54,12 +54,22 @@ The `simulation` top-level block configures device initialization, seeding, and 
    seed: 42                  # (Optional) Seed for random number generator
    random_seed: true         # (Optional) Generate/read seed from seed.txt automatically
    init_file: "init.gsd"     # (Optional) Path to initial frame GSD file
-   continue_file: "run.gsd"  # (Optional) Path to resume simulation frame
-   has_rigid_bodies: false   # (Optional) Set to true if the system includes rigid bodies
+   continue_file: "run.gsd"  # (Optional) Explicit path to resume simulation frame
    thermalize_initial:       # (Optional) Settings to thermalize velocities
      filter: "all"           # Target filter (refer to filters documentation)
      options:
        kT: 1.0               # Temperature for thermalization
+
+Automatic Continuation & Stage Resumption
+-----------------------------------------
+
+When running long-running computational stages that may be split across walltime limits or interrupted by cluster signals:
+
+1. **Automatic Trajectory Detection**: If ``continue_file`` is not supplied in the simulation configuration, :func:`build_simulation` checks whether any output trajectory file (declared under ``writers``, e.g. ``trajdump.gsd``) already exists in the run directory and contains valid frames. If found, it automatically resumes the simulation state from the last frame of that trajectory. If an explicit ``continue_file`` is supplied, that file takes precedence.
+2. **Safe Trajectory Appending**: The GSD writer associated with the continued trajectory is automatically switched to append mode (``mode: "ab"``), ensuring newly generated frames append to the existing trajectory rather than truncating it.
+3. **Tracking Resumed Files**: The returned ``hoomd_objects["continue_file"]`` contains the path of the resumed trajectory (or ``None`` if starting fresh).
+
+To determine the number of timesteps remaining to run when a stage resumes, see :doc:`remaining_steps`.
 
 Builder Components
 ------------------

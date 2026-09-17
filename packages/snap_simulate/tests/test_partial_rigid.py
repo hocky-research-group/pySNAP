@@ -164,3 +164,104 @@ class TestBodyNaming:
 
         renumbered = renumber_bodies([-1, -1], [False, False])
         assert renumbered.tolist() == [-1, -1]
+
+
+class TestBuildSimulationAutoDetectRigid:
+    """build_simulation should auto-detect rigid bodies from particle bodies."""
+
+    def test_auto_detects_rigid_bodies_from_snapshot(self, tmp_path):
+        import hoomd
+        import gsd.hoomd
+        from snap_simulate.hoomd.simulation import build_simulation
+
+        # Create a snapshot with one rigid body (body tag 0)
+        snap = gsd.hoomd.Frame()
+        snap.configuration.box = [20, 20, 20, 0, 0, 0]
+        snap.particles.N = 2
+        snap.particles.types = ["core", "const"]
+        snap.particles.typeid = [0, 1]
+        snap.particles.position = [[0, 0, 0], [1, 0, 0]]
+        snap.particles.body = [0, 0]
+        snap.particles.moment_inertia = [[1, 1, 1], [0, 0, 0]]
+        snap.particles.orientation = [[1, 0, 0, 0], [1, 0, 0, 0]]
+
+        init_file = str(tmp_path / "init.gsd")
+        with gsd.hoomd.open(init_file, "w") as traj:
+            traj.append(snap)
+
+        params = {
+            "simulation": {
+                "device": "CPU",
+                "seed": 42,
+                "init_file": init_file,
+                # Note: NO "has_rigid_bodies" specified!
+            },
+            "particles": {
+                "types": ["core", "const"],
+                "mass": [1.0, 1.0],
+                "diameters": [1.0, 1.0],
+            },
+            "molecules": {
+                "dimer": {
+                    "rigid": True,
+                    "particle_typeid": [0, 1],
+                    "particle_positions": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+                }
+            },
+            "filters": {
+                "integrated": {
+                    "class": "Rigid",
+                    "composite": False,
+                    "options": {"flags": ["center", "free"]},
+                }
+            },
+            "integrator": {
+                "dt": 0.001,
+                "method": {
+                    "class": "Langevin",
+                    "filter": "integrated",
+                    "options": {"kT": 1.0},
+                },
+            },
+        }
+
+        sim, hoomd_objs = build_simulation(params)
+        assert isinstance(sim.operations.integrator.rigid, hoomd.md.constrain.Rigid)
+
+    def test_no_rigid_constraint_when_all_particles_free(self, tmp_path):
+        import gsd.hoomd
+        from snap_simulate.hoomd.simulation import build_simulation
+
+        snap = gsd.hoomd.Frame()
+        snap.configuration.box = [20, 20, 20, 0, 0, 0]
+        snap.particles.N = 2
+        snap.particles.types = ["A"]
+        snap.particles.typeid = [0, 0]
+        snap.particles.position = [[0, 0, 0], [1, 0, 0]]
+        snap.particles.body = [-1, -1]
+
+        init_file = str(tmp_path / "init.gsd")
+        with gsd.hoomd.open(init_file, "w") as traj:
+            traj.append(snap)
+
+        params = {
+            "simulation": {
+                "device": "CPU",
+                "seed": 42,
+                "init_file": init_file,
+            },
+            "filters": {
+                "all": {"class": "All", "composite": False},
+            },
+            "integrator": {
+                "dt": 0.001,
+                "method": {
+                    "class": "Langevin",
+                    "filter": "all",
+                    "options": {"kT": 1.0},
+                },
+            },
+        }
+
+        sim, hoomd_objs = build_simulation(params)
+        assert sim.operations.integrator.rigid is None

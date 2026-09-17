@@ -1,7 +1,7 @@
 snap_simulate
 =============
 
-**snap_simulate** is a Python library designed to automate the generation of initial configurations and the construction, execution, and dynamic monitoring of molecular dynamics (MD) simulations in HOOMD-blue (v3+). It is specifically designed to work in tandem with **nyut_workflow** to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters. It reads structured, parametric configuration dictionaries to place particles/molecules without overlap, configure potentials, manage rigid bodies, compress/shrink boxes, and dynamically run simulations until statistical properties reach equilibrium.
+**snap_simulate** is a Python library designed to automate the generation of initial configurations and the construction, execution, and dynamic monitoring of molecular dynamics (MD) simulations in HOOMD-blue (v3+). It is specifically designed to work in tandem with **snap_workflow** to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters. It reads structured, parametric configuration dictionaries to place particles/molecules without overlap, configure potentials, manage rigid bodies, compress/shrink boxes, and dynamically run simulations until statistical properties reach equilibrium.
 
 Core Capabilities
 -----------------
@@ -17,10 +17,10 @@ Quick Example
 .. code-block:: python
 
    import snap_simulate as ns
-   from nyut_workflow.core.params.system_params import System_Params
+   from snap_workflow import SystemParams
 
    # 1. Load the parameter sweep configurations from the modular params folder
-   params = System_Params("my/work/dir/params")
+   params = SystemParams("my/work/dir/params")
 
    # 2. Generate the initial configuration snapshot GSD
    ns.system.gen_mixture(params, "init.gsd")
@@ -47,6 +47,7 @@ The package is split into two primary modules:
    :caption: User Guide:
 
    getting_started
+   simulating_rigid_bodies
 
 .. toctree::
    :maxdepth: 2

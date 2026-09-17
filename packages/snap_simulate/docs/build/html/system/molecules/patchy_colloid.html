@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="box" href="../box.html"><link rel="prev" title="Grafted Colloid" href="grafted_colloid.html">
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="Custom Molecule" href="custom_molecule.html"><link rel="prev" title="Grafted Colloid" href="grafted_colloid.html">
         <link rel="prefetch" href="../../_static/logo_light.png" as="image">
         <link rel="prefetch" href="../../_static/logo.png" as="image">
 
@@ -198,6 +198,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul class="current">
@@ -217,21 +218,29 @@
 <li class="toctree-l3"><a class="reference internal" href="../../hoomd/writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../../hoomd/remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../hoomd/samplers.html">Autocorrelation Samplers</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../hoomd/BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../hoomd/PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../hoomd/FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../../system.html">system</a><input aria-label="Toggle navigation of system" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2 current has-children"><a class="reference internal" href="../gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../system.html">system</a><input aria-label="Toggle navigation of system" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../particles.html">particles</a></li>
-<li class="toctree-l3 current has-children"><a class="reference internal" href="../molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l3 current has-children"><a class="reference internal" href="../molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l4"><a class="reference internal" href="star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="ring_polymer.html">Ring Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4 current current-page"><a class="current reference internal" href="#">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../box.html">box</a></li>
@@ -307,12 +316,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../box.html">
+          <a class="next-page" href="custom_molecule.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">box</div>
+                <div class="title">Custom Molecule</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

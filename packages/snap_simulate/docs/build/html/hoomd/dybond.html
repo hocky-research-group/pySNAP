@@ -198,6 +198,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul class="current">
@@ -217,21 +218,29 @@
 <li class="toctree-l3"><a class="reference internal" href="writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2"><a class="reference internal" href="minimize_autocorrelation.html">minimize_autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="samplers.html">Autocorrelation Samplers</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/ring_polymer.html">Ring Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../system/box.html">box</a></li>
@@ -289,56 +298,42 @@
 <p class="admonition-title">Warning</p>
 <p>The custom <cite>hoomd.dybond</cite> package must be installed in the simulation environment for these dynamic bonding options to run correctly.</p>
 </div>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">nlist</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cell&quot;</span><span class="w">               </span><span class="c1"># Reference to a neighbor list defined in nlist</span>
-<span class="nt">thermo</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;thermo&quot;</span><span class="w">            </span><span class="c1"># Reference to a compute defined in computes</span>
-<span class="nt">check_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">            </span><span class="c1"># Check period (integer or trigger name)</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">nlist</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cell&quot;</span><span class="w">               </span><span class="c1"># Reference to a neighbor list defined in nlist (required)</span>
+<span class="nt">thermo</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;thermo&quot;</span><span class="w">            </span><span class="c1"># Reference to a compute defined in computes (required)</span>
+<span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                </span><span class="c1"># Updater trigger (required: integer period or trigger name)</span>
 <span class="nt">nearestNeighbor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">       </span><span class="c1"># (Optional, default True)</span>
 <span class="nt">specs</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">patch_linker</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">pair</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;patch&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;linker_end&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">bond</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Harmonic&quot;</span><span class="w">        </span><span class="c1"># Reference to a bond defined in bonds</span>
-<span class="w">    </span><span class="nt">bond_typename</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;patch-linker_end&quot;</span><span class="w"> </span><span class="c1"># (Optional) Custom name of the bond type in HOOMD. Defaults to hyphenated pair (e.g., &quot;patch-linker_end&quot;).</span>
-<span class="w">    </span><span class="c1"># bond_typeid: 2        # (Optional) Alternatively specify the bond type by integer ID. Mutually exclusive with bond_typename.</span>
-<span class="w">    </span><span class="nt">kon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
-<span class="w">    </span><span class="nt">koff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
-<span class="w">    </span><span class="nt">rmin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
-<span class="w">    </span><span class="nt">rmax</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.2</span>
-<span class="w">    </span><span class="nt">r0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">                 </span><span class="c1"># (Optional, default 1.0)</span>
-<span class="w">    </span><span class="nt">metropolis</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">        </span><span class="c1"># (Optional, default True)</span>
-<span class="w">    </span><span class="nt">self_avoid_chain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"> </span><span class="c1"># (Optional, default False)</span>
-<span class="w">    </span><span class="nt">force_a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">            </span><span class="c1"># (Optional) Force dependence parameter</span>
-<span class="w">    </span><span class="nt">Tmelt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">              </span><span class="c1"># (Optional) Melt temperature</span>
-<span class="w">    </span><span class="nt">alpha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200.0</span><span class="w">            </span><span class="c1"># (Optional, default 200.0)</span>
-<span class="w">    </span><span class="nt">kon_melt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w">           </span><span class="c1"># (Optional, default 0.0)</span>
-<span class="w">    </span><span class="nt">koff_melt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w">          </span><span class="c1"># (Optional, default 0.0)</span>
+<span class="w">    </span><span class="nt">bond</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Harmonic&quot;</span><span class="w">        </span><span class="c1"># Reference to a bond defined in bonds (required)</span>
+<span class="w">    </span><span class="nt">bond_typename</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;patch-linker_end&quot;</span><span class="w"> </span><span class="c1"># (Required unless bond_typeid is used)</span>
+<span class="w">    </span><span class="c1"># bond_typeid: 2        # (Alternative to bond_typename; mutually exclusive)</span>
+<span class="w">    </span><span class="nt">kon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">                </span><span class="c1"># Reaction rate for bond formation (required unless Pon is used)</span>
+<span class="w">    </span><span class="nt">koff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span><span class="w">               </span><span class="c1"># Reaction rate for bond breaking (required unless deduced via epsilon)</span>
+<span class="w">    </span><span class="nt">rmin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span><span class="w">               </span><span class="c1"># Minimum distance for bond formation (required)</span>
+<span class="w">    </span><span class="nt">rmax</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.2</span><span class="w">               </span><span class="c1"># Maximum distance for bond formation/breaking (required)</span>
+<span class="w">    </span><span class="nt">selfAvoidFlag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">     </span><span class="c1"># (Required) Exclude same-molecule bonds</span>
+
+<span class="w">    </span><span class="c1"># Optional metropolis criteria for bond formation (default True)</span>
+<span class="w">    </span><span class="nt">metropolisFlag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+
+<span class="w">    </span><span class="c1"># Optional force dependence parameter for bond breaking (default off)</span>
+<span class="w">    </span><span class="nt">force_a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+
+<span class="w">    </span><span class="c1"># Optional bond melting parameters (default off)</span>
+<span class="w">    </span><span class="nt">Tmelt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="w">    </span><span class="nt">alpha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200.0</span>
+<span class="w">    </span><span class="nt">kon_melt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="w">    </span><span class="nt">koff_melt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20.0</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The dynamic bonding features configure the custom <cite>hoomd.dybond</cite> package. Refer to the project’s source code or research publications for exact scientific parameters.</p>
-</div>
-<section id="specification-options">
-<h2>Specification Options<a class="headerlink" href="#specification-options" title="Link to this heading">¶</a></h2>
-<p>Each specification inside the <code class="docutils literal notranslate"><span class="pre">specs</span></code> block supports the following keys:</p>
 <ul class="simple">
-<li><p><strong>pair</strong> (<em>list of str</em>, <em>required</em>): The names of the two particle types between which the dynamic bond can form (e.g., <code class="docutils literal notranslate"><span class="pre">[&quot;patch&quot;,</span> <span class="pre">&quot;linker_end&quot;]</span></code>).</p></li>
-<li><p><strong>bond</strong> (<em>str</em>, <em>required</em>): The name of the bond potential defined in the <code class="docutils literal notranslate"><span class="pre">bonds</span></code> block (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;Harmonic&quot;</span></code>).</p></li>
-<li><p><strong>bond_typename</strong> (<em>str</em>, <em>optional</em>): The name of the bond type to use from the target bond object’s types. By default, it resolves to the hyphenated version of the two particle types (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;patch-linker_end&quot;</span></code>).</p></li>
-<li><p><strong>bond_typeid</strong> (<em>int</em>, <em>optional</em>): The integer index of the bond type in the simulation state’s bond types array. This is mutually exclusive with <code class="docutils literal notranslate"><span class="pre">bond_typename</span></code>.</p></li>
-<li><p><strong>kon</strong> (<em>float</em>, <em>optional</em>): Reaction rate for bond formation (default <code class="docutils literal notranslate"><span class="pre">1000.0</span></code>).</p></li>
-<li><p><strong>koff</strong> (<em>float</em>, <em>optional</em>): Reaction rate for bond breaking (default <code class="docutils literal notranslate"><span class="pre">0.0</span></code>).</p></li>
-<li><p><strong>rmin</strong> (<em>float</em>, <em>optional</em>): Minimum distance for bond formation (default <code class="docutils literal notranslate"><span class="pre">0.8</span></code>).</p></li>
-<li><p><strong>rmax</strong> (<em>float</em>, <em>optional</em>): Maximum distance for bond formation/breaking (default <code class="docutils literal notranslate"><span class="pre">1.2</span></code>).</p></li>
-<li><p><strong>r0</strong> (<em>float</em>, <em>optional</em>): The rest length of the formed bond (default <code class="docutils literal notranslate"><span class="pre">1.0</span></code>).</p></li>
-<li><p><strong>metropolis</strong> (<em>bool</em>, <em>optional</em>): Enable Metropolis acceptance criteria for bonding decisions (default <code class="docutils literal notranslate"><span class="pre">True</span></code>).</p></li>
-<li><p><strong>self_avoid_chain</strong> (<em>bool</em>, <em>optional</em>): Restrict bonding to prevent self-bonding within the same molecule chain (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></li>
-<li><p><strong>force_a</strong> (<em>float</em>, <em>optional</em>): Force dependence parameter.</p></li>
-<li><p><strong>Tmelt</strong> (<em>float</em>, <em>optional</em>): Melting temperature.</p></li>
-<li><p><strong>alpha</strong> (<em>float</em>, <em>optional</em>): Temperature dependence scaling factor (default <code class="docutils literal notranslate"><span class="pre">200.0</span></code>).</p></li>
-<li><p><strong>kon_melt</strong> (<em>float</em>, <em>optional</em>): Reaction rate at melting temperature for bond formation (default <code class="docutils literal notranslate"><span class="pre">0.0</span></code>).</p></li>
-<li><p><strong>koff_melt</strong> (<em>float</em>, <em>optional</em>): Reaction rate at melting temperature for bond breaking (default <code class="docutils literal notranslate"><span class="pre">0.0</span></code>).</p></li>
+<li><p>Bond potential parameters (such as spring constant <span class="math notranslate nohighlight">\(k\)</span> and equilibrium bond length <span class="math notranslate nohighlight">\(r_0\)</span>) are not specified in <code class="docutils literal notranslate"><span class="pre">dybond</span></code>; they are inherited directly from the referenced bond potential defined in the <code class="docutils literal notranslate"><span class="pre">bonds</span></code> block.</p></li>
+<li><p>Dynamic bonding features configure the custom <code class="docutils literal notranslate"><span class="pre">hoomd.dybond</span></code> extension. Refer to the project’s source code or research publications for exact scientific parameters.</p></li>
 </ul>
-</section>
+</div>
 </section>
 
         </article>
@@ -398,7 +393,6 @@
             <ul>
 <li><a class="reference internal" href="#">dybond</a><ul>
 <li><a class="reference internal" href="#snap_simulate.hoomd.simulation.build_dybond"><code class="docutils literal notranslate"><span class="pre">build_dybond()</span></code></a></li>
-<li><a class="reference internal" href="#specification-options">Specification Options</a></li>
 </ul>
 </li>
 </ul>
@@ -414,5 +408,6 @@
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     </body>
 </html>

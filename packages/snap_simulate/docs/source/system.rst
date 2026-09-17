@@ -1,10 +1,7 @@
 system
 ======
 
-.. automodule:: snap_simulate.system
-   :members:
-   :undoc-members:
-   :show-inheritance:
+The ``snap_simulate.system`` module provides tools for snapshot framing, particle packing, box sizing, and molecule geometry generation.
 
 System Generation Operations
 ----------------------------

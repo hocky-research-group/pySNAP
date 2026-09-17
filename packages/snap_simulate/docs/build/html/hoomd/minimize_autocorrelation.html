@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="min_auto_FSKT" href="min_auto_FSKT.html"><link rel="prev" title="shrink_box" href="shrink_box.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="BaseSampler" href="BaseSampler.html"><link rel="prev" title="shrink_box" href="shrink_box.html">
         <link rel="prefetch" href="../_static/logo_light.png" as="image">
         <link rel="prefetch" href="../_static/logo.png" as="image">
 
@@ -198,6 +198,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul class="current">
@@ -217,13 +218,14 @@
 <li class="toctree-l3"><a class="reference internal" href="writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="shrink_box.html">shrink_box</a></li>
 <li class="toctree-l2 current has-children current-page"><a class="current reference internal" href="#">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l3"><a class="reference internal" href="min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="samplers.html">Autocorrelation Samplers</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -236,6 +238,9 @@
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../system/molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../system/box.html">box</a></li>
@@ -289,12 +294,12 @@
 <dd><p>Run simulation while checking autocorrelation after each sample until decorrelated or max_steps reached.</p>
 </dd></dl>
 
-<p>This function runs a HOOMD-blue simulation and continuously evaluates the autocorrelation of a target physical quantity using a sampler object (such as <cite>PESampler</cite> or <cite>FSKTSampler</cite>), stopping the simulation automatically once decorrelation is achieved.</p>
+<p>This function runs a HOOMD-blue simulation and continuously evaluates the autocorrelation of a target physical quantity using an instance of a subclass of <a class="reference internal" href="BaseSampler.html#snap_simulate.hoomd.BaseSampler" title="snap_simulate.hoomd.BaseSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSampler</span></code></a> (such as <a class="reference internal" href="PESampler.html#snap_simulate.hoomd.PESampler" title="snap_simulate.hoomd.PESampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">PESampler</span></code></a> or <a class="reference internal" href="FSKTSampler.html#snap_simulate.hoomd.FSKTSampler" title="snap_simulate.hoomd.FSKTSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">FSKTSampler</span></code></a>), stopping the simulation automatically once decorrelation is achieved.</p>
 <section id="arguments-description">
 <h2>Arguments Description<a class="headerlink" href="#arguments-description" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><strong>sim</strong> (<em>hoomd.Simulation</em>): The HOOMD-blue simulation object to run.</p></li>
-<li><p><strong>sampler</strong> (<em>BaseSampler</em>): An autocorrelation sampler instance (<cite>PESampler</cite>, <cite>FSKTSampler</cite>, or custom <cite>BaseSampler</cite> subclass).</p></li>
+<li><p><strong>sampler</strong> (<em>BaseSampler</em>): An autocorrelation sampler instance subclassed from <a class="reference internal" href="BaseSampler.html#snap_simulate.hoomd.BaseSampler" title="snap_simulate.hoomd.BaseSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSampler</span></code></a> (such as <a class="reference internal" href="PESampler.html#snap_simulate.hoomd.PESampler" title="snap_simulate.hoomd.PESampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">PESampler</span></code></a>, <a class="reference internal" href="FSKTSampler.html#snap_simulate.hoomd.FSKTSampler" title="snap_simulate.hoomd.FSKTSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">FSKTSampler</span></code></a>, or a custom subclass).</p></li>
 <li><p><strong>threshold</strong> (<em>float</em>, default 0.01): The autocorrelation value threshold below which the quantity is considered decorrelated.</p></li>
 <li><p><strong>tail_window</strong> (<em>int</em>, default 10): Number of trailing sample points over which to average the autocorrelation value.</p></li>
 <li><p><strong>max_steps</strong> (<em>int</em>, optional): Maximum simulation timesteps to run before timing out.</p></li>
@@ -303,11 +308,14 @@
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h2>
 <ul class="simple">
-<li><p><strong>result</strong> (<em>dict</em>): A dictionary containing:
-* <cite>“minimized”</cite> (<em>bool</em>): True if decorrelation threshold was met.
-* <cite>“auto”</cite> (<em>float</em>): Final computed autocorrelation value.
-* <cite>“steps_ran”</cite> (<em>int</em>): Total simulation timesteps executed.
-* <cite>“sampler”</cite> (<em>BaseSampler</em>): The sampler instance with recorded state and data.</p></li>
+<li><p><strong>result</strong> (<em>dict</em>): A dictionary containing:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;minimized&quot;</span></code> (<em>bool</em>): True if decorrelation threshold was met.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> (<em>float</em>): Final computed autocorrelation value.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;steps_ran&quot;</span></code> (<em>int</em>): Total simulation timesteps executed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;sampler&quot;</span></code> (<em>BaseSampler</em>): The sampler instance with recorded state and data.</p></li>
+</ul>
+</li>
 </ul>
 </section>
 <section id="usage-example">
@@ -323,12 +331,13 @@
 </pre></div>
 </div>
 </section>
-<section id="helper-functions">
-<h2>Helper Functions<a class="headerlink" href="#helper-functions" title="Link to this heading">¶</a></h2>
+<section id="autocorrelation-samplers">
+<h2>Autocorrelation Samplers<a class="headerlink" href="#autocorrelation-samplers" title="Link to this heading">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l1"><a class="reference internal" href="min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PESampler.html">PESampler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </div>
 </section>
@@ -339,12 +348,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="min_auto_FSKT.html">
+          <a class="next-page" href="BaseSampler.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">min_auto_FSKT</div>
+                <div class="title">BaseSampler</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -394,7 +403,7 @@
 <li><a class="reference internal" href="#arguments-description">Arguments Description</a></li>
 <li><a class="reference internal" href="#returns">Returns</a></li>
 <li><a class="reference internal" href="#usage-example">Usage Example</a></li>
-<li><a class="reference internal" href="#helper-functions">Helper Functions</a></li>
+<li><a class="reference internal" href="#autocorrelation-samplers">Autocorrelation Samplers</a></li>
 </ul>
 </li>
 </ul>

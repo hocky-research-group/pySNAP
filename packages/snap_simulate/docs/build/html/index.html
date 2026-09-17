@@ -198,6 +198,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -217,21 +218,29 @@
 <li class="toctree-l3"><a class="reference internal" href="hoomd/writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="hoomd/remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2"><a class="reference internal" href="hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="hoomd/samplers.html">Autocorrelation Samplers</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/ring_polymer.html">Ring Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="system/box.html">box</a></li>
@@ -279,7 +288,7 @@
         <article role="main" id="furo-main-content">
           <section id="snap-simulate">
 <h1>snap_simulate<a class="headerlink" href="#snap-simulate" title="Link to this heading">¶</a></h1>
-<p><strong>snap_simulate</strong> is a Python library designed to automate the generation of initial configurations and the construction, execution, and dynamic monitoring of molecular dynamics (MD) simulations in HOOMD-blue (v3+). It is specifically designed to work in tandem with <strong>nyut_workflow</strong> to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters. It reads structured, parametric configuration dictionaries to place particles/molecules without overlap, configure potentials, manage rigid bodies, compress/shrink boxes, and dynamically run simulations until statistical properties reach equilibrium.</p>
+<p><strong>snap_simulate</strong> is a Python library designed to automate the generation of initial configurations and the construction, execution, and dynamic monitoring of molecular dynamics (MD) simulations in HOOMD-blue (v3+). It is specifically designed to work in tandem with <strong>snap_workflow</strong> to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters. It reads structured, parametric configuration dictionaries to place particles/molecules without overlap, configure potentials, manage rigid bodies, compress/shrink boxes, and dynamically run simulations until statistical properties reach equilibrium.</p>
 <section id="core-capabilities">
 <h2>Core Capabilities<a class="headerlink" href="#core-capabilities" title="Link to this heading">¶</a></h2>
 <ul class="simple">
@@ -292,10 +301,10 @@
 <section id="quick-example">
 <h2>Quick Example<a class="headerlink" href="#quick-example" title="Link to this heading">¶</a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">snap_simulate</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ns</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">nyut_workflow.core.params.system_params</span><span class="w"> </span><span class="kn">import</span> <span class="n">System_Params</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">snap_workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">SystemParams</span>
 
 <span class="c1"># 1. Load the parameter sweep configurations from the modular params folder</span>
-<span class="n">params</span> <span class="o">=</span> <span class="n">System_Params</span><span class="p">(</span><span class="s2">&quot;my/work/dir/params&quot;</span><span class="p">)</span>
+<span class="n">params</span> <span class="o">=</span> <span class="n">SystemParams</span><span class="p">(</span><span class="s2">&quot;my/work/dir/params&quot;</span><span class="p">)</span>
 
 <span class="c1"># 2. Generate the initial configuration snapshot GSD</span>
 <span class="n">ns</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">gen_mixture</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="s2">&quot;init.gsd&quot;</span><span class="p">)</span>
@@ -325,7 +334,14 @@
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="getting_started.html#configuration-conventions">Configuration Conventions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting_started.html#typical-workflow">Typical Workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="getting_started.html#integrating-with-nyut-workflow-modular-parameters">Integrating with nyut_workflow &amp; Modular Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html#integrating-with-snap-workflow-modular-parameters">Integrating with snap_workflow &amp; Modular Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="simulating_rigid_bodies.html">Simulating Rigid Bodies</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="simulating_rigid_bodies.html#core-concepts">Core Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulating_rigid_bodies.html#required-configuration-files">Required Configuration Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulating_rigid_bodies.html#file-specifications">File Specifications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulating_rigid_bodies.html#python-execution-script">Python Execution Script</a></li>
 </ul>
 </li>
 </ul>
@@ -338,9 +354,6 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="system.html">system</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="system.html#snap_simulate.system.build_rigid"><code class="docutils literal notranslate"><span class="pre">build_rigid()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="system.html#snap_simulate.system.calc_box_length"><code class="docutils literal notranslate"><span class="pre">calc_box_length()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="system.html#snap_simulate.system.gen_mixture"><code class="docutils literal notranslate"><span class="pre">gen_mixture()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="system.html#system-generation-operations">System Generation Operations</a></li>
 </ul>
 </li>

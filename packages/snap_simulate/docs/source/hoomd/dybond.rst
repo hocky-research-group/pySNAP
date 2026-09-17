@@ -25,38 +25,23 @@ This function parses the `dybond` block to configure dynamic bonding constraints
        koff: 0.1               # Reaction rate for bond breaking (required unless deduced via epsilon)
        rmin: 0.7               # Minimum distance for bond formation (required)
        rmax: 1.2               # Maximum distance for bond formation/breaking (required)
-       metropolisFlag: true    # (Optional, default True)
        selfAvoidFlag: true     # (Required) Exclude same-molecule bonds
-       force_a: 1.0            # (Optional) Force dependence parameter
-       Tmelt: 1.0              # (Optional) Melt temperature
-       alpha: 200.0            # (Optional, default 200.0)
-       kon_melt: 0.0           # (Optional, default 0.0)
-       koff_melt: 0.0          # (Optional, default 0.0)
+
+       # Optional metropolis criteria for bond formation (default True)
+       metropolisFlag: true
+
+       # Optional force dependence parameter for bond breaking (default off)
+       force_a: 1.0
+
+       # Optional bond melting parameters (default off)
+       Tmelt: 1.0
+       alpha: 200.0
+       kon_melt: 1.0
+       koff_melt: 20.0
 
 .. note::
-   The dynamic bonding features configure the custom `hoomd.dybond` package. Refer to the project's source code or research publications for exact scientific parameters.
+   * Bond potential parameters (such as spring constant :math:`k` and equilibrium bond length :math:`r_0`) are not specified in ``dybond``; they are inherited directly from the referenced bond potential defined in the ``bonds`` block.
+   * Dynamic bonding features configure the custom ``hoomd.dybond`` extension. Refer to the project's source code or research publications for exact scientific parameters.
 
-Specification Options
----------------------
-
-Each specification inside the ``specs`` block supports the following keys:
-
-* **pair** (*list of str*, *required*): The names of the two particle types between which the dynamic bond can form (e.g., ``["patch", "linker_end"]``).
-* **bond** (*str*, *required*): The name of the bond potential defined in the ``bonds`` block (e.g., ``"Harmonic"``).
-* **bond_typename** (*str*, *required unless bond_typeid specified*): The name of the bond type in HOOMD.
-* **bond_typeid** (*int*, *required unless bond_typename specified*): The integer index of the bond type in the simulation state's bond types array. Mutually exclusive with ``bond_typename``.
-* **kon** (*float*, *required unless Pon specified*): Reaction rate for bond formation.
-* **Pon** / **pon** / **P_on** (*float*, *optional*): Probability of bond formation per check step ($k_\\text{on} = P_\\text{on} / \\Delta t_\\text{check}$).
-* **koff** (*float*, *required unless epsilon specified with kon/Pon*): Reaction rate for bond breaking.
-* **epsilon** / **eps** / **E** (*float*, *optional*): Dimensionless binding free energy relating $k_\\text{on}$ and $k_\\text{off}$.
-* **rmin** (*float*, *required*): Minimum distance for bond formation.
-* **rmax** (*float*, *required*): Maximum distance for bond formation/breaking.
-* **selfAvoidFlag** (*bool*, *required*): Restrict bonding to prevent intramolecular dynamic bonds within the same molecule chain.
-* **metropolisFlag** (*bool*, *optional*, default ``True``): Enable Metropolis acceptance criteria for bonding decisions.
-* **force_a** (*float*, *optional*): Force dependence parameter.
-* **Tmelt** (*float*, *optional*): Melting temperature.
-* **alpha** (*float*, *optional*): Temperature dependence scaling factor (default ``200.0``).
-* **kon_melt** (*float*, *optional*): Reaction rate at melting temperature for bond formation (default ``0.0``).
-* **koff_melt** (*float*, *optional*): Reaction rate at melting temperature for bond breaking (default ``0.0``).
 
 

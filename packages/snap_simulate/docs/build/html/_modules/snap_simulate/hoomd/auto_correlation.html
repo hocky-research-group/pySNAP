@@ -197,6 +197,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -216,10 +217,12 @@
 <li class="toctree-l3"><a class="reference internal" href="../../../hoomd/writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../../../hoomd/remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../hoomd/shrink_box.html">shrink_box</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../../../hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../hoomd/FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
 </ul>
@@ -234,6 +237,9 @@
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../system/molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../../../system/box.html">box</a></li>
@@ -329,6 +335,8 @@
             <span class="n">result_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;ERROR&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
 
 
+<div class="viewcode-block" id="BaseSampler">
+<a class="viewcode-back" href="../../../hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseSampler</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for autocorrelation samplers supporting logarithmic scheduling and background multiprocessing.&quot;&quot;&quot;</span>
 
@@ -400,6 +408,8 @@
             <span class="n">sample_times</span> <span class="o">=</span> <span class="p">[</span><span class="n">st</span> <span class="k">for</span> <span class="n">st</span> <span class="ow">in</span> <span class="n">sample_times</span> <span class="k">if</span> <span class="n">st</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_interval</span><span class="p">]</span>
         <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">sample_times</span><span class="p">)))</span>
 
+<div class="viewcode-block" id="BaseSampler.get_next_sample_interval">
+<a class="viewcode-back" href="../../../hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.get_next_sample_interval">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_next_sample_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculates the next simulation step interval based on sampling_mode, Nmag, and Navg.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
@@ -417,8 +427,11 @@
                 <span class="n">step_after</span> <span class="o">=</span> <span class="n">extended_times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">extended_times</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">extended_times</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span>
                 <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_interval</span><span class="p">,</span> <span class="n">step_after</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown sampling_mode: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown sampling_mode: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sampling_mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="BaseSampler.sample">
+<a class="viewcode-back" href="../../../hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.sample">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Sample data at a given timestep.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_timestep</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -436,8 +449,11 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">sample_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_sample</span><span class="p">(</span><span class="n">timestep</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample_val</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">sample_val</span>
+            <span class="k">return</span> <span class="n">sample_val</span></div>
 
+
+<div class="viewcode-block" id="BaseSampler.check">
+<a class="viewcode-back" href="../../../hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.check">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tail_window</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check autocorrelation condition. Returns (minimized: bool, auto_value).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -449,8 +465,11 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_compute</span><span class="p">(</span><span class="n">tail_window</span><span class="o">=</span><span class="n">tail_window</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_auto_result</span></div>
 
+
+<div class="viewcode-block" id="BaseSampler.save_state">
+<a class="viewcode-back" href="../../../hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.save_state">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Save sampler state to a pickle file.&quot;&quot;&quot;</span>
         <span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span>
@@ -471,8 +490,11 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_input_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">&quot;SAVE&quot;</span><span class="p">,</span> <span class="n">file_name</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_internal_save_state</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_internal_save_state</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="BaseSampler.load_state">
+<a class="viewcode-back" href="../../../hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.load_state">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">load_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Load sampler state from a pickle file if it exists.&quot;&quot;&quot;</span>
         <span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span>
@@ -502,8 +524,11 @@
                 <span class="k">return</span> <span class="n">res</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_load_state</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
-        <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
 
+
+<div class="viewcode-block" id="BaseSampler.save_data">
+<a class="viewcode-back" href="../../../hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.save_data">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;sampled_data.txt&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Save sampled data as a function of time/timestep.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -511,7 +536,8 @@
             <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
             <span class="k">return</span> <span class="n">res</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_save_data</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_internal_save_data</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span></div>
+
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_extract_frame_payload</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract payload from frame for background process. Override in subclass.&quot;&quot;&quot;</span>
@@ -536,6 +562,8 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;timestep sample&quot;</span><span class="p">)</span>
 
+<div class="viewcode-block" id="BaseSampler.close">
+<a class="viewcode-back" href="../../../hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.close">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up background worker process.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
@@ -543,12 +571,16 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_worker_process</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
+
+<div class="viewcode-block" id="PESampler">
+<a class="viewcode-back" href="../../../hoomd/PESampler.html#snap_simulate.hoomd.PESampler">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PESampler</span><span class="p">(</span><span class="n">BaseSampler</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Potential Energy autocorrelation sampler.&quot;&quot;&quot;</span>
 
@@ -607,17 +639,19 @@
         <span class="k">if</span> <span class="n">file_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">):</span>
             <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;timestep potential_energy&quot;</span><span class="p">)</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;timestep potential_energy&quot;</span><span class="p">)</span></div>
+
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_FSKTInternalWorker</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">box</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">ptype</span><span class="p">,</span> <span class="n">file_name</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">Navg</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">box</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">ptype</span><span class="p">,</span> <span class="n">file_name</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">Navg</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">snap_analyze</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fskt</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">box</span> <span class="o">=</span> <span class="n">box</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span> <span class="o">=</span> <span class="n">ptype</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span> <span class="o">=</span> <span class="n">file_name</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">Fskt</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">min_avg_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="n">sampling_mode</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="n">Nmag</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kmag</span> <span class="o">=</span> <span class="n">kmag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">Fskt</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="n">kmag</span><span class="p">,</span> <span class="n">min_avg_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="n">sampling_mode</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="n">Nmag</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_internal_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">payload</span><span class="p">):</span>
         <span class="n">pos</span><span class="p">,</span> <span class="n">image</span> <span class="o">=</span> <span class="n">payload</span>
@@ -655,6 +689,8 @@
             <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;delta_t Fskt&quot;</span><span class="p">)</span>
 
 
+<div class="viewcode-block" id="FSKTSampler">
+<a class="viewcode-back" href="../../../hoomd/FSKTSampler.html#snap_simulate.hoomd.FSKTSampler">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FSKTSampler</span><span class="p">(</span><span class="n">BaseSampler</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Intermediate scattering function Fs(k,t) autocorrelation sampler.&quot;&quot;&quot;</span>
 
@@ -662,6 +698,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">sim</span><span class="p">,</span>
         <span class="n">ptype</span><span class="p">,</span>
+        <span class="n">kmag</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span>
         <span class="n">file_name</span><span class="o">=</span><span class="s2">&quot;fskt_sampler.pkl&quot;</span><span class="p">,</span>
         <span class="n">sampling_mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
         <span class="n">min_interval</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
@@ -685,9 +722,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">operations</span><span class="o">.</span><span class="n">integrator</span><span class="o">.</span><span class="n">dt</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">box</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">box</span><span class="o">.</span><span class="n">L</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span> <span class="o">=</span> <span class="n">ptype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kmag</span> <span class="o">=</span> <span class="n">kmag</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_multiprocessing</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">Fskt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span> <span class="n">min_avg_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="n">sampling_mode</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="n">Nmag</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">Fskt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">box</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="n">kmag</span><span class="p">,</span> <span class="n">min_avg_count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sampling_mode</span><span class="o">=</span><span class="n">sampling_mode</span><span class="p">,</span> <span class="n">Nmag</span><span class="o">=</span><span class="n">Nmag</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="n">init_kwargs</span> <span class="o">=</span> <span class="p">{</span>
@@ -695,6 +733,7 @@
                 <span class="s2">&quot;dt&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
                 <span class="s2">&quot;ptype&quot;</span><span class="p">:</span> <span class="n">ptype</span><span class="p">,</span>
                 <span class="s2">&quot;file_name&quot;</span><span class="p">:</span> <span class="n">file_name</span><span class="p">,</span>
+                <span class="s2">&quot;kmag&quot;</span><span class="p">:</span> <span class="n">kmag</span><span class="p">,</span>
                 <span class="s2">&quot;sampling_mode&quot;</span><span class="p">:</span> <span class="n">sampling_mode</span><span class="p">,</span>
                 <span class="s2">&quot;Nmag&quot;</span><span class="p">:</span> <span class="n">Nmag</span><span class="p">,</span>
                 <span class="s2">&quot;Navg&quot;</span><span class="p">:</span> <span class="n">Navg</span><span class="p">,</span>
@@ -755,7 +794,8 @@
             <span class="k">if</span> <span class="n">file_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">):</span>
                 <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;delta_t Fskt&quot;</span><span class="p">)</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="s2">&quot;delta_t Fskt&quot;</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="minimize_autocorrelation">
@@ -805,20 +845,14 @@
 
 
 
-<div class="viewcode-block" id="min_auto_FSKT">
-<a class="viewcode-back" href="../../../hoomd/min_auto_FSKT.html#snap_simulate.hoomd.min_auto_FSKT">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">min_auto_FSKT</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">ptype</span><span class="p">):</span>
-    <span class="n">sampler</span> <span class="o">=</span> <span class="n">FSKTSampler</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">ptype</span><span class="o">=</span><span class="n">ptype</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="n">sampler</span><span class="o">.</span><span class="n">check</span></div>
+<span class="k">def</span><span class="w"> </span><span class="nf">min_auto_FSKT</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">ptype</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="mf">1.1</span><span class="p">):</span>
+    <span class="n">sampler</span> <span class="o">=</span> <span class="n">FSKTSampler</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">ptype</span><span class="o">=</span><span class="n">ptype</span><span class="p">,</span> <span class="n">kmag</span><span class="o">=</span><span class="n">kmag</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="n">sampler</span><span class="o">.</span><span class="n">check</span>
 
 
-
-<div class="viewcode-block" id="min_auto_PE">
-<a class="viewcode-back" href="../../../hoomd/min_auto_PE.html#snap_simulate.hoomd.min_auto_PE">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">min_auto_PE</span><span class="p">(</span><span class="n">logger</span><span class="p">):</span>
     <span class="n">sampler</span> <span class="o">=</span> <span class="n">PESampler</span><span class="p">(</span><span class="n">logger</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="n">sampler</span><span class="o">.</span><span class="n">check</span></div>
-
+    <span class="k">return</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="n">sampler</span><span class="o">.</span><span class="n">check</span>
 </pre></div>
         </article>
       </div>

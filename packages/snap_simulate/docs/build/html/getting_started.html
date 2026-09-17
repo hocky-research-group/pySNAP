@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="hoomd" href="hoomd.html"><link rel="prev" title="snap_simulate" href="index.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Simulating Rigid Bodies" href="simulating_rigid_bodies.html"><link rel="prev" title="snap_simulate" href="index.html">
         <link rel="prefetch" href="_static/logo_light.png" as="image">
         <link rel="prefetch" href="_static/logo.png" as="image">
 
@@ -198,6 +198,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul class="current">
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -217,21 +218,29 @@
 <li class="toctree-l3"><a class="reference internal" href="hoomd/writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="hoomd/remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="hoomd/shrink_box.html">shrink_box</a></li>
-<li class="toctree-l2"><a class="reference internal" href="hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="hoomd/samplers.html">Autocorrelation Samplers</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="system/gen_mixture.html">gen_mixture</a><input aria-label="Toggle navigation of gen_mixture" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="system/particles.html">particles</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="system/molecules.html">molecules</a><input aria-label="Toggle navigation of molecules" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/star_polymer.html">Star Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/linear_polymer.html">Linear Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/ring_polymer.html">Ring Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="system/box.html">box</a></li>
@@ -312,10 +321,10 @@
 <li><p><strong>Build and Run Simulation</strong>: Load the generated GSD file, build HOOMD-blue simulation objects (potentials, integrators, loggers, writers), and execute the run steps using <a class="reference internal" href="hoomd/build_simulation.html"><span class="doc">build_simulation</span></a>.</p></li>
 </ol>
 </section>
-<section id="integrating-with-nyut-workflow-modular-parameters">
-<h2>Integrating with nyut_workflow &amp; Modular Parameters<a class="headerlink" href="#integrating-with-nyut-workflow-modular-parameters" title="Link to this heading">¶</a></h2>
-<p>When scaling up to large parametric sweeps with the companion package <code class="docutils literal notranslate"><span class="pre">nyut_workflow</span></code>, simulation configurations are orchestrated via a <code class="docutils literal notranslate"><span class="pre">System_Params</span></code> parameter dictionary.</p>
-<p>To keep your configurations clean, modular, and easy to manage, <code class="docutils literal notranslate"><span class="pre">nyut_workflow</span></code> supports dividing parameters into a nested directory structure within a <code class="docutils literal notranslate"><span class="pre">params</span></code> directory.</p>
+<section id="integrating-with-snap-workflow-modular-parameters">
+<h2>Integrating with snap_workflow &amp; Modular Parameters<a class="headerlink" href="#integrating-with-snap-workflow-modular-parameters" title="Link to this heading">¶</a></h2>
+<p>When scaling up to large parametric sweeps with the companion package <code class="docutils literal notranslate"><span class="pre">snap_workflow</span></code>, simulation configurations are orchestrated via a <code class="docutils literal notranslate"><span class="pre">SystemParams</span></code> parameter dictionary.</p>
+<p>To keep your configurations clean, modular, and easy to manage, <code class="docutils literal notranslate"><span class="pre">snap_workflow</span></code> supports dividing parameters into a nested directory structure within a <code class="docutils literal notranslate"><span class="pre">params</span></code> directory.</p>
 <section id="recursive-parameter-file-loading">
 <h3>Recursive Parameter File Loading<a class="headerlink" href="#recursive-parameter-file-loading" title="Link to this heading">¶</a></h3>
 <p>Files and folders inside the <code class="docutils literal notranslate"><span class="pre">params</span></code> directory map directly to the keys and sub-keys of the final configuration dictionary passed to <code class="docutils literal notranslate"><span class="pre">snap_simulate</span></code>:</p>
@@ -346,7 +355,7 @@
 </div>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p>For more details on setting up sweeps, orchestrating jobs, and running modular parameter configurations, please refer to the companion <strong>nyut_workflow</strong> package documentation.</p>
+<p>For more details on setting up sweeps, orchestrating jobs, and running modular parameter configurations, please refer to the companion <strong>snap_workflow</strong> package documentation.</p>
 </div>
 </section>
 </section>
@@ -357,12 +366,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="hoomd.html">
+          <a class="next-page" href="simulating_rigid_bodies.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">hoomd</div>
+                <div class="title">Simulating Rigid Bodies</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -410,7 +419,7 @@
 <li><a class="reference internal" href="#">Getting Started</a><ul>
 <li><a class="reference internal" href="#configuration-conventions">Configuration Conventions</a></li>
 <li><a class="reference internal" href="#typical-workflow">Typical Workflow</a></li>
-<li><a class="reference internal" href="#integrating-with-nyut-workflow-modular-parameters">Integrating with nyut_workflow &amp; Modular Parameters</a><ul>
+<li><a class="reference internal" href="#integrating-with-snap-workflow-modular-parameters">Integrating with snap_workflow &amp; Modular Parameters</a><ul>
 <li><a class="reference internal" href="#recursive-parameter-file-loading">Recursive Parameter File Loading</a></li>
 </ul>
 </li>

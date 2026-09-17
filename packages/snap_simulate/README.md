@@ -147,7 +147,6 @@ Defines parameters for running the HOOMD execution context:
 | `init_file` | `str` (optional) | Path to a GSD snapshot file to initialize simulation. |
 | `continue_file` | `str` (optional) | Path to a GSD snapshot file to resume simulation (takes precedence over `init_file`). |
 | `thermalize_initial` | `dict` (optional) | Configuration to thermalize particle momenta on initial state load (contains `kT` and `filter`). |
-| `has_rigid_bodies` | `bool` (optional) | Must be `True` if system uses rigid constraints. |
 
 ### 2. `box`
 Specifies dimensions and boundary boundaries:

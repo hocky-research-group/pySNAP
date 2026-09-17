@@ -196,6 +196,7 @@
   <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulating_rigid_bodies.html">Simulating Rigid Bodies</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
 <ul>
@@ -215,13 +216,14 @@
 <li class="toctree-l3"><a class="reference internal" href="hoomd/writers.html">writers</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="hoomd/remaining_steps.html">remaining_steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="hoomd/shrink_box.html">shrink_box</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="hoomd/minimize_autocorrelation.html">minimize_autocorrelation</a><input aria-label="Toggle navigation of minimize_autocorrelation" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="hoomd/min_auto_FSKT.html">min_auto_FSKT</a></li>
-<li class="toctree-l3"><a class="reference internal" href="hoomd/min_auto_PE.html">min_auto_PE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/BaseSampler.html">BaseSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/PESampler.html">PESampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hoomd/FSKTSampler.html">FSKTSampler</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="hoomd/samplers.html">Autocorrelation Samplers</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="system.html">system</a><input aria-label="Toggle navigation of system" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -234,6 +236,9 @@
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/comb_polymer.html">Comb Polymer</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/grafted_colloid.html">Grafted Colloid</a></li>
 <li class="toctree-l4"><a class="reference internal" href="system/molecules/patchy_colloid.html">Patchy Colloid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/custom_molecule.html">Custom Molecule</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/rigid_body.html">Rigid Body</a></li>
+<li class="toctree-l4"><a class="reference internal" href="system/molecules/partially_rigid_body.html">Partially Rigid Body</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="system/box.html">box</a></li>
@@ -276,13 +281,13 @@
           
 <section class="genindex-section">
   <h1 id="index">Index</h1>
-  <div class="genindex-jumpbox"><a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#S"><strong>S</strong></a></div>
+  <div class="genindex-jumpbox"><a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a></div>
 </section>
 <section id="B" class="genindex-section">
   <h2>B</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler">BaseSampler (class in snap_simulate.hoomd)</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler">BaseSampler (class in snap_simulate.hoomd)</a>
 </li>
         <li><a href="hoomd/angles.html#snap_simulate.hoomd.simulation.build_angles">build_angles() (in module snap_simulate.hoomd.simulation)</a>
 </li>
@@ -306,8 +311,6 @@
 </li>
         <li><a href="hoomd/pairs.html#snap_simulate.hoomd.simulation.build_pairs">build_pairs() (in module snap_simulate.hoomd.simulation)</a>
 </li>
-        <li><a href="system.html#snap_simulate.system.build_rigid">build_rigid() (in module snap_simulate.system)</a>
-</li>
         <li><a href="hoomd/build_simulation.html#snap_simulate.hoomd.build_simulation">build_simulation() (in module snap_simulate.hoomd)</a>
 </li>
         <li><a href="hoomd/triggers.html#snap_simulate.hoomd.simulation.build_triggers">build_triggers() (in module snap_simulate.hoomd.simulation)</a>
@@ -322,17 +325,13 @@
   <h2>C</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="system.html#snap_simulate.system.calc_box_length">calc_box_length() (in module snap_simulate.system)</a>
-
-        <ul>
-          <li><a href="system/box.html#snap_simulate.system.system.calc_box_length">(in module snap_simulate.system.system)</a>
+        <li><a href="system/box.html#snap_simulate.system.system.calc_box_length">calc_box_length() (in module snap_simulate.system.system)</a>
 </li>
-        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler.check">check() (snap_simulate.hoomd.BaseSampler method)</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.check">check() (snap_simulate.hoomd.BaseSampler method)</a>
 </li>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler.close">close() (snap_simulate.hoomd.BaseSampler method)</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.close">close() (snap_simulate.hoomd.BaseSampler method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -342,7 +341,7 @@
   <h2>F</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.FSKTSampler">FSKTSampler (class in snap_simulate.hoomd)</a>
+        <li><a href="hoomd/FSKTSampler.html#snap_simulate.hoomd.FSKTSampler">FSKTSampler (class in snap_simulate.hoomd)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -352,11 +351,11 @@
   <h2>G</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="system.html#snap_simulate.system.gen_mixture">gen_mixture() (in module snap_simulate.system)</a>, <a href="system/gen_mixture.html#snap_simulate.system.gen_mixture">[1]</a>
+        <li><a href="system/gen_mixture.html#snap_simulate.system.gen_mixture">gen_mixture() (in module snap_simulate.system)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler.get_next_sample_interval">get_next_sample_interval() (snap_simulate.hoomd.BaseSampler method)</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.get_next_sample_interval">get_next_sample_interval() (snap_simulate.hoomd.BaseSampler method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -366,7 +365,7 @@
   <h2>L</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler.load_state">load_state() (snap_simulate.hoomd.BaseSampler method)</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.load_state">load_state() (snap_simulate.hoomd.BaseSampler method)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -382,29 +381,16 @@
 </li>
         <li><a href="system/molecules/linear_polymer.html#snap_simulate.system.molecules.make_linear_polymer">make_linear_polymer() (in module snap_simulate.system.molecules)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="system/molecules/patchy_colloid.html#snap_simulate.system.molecules.make_patchy_colloid">make_patchy_colloid() (in module snap_simulate.system.molecules)</a>
 </li>
         <li><a href="system/molecules/ring_polymer.html#snap_simulate.system.molecules.make_ring_polymer">make_ring_polymer() (in module snap_simulate.system.molecules)</a>
 </li>
         <li><a href="system/molecules/star_polymer.html#snap_simulate.system.molecules.make_star_polymer">make_star_polymer() (in module snap_simulate.system.molecules)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="hoomd/min_auto_FSKT.html#snap_simulate.hoomd.min_auto_FSKT">min_auto_FSKT() (in module snap_simulate.hoomd)</a>
-</li>
-        <li><a href="hoomd/min_auto_PE.html#snap_simulate.hoomd.min_auto_PE">min_auto_PE() (in module snap_simulate.hoomd)</a>
-</li>
         <li><a href="hoomd/minimize_autocorrelation.html#snap_simulate.hoomd.minimize_autocorrelation">minimize_autocorrelation() (in module snap_simulate.hoomd)</a>
 </li>
-        <li>
-    module
-
-        <ul>
-          <li><a href="hoomd.html#module-snap_simulate.hoomd">snap_simulate.hoomd</a>
-</li>
-          <li><a href="system.html#module-snap_simulate.system">snap_simulate.system</a>
-</li>
-        </ul></li>
     </ul></td>
   </tr></table>
 </section>
@@ -413,7 +399,17 @@
   <h2>P</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.PESampler">PESampler (class in snap_simulate.hoomd)</a>
+        <li><a href="hoomd/PESampler.html#snap_simulate.hoomd.PESampler">PESampler (class in snap_simulate.hoomd)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="R" class="genindex-section">
+  <h2>R</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="hoomd/remaining_steps.html#snap_simulate.hoomd.remaining_steps">remaining_steps() (in module snap_simulate.hoomd)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -423,31 +419,17 @@
   <h2>S</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler.sample">sample() (snap_simulate.hoomd.BaseSampler method)</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.sample">sample() (snap_simulate.hoomd.BaseSampler method)</a>
 </li>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler.save_data">save_data() (snap_simulate.hoomd.BaseSampler method)</a>
-</li>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler.save_state">save_state() (snap_simulate.hoomd.BaseSampler method)</a>
-</li>
-        <li><a href="hoomd/shrink_box.html#snap_simulate.hoomd.shrink_box">shrink_box() (in module snap_simulate.hoomd)</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.save_data">save_data() (snap_simulate.hoomd.BaseSampler method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li>
-    snap_simulate.hoomd
-
-        <ul>
-          <li><a href="hoomd.html#module-snap_simulate.hoomd">module</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.save_state">save_state() (snap_simulate.hoomd.BaseSampler method)</a>
 </li>
-        </ul></li>
-        <li>
-    snap_simulate.system
-
-        <ul>
-          <li><a href="system.html#module-snap_simulate.system">module</a>
+        <li><a href="hoomd/shrink_box.html#snap_simulate.hoomd.shrink_box">shrink_box() (in module snap_simulate.hoomd)</a>
 </li>
-        </ul></li>
-        <li><a href="hoomd/samplers.html#snap_simulate.hoomd.BaseSampler.steps_ran">steps_ran (snap_simulate.hoomd.BaseSampler property)</a>
+        <li><a href="hoomd/BaseSampler.html#snap_simulate.hoomd.BaseSampler.steps_ran">steps_ran (snap_simulate.hoomd.BaseSampler property)</a>
 </li>
     </ul></td>
   </tr></table>

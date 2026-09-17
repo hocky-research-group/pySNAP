@@ -152,3 +152,6 @@ Thumbs.db
 # Research directory
 research/
 
+# Simulation runtime tracking
+stage_start_timestep.txt
+

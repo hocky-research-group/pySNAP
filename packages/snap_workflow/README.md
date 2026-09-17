@@ -4,8 +4,6 @@
 
 A Python-based parametric workflow manager for running large-scale computational experiments on workstations and HPC clusters. Define simulation stages, sweep across parameter combinations, and submit jobs to Slurm or run workstation auto-scheduling — all from a single command-line interface. Complete documentation is available in the [snap_workflow documentation](https://hocky-research-group.github.io/pySNAP/workflow/).
 
-<img src="workflow_relationship.svg" alt="Workflow Architecture &amp; Relationships" width="100%">
-
 ## Features
 
 ### Ease of Use

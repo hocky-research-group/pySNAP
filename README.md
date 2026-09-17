@@ -2,7 +2,7 @@
 
 [![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://hocky-research-group.github.io/pySNAP/)
 
-**pySNAP** is a cohesive suite of Python tools designed to orchestrate large-scale scientific computational experiments and automate molecular dynamics (MD) simulations in HOOMD-blue. Comprehensive documentation for the suite is available at [https://hocky-research-group.github.io/pySNAP/](https://hocky-research-group.github.io/pySNAP/).
+**pySNAP** is a cohesive suite of Python tools designed to orchestrate large-scale scientific computational experiments and automate molecular dynamics (MD) simulations in HOOMD-blue. Comprehensive documentation for the suite is available in the [pySNAP documentation](https://hocky-research-group.github.io/pySNAP/).
 
 The suite is comprised of two core components:
 1. **`snap_workflow`**: A general-purpose parametric workflow manager.
@@ -14,18 +14,18 @@ These components can be installed and used together as a single unified package 
 
 ## pySNAP Utilities
 
-Additionally, pySNAP registers the general-purpose `workflow` command line interface (CLI) tool. See the [workflow CLI documentation](packages/snap_workflow/docs/source/cli/cli.rst) for usage details.
+Additionally, pySNAP registers the general-purpose `workflow` command line interface (CLI) tool. See the [workflow CLI documentation](https://hocky-research-group.github.io/pySNAP/workflow/cli/cli.html) for usage details.
 
 The following table lists all key classes and functions exposed directly in the `pySNAP` namespace along with links to their respective detailed documentation in each package:
 
 | Direct Import Shortcut | Original Location | Documentation Reference |
 | :--- | :--- | :--- |
-| `pySNAP.gen_mixture` | `snap_simulate.system.gen_mixture` | [gen_mixture.rst](packages/snap_simulate/docs/source/system/gen_mixture.rst) |
-| `pySNAP.build_simulation` | `snap_simulate.hoomd.build_simulation` | [build_simulation.rst](packages/snap_simulate/docs/source/hoomd/build_simulation.rst) |
-| `pySNAP.shrink_box` | `snap_simulate.hoomd.shrink_box` | [shrink_box.rst](packages/snap_simulate/docs/source/hoomd/shrink_box.rst) |
-| `pySNAP.Data_Manager` | `snap_workflow.Data_Manager` | [Data_Manager.rst](packages/snap_workflow/docs/source/py_tools/Data_Manager.rst) |
-| `pySNAP.SPoint_Manager` | `snap_workflow.SPoint_Manager` | [SPoint_Manager.rst](packages/snap_workflow/docs/source/py_tools/SPoint_Manager.rst) |
-| `pySNAP.System_Params` | `snap_workflow.core.params.system_params` | [System_Params.rst](packages/snap_workflow/docs/source/py_tools/System_Params.rst) |
+| `pySNAP.gen_mixture` | `snap_simulate.system.gen_mixture` | [gen_mixture](https://hocky-research-group.github.io/pySNAP/simulate/system/gen_mixture.html) |
+| `pySNAP.build_simulation` | `snap_simulate.hoomd.build_simulation` | [build_simulation](https://hocky-research-group.github.io/pySNAP/simulate/hoomd/build_simulation.html) |
+| `pySNAP.shrink_box` | `snap_simulate.hoomd.shrink_box` | [shrink_box](https://hocky-research-group.github.io/pySNAP/simulate/hoomd/shrink_box.html) |
+| `pySNAP.Data_Manager` | `snap_workflow.Data_Manager` | [Data_Manager](https://hocky-research-group.github.io/pySNAP/workflow/py_tools/Data_Manager.html) |
+| `pySNAP.SPoint_Manager` | `snap_workflow.SPoint_Manager` | [SPoint_Manager](https://hocky-research-group.github.io/pySNAP/workflow/py_tools/SPoint_Manager.html) |
+| `pySNAP.System_Params` | `snap_workflow.core.params.system_params` | [System_Params](https://hocky-research-group.github.io/pySNAP/workflow/py_tools/System_Params.html) |
 
 ---
 

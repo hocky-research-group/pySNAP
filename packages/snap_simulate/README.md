@@ -5,7 +5,7 @@
 [![HOOMD-Blue](https://img.shields.io/badge/hoomd--blue-v3%20%7C%20v4-orange.svg)](https://glotzerlab.op.umich.edu/hoomd-blue/)
 [![GSD](https://img.shields.io/badge/gsd-v2+-green.svg)](https://github.com/glotzerlab/gsd)
 
-`snap_simulate` is a powerful Python library designed to automate the generation of initial configurations and the construction, execution, and dynamic monitoring of molecular dynamics (MD) simulations in **HOOMD-blue (v3+)**. It parses structured, parametric configuration dictionaries (from JSON or YAML) to place particles and molecules without overlap, construct complex force fields, manage rigid bodies, execute adaptive box compression, and dynamically run simulations until statistical properties reach equilibrium. Complete documentation is available at [https://hocky-research-group.github.io/pySNAP/simulate/](https://hocky-research-group.github.io/pySNAP/simulate/).
+`snap_simulate` is a powerful Python library designed to automate the generation of initial configurations and the construction, execution, and dynamic monitoring of molecular dynamics (MD) simulations in **HOOMD-blue (v3+)**. It parses structured, parametric configuration dictionaries (from JSON or YAML) to place particles and molecules without overlap, construct complex force fields, manage rigid bodies, execute adaptive box compression, and dynamically run simulations until statistical properties reach equilibrium. Complete documentation is available in the [snap_simulate documentation](https://hocky-research-group.github.io/pySNAP/simulate/).
 
 It is designed to work in tandem with `snap_workflow` to orchestrate massive parametric sweeps and run computational experiments across local workstations and HPC clusters.
 

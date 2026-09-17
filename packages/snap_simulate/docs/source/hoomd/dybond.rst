@@ -6,7 +6,8 @@ dybond
 This function parses the `dybond` block to configure dynamic bonding constraints.
 
 .. warning::
-   The custom `hoomd.dybond` package must be installed in the simulation environment for these dynamic bonding options to run correctly.
+   The custom `hoomd.dybond` package must be installed in the simulation environment for these dynamic bonding options to run correctly. See the `DyBond-v2 <https://github.com/hocky-research-group/DyBond-v2>`_ repository for installation and details.
+
 
 
 .. code-block:: yaml
@@ -41,7 +42,8 @@ This function parses the `dybond` block to configure dynamic bonding constraints
 
 .. note::
    * Bond potential parameters (such as spring constant :math:`k` and equilibrium bond length :math:`r_0`) are not specified in ``dybond``; they are inherited directly from the referenced bond potential defined in the ``bonds`` block.
-   * Dynamic bonding features configure the custom ``hoomd.dybond`` extension. Refer to the project's source code or research publications for exact scientific parameters.
+   * Dynamic bonding features configure the custom ``hoomd.dybond`` extension. Refer to the `DyBond-v2 <https://github.com/hocky-research-group/DyBond-v2>`_ repository or research publications for exact scientific parameters.
+
 
 
 

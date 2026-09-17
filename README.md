@@ -1,6 +1,8 @@
 # pySNAP
 
-**pySNAP** is a cohesive suite of Python tools designed to orchestrate large-scale scientific computational experiments and automate molecular dynamics (MD) simulations in HOOMD-blue. 
+[![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://hocky-research-group.github.io/pySNAP/)
+
+**pySNAP** is a cohesive suite of Python tools designed to orchestrate large-scale scientific computational experiments and automate molecular dynamics (MD) simulations in HOOMD-blue. Comprehensive documentation for the suite is available at [https://hocky-research-group.github.io/pySNAP/](https://hocky-research-group.github.io/pySNAP/).
 
 The suite is comprised of two core components:
 1. **`snap_workflow`**: A general-purpose parametric workflow manager.
